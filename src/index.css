@@ -119,5 +119,16 @@ All colors MUST be HSL.
   
   .page-break-inside-avoid {
     page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Add padding to content that appears on subsequent pages */
+  .print-container > *:not(:first-child) {
+    break-before: auto;
+  }
+
+  @page {
+    margin-top: 15mm;
+    margin-bottom: 15mm;
   }
 }
