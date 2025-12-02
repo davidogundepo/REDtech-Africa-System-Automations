@@ -24,7 +24,8 @@ const formatCurrency = (amount: number, currency: string) => {
 export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
   ({ invoiceData }, ref) => {
     const subtotal = invoiceData.lineItems.reduce((sum, item) => sum + (item.amount * item.quantity), 0);
-    const total = subtotal;
+    const vatAmount = invoiceData.vatEnabled ? subtotal * (invoiceData.vatRate / 100) : 0;
+    const total = subtotal + vatAmount;
 
     return (
       <div 
@@ -111,11 +112,17 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
 
         {/* Totals */}
         <div className="flex justify-end mb-8">
-          <div className="w-64">
+          <div className="w-72">
             <div className="flex justify-between py-2 border-b border-border">
               <span>Subtotal:</span>
               <span>{formatCurrency(subtotal, invoiceData.currency)}</span>
             </div>
+            {invoiceData.vatEnabled && (
+              <div className="flex justify-between py-2 border-b border-border">
+                <span>VAT ({invoiceData.vatRate}%):</span>
+                <span>{formatCurrency(vatAmount, invoiceData.currency)}</span>
+              </div>
+            )}
             <div className="flex justify-between py-3 border-b-2 border-invoice-header font-bold text-lg">
               <span>TOTAL DUE:</span>
               <span>{formatCurrency(total, invoiceData.currency)}</span>
