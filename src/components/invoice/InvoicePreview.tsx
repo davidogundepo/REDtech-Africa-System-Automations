@@ -49,9 +49,8 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
               alt={invoiceData.companyName}
               className="h-12 w-auto object-contain object-left mb-2"
             />
-            <h1 className="text-2xl font-bold">
-              <span className="text-invoice-accent">REDtech</span>{" "}
-              <span style={{ color: '#000000' }}>Africa Consulting</span>
+            <h1 className="text-2xl font-bold" style={{ color: '#000000' }}>
+              REDtech Africa Consulting
             </h1>
             <p className="text-sm">Phone: {invoiceData.companyPhone}</p>
             <p className="text-sm">Email: {invoiceData.companyEmail}</p>
