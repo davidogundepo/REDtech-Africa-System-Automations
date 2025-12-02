@@ -12,10 +12,15 @@ const getInitialInvoiceData = (): InvoiceData => {
   const dueDate = new Date(today);
   dueDate.setDate(dueDate.getDate() + 14);
 
+  // Format date as DDMMYYYY for invoice number
+  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const year = today.getFullYear();
+
   return {
     ...defaultCompanyInfo,
     companyLogo: "",
-    invoiceNumber: `INV-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+    invoiceNumber: `INV-${day}${month}${year}`,
     invoiceDate: today.toISOString().split('T')[0],
     dueDate: dueDate.toISOString().split('T')[0],
     clientName: "",
@@ -34,10 +39,10 @@ const getInitialInvoiceData = (): InvoiceData => {
       }
     ],
     paymentDetails: {
-      bankName: "GTBank",
+      bankName: "Stanbic IBTC Bank",
       accountName: "REDtech Africa Consulting",
       sortCode: "",
-      accountNumber: "",
+      accountNumber: "0033629255",
       reference: "",
     },
     paymentArrangement: [],
@@ -55,7 +60,7 @@ export const InvoiceGenerator = () => {
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `Invoice-${invoiceData.invoiceNumber}`,
+    documentTitle: `${invoiceData.clientName || 'Client'}-${invoiceData.invoiceNumber}`,
     onBeforePrint: () => {
       setIsGenerating(true);
       return Promise.resolve();

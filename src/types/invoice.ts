@@ -62,10 +62,9 @@ export interface InvoiceData {
 
 export const defaultCompanyInfo = {
   companyName: "REDtech Africa Consulting",
-  companyTagline: "Digital Solutions & Technology Consulting",
   companyAddress: "Trocadero Square, The Rock Drive, Lekki Phase 1, Lagos",
-  companyPhone: "+234 818 969 6614",
-  companyEmail: "hello@redtechafrica.com",
+  companyPhone: "+2347032980038",
+  companyEmail: "olu@redtechafrica.com",
   currency: "₦",
   vatEnabled: true,
   vatRate: 7.5, // Nigeria VAT rate
