@@ -54,6 +54,10 @@ export interface InvoiceData {
   
   // Currency
   currency: string;
+  
+  // VAT
+  vatEnabled: boolean;
+  vatRate: number; // percentage e.g. 7.5
 }
 
 export const defaultCompanyInfo = {
@@ -63,4 +67,6 @@ export const defaultCompanyInfo = {
   companyPhone: "+234 818 969 6614",
   companyEmail: "hello@redtechafrica.com",
   currency: "₦",
+  vatEnabled: true,
+  vatRate: 7.5, // Nigeria VAT rate
 };

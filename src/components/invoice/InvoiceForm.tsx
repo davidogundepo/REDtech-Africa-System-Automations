@@ -148,15 +148,43 @@ export const InvoiceForm = ({ invoiceData, setInvoiceData }: InvoiceFormProps) =
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="currency">Currency Symbol</Label>
-            <Input
-              id="currency"
-              value={invoiceData.currency}
-              onChange={(e) => updateField('currency', e.target.value)}
-              placeholder="₦"
-              className="w-24"
-            />
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency Symbol</Label>
+              <Input
+                id="currency"
+                value={invoiceData.currency}
+                onChange={(e) => updateField('currency', e.target.value)}
+                placeholder="₦"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vatEnabled">VAT</Label>
+              <div className="flex items-center h-10">
+                <input
+                  id="vatEnabled"
+                  type="checkbox"
+                  checked={invoiceData.vatEnabled}
+                  onChange={(e) => updateField('vatEnabled', e.target.checked)}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <Label htmlFor="vatEnabled" className="ml-2 text-sm">Enable VAT</Label>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vatRate">VAT Rate (%)</Label>
+              <Input
+                id="vatRate"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={invoiceData.vatRate}
+                onChange={(e) => updateField('vatRate', parseFloat(e.target.value) || 0)}
+                disabled={!invoiceData.vatEnabled}
+                placeholder="7.5"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
