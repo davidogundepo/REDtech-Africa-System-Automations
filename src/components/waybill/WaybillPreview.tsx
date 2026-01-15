@@ -82,10 +82,10 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
         <div className="mb-6">
           <table className="w-full border-collapse border border-gray-400">
             <thead>
-              <tr>
-                <th className="border border-gray-400 p-3 text-left w-16">S/N</th>
-                <th className="border border-gray-400 p-3 text-center">ITEM</th>
-                <th className="border border-gray-400 p-3 text-center w-16">Qty</th>
+              <tr style={{ backgroundColor: '#C9A66B' }}>
+                <th className="border border-gray-400 p-3 text-left w-16 text-white">S/N</th>
+                <th className="border border-gray-400 p-3 text-center text-white">ITEM</th>
+                <th className="border border-gray-400 p-3 text-center w-16 text-white">Qty</th>
               </tr>
             </thead>
             <tbody>
@@ -159,8 +159,12 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
 
         {/* Footer: Website | Address */}
         <div className="text-center text-sm" style={{ color: '#000' }}>
-          <span className="lowercase">{waybillData.companyWebsite.toLowerCase()}</span>
-          <span className="mx-2">|</span>
+          {waybillData.showWebsite && (
+            <>
+              <span className="lowercase">{waybillData.companyWebsite.toLowerCase()}</span>
+              <span className="mx-2">|</span>
+            </>
+          )}
           <span>{waybillData.companyAddress}</span>
         </div>
       </div>
