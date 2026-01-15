@@ -26,30 +26,16 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
           color: 'hsl(210 25% 20%)',
         }}
       >
-        {/* Header with Logo and Address */}
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex items-start gap-4">
-            {/* Logo with curved accent */}
-            <div className="relative">
-              <div 
-                className="absolute -left-4 -top-2 w-32 h-16 rounded-br-[40px]"
-                style={{ backgroundColor: '#C9A66B' }}
-              />
-              <div className="relative z-10 flex items-center gap-2 pl-2 pt-2">
-                <img 
-                  src={companyLogo} 
-                  alt={waybillData.companyName}
-                  className="h-8 w-auto object-contain"
-                />
-                <span className="font-semibold text-lg" style={{ color: '#000' }}>
-                  {waybillData.companyName}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="text-right text-sm">
-            <p>{waybillData.companyAddress}</p>
-          </div>
+        {/* Header with Logo */}
+        <div className="flex items-center gap-3 mb-6">
+          <img 
+            src={companyLogo} 
+            alt={waybillData.companyName}
+            className="h-10 w-auto object-contain"
+          />
+          <span className="font-semibold text-xl" style={{ color: '#000' }}>
+            {waybillData.companyName}
+          </span>
         </div>
 
         {/* Waybill Number */}
@@ -162,32 +148,21 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
           </div>
         )}
 
-        {/* Website */}
-        {waybillData.showWebsite && (
-          <div className="mb-8 text-center">
-            <a 
-              href={`https://${waybillData.companyWebsite.toLowerCase()}`}
-              className="text-blue-600 underline font-medium"
-            >
-              {waybillData.companyWebsite}
-            </a>
+        {/* Thank You Message */}
+        {waybillData.showThankYouMessage && (
+          <div className="text-center mb-6">
+            <p className="font-bold text-sm" style={{ color: '#000' }}>
+              {waybillData.thankYouMessage.toUpperCase()}
+            </p>
           </div>
         )}
 
-        {/* Thank You Message */}
-        {waybillData.showThankYouMessage && (
-          <div className="mt-auto">
-            <div 
-              className="text-center py-3 text-sm"
-              style={{ 
-                backgroundColor: '#C9A66B',
-                color: '#333'
-              }}
-            >
-              {waybillData.thankYouMessage}
-            </div>
-          </div>
-        )}
+        {/* Footer: Website | Address */}
+        <div className="text-center text-sm" style={{ color: '#000' }}>
+          <span className="lowercase">{waybillData.companyWebsite.toLowerCase()}</span>
+          <span className="mx-2">|</span>
+          <span>{waybillData.companyAddress}</span>
+        </div>
       </div>
     );
   }

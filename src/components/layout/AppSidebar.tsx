@@ -16,12 +16,12 @@ import companyLogo from "@/assets/company-logo.png";
 
 const menuItems = [
   {
-    title: "Invoice Generator",
+    title: "REDtech Africa Invoice Generator",
     icon: FileText,
     path: "/",
   },
   {
-    title: "Waybill Generator",
+    title: "REDtech Africa Waybill Generator",
     icon: Truck,
     path: "/waybill",
   },
