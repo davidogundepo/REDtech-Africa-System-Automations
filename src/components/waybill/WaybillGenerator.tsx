@@ -1,73 +1,66 @@
 import { useState, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
-import { InvoiceData, defaultCompanyInfo } from "@/types/invoice";
-import { InvoiceForm } from "./InvoiceForm";
-import { InvoicePreview } from "./InvoicePreview";
+import { WaybillData, defaultWaybillInfo } from "@/types/waybill";
+import { WaybillForm } from "./WaybillForm";
+import { WaybillPreview } from "./WaybillPreview";
 import { Button } from "@/components/ui/button";
 import { FileDown, Loader2, Eye, Edit } from "lucide-react";
 import { toast } from "sonner";
 
-const getInitialInvoiceData = (): InvoiceData => {
+const getInitialWaybillData = (): WaybillData => {
   const today = new Date();
-  const dueDate = new Date(today);
-  dueDate.setDate(dueDate.getDate() + 14);
-
-  // Format date as DDMMYYYY for invoice number
+  
+  // Format date as DDMMYYYY for waybill number
   const day = String(today.getDate()).padStart(2, '0');
   const month = String(today.getMonth() + 1).padStart(2, '0');
   const year = today.getFullYear();
 
   return {
-    ...defaultCompanyInfo,
-    companyLogo: "",
-    invoiceNumber: `INV-${day}${month}${year}`,
-    invoiceDate: today.toISOString().split('T')[0],
-    dueDate: dueDate.toISOString().split('T')[0],
-    clientName: "",
-    clientCompany: "",
-    clientAddress: "",
-    clientCity: "",
-    clientPostcode: "",
-    clientEmail: "",
-    lineItems: [
+    ...defaultWaybillInfo,
+    companyName: defaultWaybillInfo.companyName || "REDtech Africa",
+    companyAddress: defaultWaybillInfo.companyAddress || "Trocadero Square, The Rock Drive, Lekki Phase 1",
+    companyPhone: defaultWaybillInfo.companyPhone || "0818 428 1100",
+    companyEmail: defaultWaybillInfo.companyEmail || "olu@redtechafrica.com",
+    companyWebsite: defaultWaybillInfo.companyWebsite || "WWW.REDTECHAFRICA.COM",
+    supplierName: defaultWaybillInfo.supplierName || "REDtech Africa Consulting LTD",
+    supplierEmail: defaultWaybillInfo.supplierEmail || "olu@redtechafrica.com",
+    supplierPhone: defaultWaybillInfo.supplierPhone || "0818 428 1100",
+    waybillNumber: `${day}${month}${year}`,
+    waybillDate: today.toISOString().split('T')[0],
+    deliveredTo: "",
+    deliveryAddress: "",
+    deliveryMethod: defaultWaybillInfo.deliveryMethod || 'Vehicle',
+    items: [
       {
         id: "1",
         description: "",
-        details: "",
         quantity: 1,
-        amount: 0,
       }
     ],
-    paymentDetails: {
-      bankName: "Stanbic IBTC Bank",
-      accountName: "REDtech Africa Consulting",
-      sortCode: "",
-      accountNumber: "0033629255",
-      reference: "",
-    },
-    paymentArrangement: [],
-    notes: [],
-    optionalServices: [],
-    packageInclusions: [],
+    showRemarks: defaultWaybillInfo.showRemarks ?? true,
+    showReceiverSection: defaultWaybillInfo.showReceiverSection ?? true,
+    showWebsite: defaultWaybillInfo.showWebsite ?? true,
+    showThankYouMessage: defaultWaybillInfo.showThankYouMessage ?? true,
+    thankYouMessage: defaultWaybillInfo.thankYouMessage || "Thank you for considering services.",
   };
 };
 
-export const InvoiceGenerator = () => {
-  const [invoiceData, setInvoiceData] = useState<InvoiceData>(getInitialInvoiceData);
+export const WaybillGenerator = () => {
+  const [waybillData, setWaybillData] = useState<WaybillData>(getInitialWaybillData);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `${invoiceData.clientName || 'Client'}-${invoiceData.invoiceNumber}`,
+    documentTitle: `${waybillData.deliveredTo || 'Client'}-WB${waybillData.waybillNumber}`,
     onBeforePrint: () => {
       setIsGenerating(true);
       return Promise.resolve();
     },
     onAfterPrint: () => {
       setIsGenerating(false);
-      toast.success("Invoice generated successfully!");
+      toast.success("Waybill generated successfully!");
     },
     pageStyle: `
       @page {
@@ -94,17 +87,16 @@ export const InvoiceGenerator = () => {
     `,
   });
 
-  const handleGenerateInvoice = () => {
-    if (!invoiceData.clientName) {
-      toast.error("Please enter client name");
+  const handleGenerateWaybill = () => {
+    if (!waybillData.deliveredTo) {
+      toast.error("Please enter delivery recipient");
       return;
     }
-    if (invoiceData.lineItems.length === 0 || !invoiceData.lineItems[0].description) {
-      toast.error("Please add at least one line item");
+    if (waybillData.items.length === 0 || !waybillData.items[0].description) {
+      toast.error("Please add at least one item");
       return;
     }
     setIsGenerating(true);
-    // Simulate brief delay for UX
     setTimeout(() => {
       handlePrint();
     }, 500);
@@ -117,8 +109,8 @@ export const InvoiceGenerator = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-invoice-accent">REDtech Invoice Generator</h1>
-              <p className="text-sm text-muted-foreground">Create professional invoices ✨</p>
+              <h1 className="text-2xl font-bold text-invoice-accent">REDtech Waybill Generator</h1>
+              <p className="text-sm text-muted-foreground">Create professional waybills 📦</p>
             </div>
             <div className="flex items-center gap-3">
               <Button
@@ -130,7 +122,7 @@ export const InvoiceGenerator = () => {
                 {showPreview ? "Edit" : "Preview"}
               </Button>
               <Button
-                onClick={handleGenerateInvoice}
+                onClick={handleGenerateWaybill}
                 disabled={isGenerating}
                 className="bg-invoice-accent hover:bg-invoice-accent/90 text-primary-foreground"
               >
@@ -142,7 +134,7 @@ export const InvoiceGenerator = () => {
                 ) : (
                   <>
                     <FileDown className="h-4 w-4 mr-2" />
-                    Happy & Save
+                    Generate & Save
                   </>
                 )}
               </Button>
@@ -157,7 +149,7 @@ export const InvoiceGenerator = () => {
           {/* Form */}
           <div className={`${showPreview ? 'hidden lg:block' : 'block'}`}>
             <div className="bg-card rounded-lg border border-border shadow-sm">
-              <InvoiceForm invoiceData={invoiceData} setInvoiceData={setInvoiceData} />
+              <WaybillForm waybillData={waybillData} setWaybillData={setWaybillData} />
             </div>
           </div>
 
@@ -171,7 +163,7 @@ export const InvoiceGenerator = () => {
               <div className="bg-muted p-4 rounded-lg overflow-auto max-h-[calc(100vh-180px)]">
                 <div className="transform origin-top-left scale-[0.6] md:scale-[0.7] lg:scale-[0.55] xl:scale-[0.65]">
                   <div className="shadow-2xl">
-                    <InvoicePreview ref={printRef} invoiceData={invoiceData} />
+                    <WaybillPreview ref={printRef} waybillData={waybillData} />
                   </div>
                 </div>
               </div>
