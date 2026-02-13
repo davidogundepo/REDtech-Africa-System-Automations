@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import { WaybillData } from "@/types/waybill";
-import companyLogo from "@/assets/company-logo.png";
+import defaultLogo from "@/assets/company-logo.png";
 
 interface WaybillPreviewProps {
   waybillData: WaybillData;
@@ -11,6 +11,9 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
     const deliveryMethodText = waybillData.deliveryMethod === 'Other' 
       ? waybillData.customDeliveryMethod || 'Other'
       : waybillData.deliveryMethod;
+
+    const logoSrc = waybillData.companyLogo || defaultLogo;
+    const accent = waybillData.accentColor || '#C9A66B';
 
     return (
       <div 
@@ -29,7 +32,7 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
         {/* Header with Logo */}
         <div className="flex items-center gap-3 mb-6">
           <img 
-            src={companyLogo} 
+            src={logoSrc} 
             alt={waybillData.companyName}
             className="h-10 w-auto object-contain"
           />
@@ -82,7 +85,7 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
         <div className="mb-6">
           <table className="w-full border-collapse border border-gray-400">
             <thead>
-              <tr style={{ backgroundColor: '#C9A66B' }}>
+              <tr style={{ backgroundColor: accent }}>
                 <th className="border border-gray-400 p-3 text-left w-16 text-white">S/N</th>
                 <th className="border border-gray-400 p-3 text-center text-white">ITEM</th>
                 <th className="border border-gray-400 p-3 text-center w-16 text-white">Qty</th>

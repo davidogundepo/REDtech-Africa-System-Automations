@@ -49,6 +49,7 @@ const getInitialInvoiceData = (): InvoiceData => {
     notes: [],
     optionalServices: [],
     packageInclusions: [],
+    accentColor: defaultCompanyInfo.accentColor,
   };
 };
 

@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import { InvoiceData } from "@/types/invoice";
-import companyLogo from "@/assets/company-logo.png";
+import defaultLogo from "@/assets/company-logo.png";
 import { Check } from "lucide-react";
 
 interface InvoicePreviewProps {
@@ -26,11 +26,13 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
     const subtotal = invoiceData.lineItems.reduce((sum, item) => sum + (item.amount * item.quantity), 0);
     const vatAmount = invoiceData.vatEnabled ? subtotal * (invoiceData.vatRate / 100) : 0;
     const total = subtotal + vatAmount;
+    const logoSrc = invoiceData.companyLogo || defaultLogo;
+    const accent = invoiceData.accentColor || '#C9A66B';
 
     return (
       <div 
         ref={ref} 
-        className="bg-card print-container"
+        className="bg-white print-container"
         style={{
           width: '210mm',
           minHeight: '297mm',
@@ -45,19 +47,19 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
         <div className="flex justify-between items-start mb-8">
           <div className="flex flex-col gap-2 items-start">
             <img 
-              src={companyLogo} 
+              src={logoSrc} 
               alt={invoiceData.companyName}
               className="h-12 w-auto object-contain object-left mb-2"
             />
             <h1 className="text-2xl font-bold" style={{ color: '#000000' }}>
-              REDtech Africa Consulting
+              {invoiceData.companyName}
             </h1>
             <p className="text-sm">Phone: {invoiceData.companyPhone}</p>
             <p className="text-sm">Email: {invoiceData.companyEmail}</p>
             <p className="text-sm">{invoiceData.companyAddress}</p>
           </div>
           <div className="text-right">
-            <h2 className="text-3xl font-bold text-invoice-accent mb-4">INVOICE</h2>
+            <h2 className="text-3xl font-bold mb-4" style={{ color: accent }}>INVOICE</h2>
             <div className="space-y-1 text-sm">
               <p><span className="font-semibold">Invoice #:</span> {invoiceData.invoiceNumber}</p>
               <p><span className="font-semibold">Date:</span> {formatDate(invoiceData.invoiceDate)}</p>
@@ -67,11 +69,11 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
         </div>
 
         {/* Divider */}
-        <div className="h-1 bg-invoice-header mb-8"></div>
+        <div className="h-1 mb-8" style={{ backgroundColor: accent }}></div>
 
         {/* Bill To */}
         <div className="mb-8">
-          <h3 className="font-bold text-invoice-header mb-2">BILL TO:</h3>
+          <h3 className="font-bold mb-2" style={{ color: accent }}>BILL TO:</h3>
           <p className="font-semibold">{invoiceData.clientName}</p>
           {invoiceData.clientCompany && <p>{invoiceData.clientCompany}</p>}
           <p>{invoiceData.clientAddress}</p>
@@ -84,7 +86,7 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
         <div className="mb-8">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-invoice-table-header text-primary-foreground">
+              <tr style={{ backgroundColor: accent, color: '#fff' }}>
                 <th className="text-left p-3 font-semibold">DESCRIPTION</th>
                 <th className="text-center p-3 font-semibold w-20">QTY</th>
                 <th className="text-right p-3 font-semibold w-32">AMOUNT</th>
@@ -92,15 +94,15 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
             </thead>
             <tbody>
               {invoiceData.lineItems.map((item, index) => (
-                <tr key={item.id} className={index % 2 === 0 ? 'bg-secondary/30' : 'bg-card'}>
-                  <td className="p-3 border-b border-border">
+                <tr key={item.id} className={index % 2 === 0 ? '' : ''} style={index % 2 === 0 ? { backgroundColor: '#f9f9f9' } : {}}>
+                  <td className="p-3" style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <p className="font-semibold">{item.description}</p>
                     {item.details && (
-                      <p className="text-sm text-muted-foreground mt-1">{item.details}</p>
+                      <p className="text-sm mt-1" style={{ color: '#6b7280' }}>{item.details}</p>
                     )}
                   </td>
-                  <td className="p-3 text-center border-b border-border">{item.quantity}</td>
-                  <td className="p-3 text-right border-b border-border">
+                  <td className="p-3 text-center" style={{ borderBottom: '1px solid #e5e7eb' }}>{item.quantity}</td>
+                  <td className="p-3 text-right" style={{ borderBottom: '1px solid #e5e7eb' }}>
                     {formatCurrency(item.amount, invoiceData.currency)}
                   </td>
                 </tr>
@@ -112,17 +114,17 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
         {/* Totals */}
         <div className="flex justify-end mb-8">
           <div className="w-72">
-            <div className="flex justify-between py-2 border-b border-border">
+            <div className="flex justify-between py-2" style={{ borderBottom: '1px solid #e5e7eb' }}>
               <span>Subtotal:</span>
               <span>{formatCurrency(subtotal, invoiceData.currency)}</span>
             </div>
             {invoiceData.vatEnabled && (
-              <div className="flex justify-between py-2 border-b border-border">
+              <div className="flex justify-between py-2" style={{ borderBottom: '1px solid #e5e7eb' }}>
                 <span>VAT ({invoiceData.vatRate}%):</span>
                 <span>{formatCurrency(vatAmount, invoiceData.currency)}</span>
               </div>
             )}
-            <div className="flex justify-between py-3 border-b-2 border-invoice-header font-bold text-lg">
+            <div className="flex justify-between py-3 font-bold text-lg" style={{ borderBottom: `3px solid ${accent}` }}>
               <span>TOTAL DUE:</span>
               <span>{formatCurrency(total, invoiceData.currency)}</span>
             </div>
@@ -133,21 +135,21 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
         {invoiceData.optionalServices && invoiceData.optionalServices.length > 0 && (
           <div className="mb-8 page-break-inside-avoid">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-1 h-6 bg-amber-500"></div>
-              <h3 className="font-bold text-invoice-header flex items-center gap-2">
+              <div className="w-1 h-6" style={{ backgroundColor: accent }}></div>
+              <h3 className="font-bold flex items-center gap-2" style={{ color: accent }}>
                 <span className="text-xl">📦</span> Phase 2 - Optional Services Available
               </h3>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm mb-4" style={{ color: '#6b7280' }}>
               These services can be added at any time to enhance your digital presence:
             </p>
             <div className="space-y-3">
               {invoiceData.optionalServices.map((service) => (
-                <div key={service.id} className="flex justify-between items-start py-2 border-b border-border">
+                <div key={service.id} className="flex justify-between items-start py-2" style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <div>
                     <p className="font-semibold">{service.description}</p>
                     {service.details && (
-                      <p className="text-sm text-muted-foreground">{service.details}</p>
+                      <p className="text-sm" style={{ color: '#6b7280' }}>{service.details}</p>
                     )}
                   </div>
                   <span className="font-semibold">
@@ -163,7 +165,7 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
         {/* Payment Arrangement */}
         {invoiceData.paymentArrangement && invoiceData.paymentArrangement.length > 0 && (
           <div className="mb-6 page-break-inside-avoid">
-            <h3 className="font-bold text-invoice-header mb-2">Payment Arrangement:</h3>
+            <h3 className="font-bold mb-2" style={{ color: accent }}>Payment Arrangement:</h3>
             <ul className="list-disc list-inside space-y-1">
               {invoiceData.paymentArrangement.map((item, index) => (
                 <li key={index} className="text-sm">{item}</li>
@@ -174,7 +176,7 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
 
         {/* Payment Details */}
         <div className="mb-6 page-break-inside-avoid">
-          <h3 className="font-bold text-invoice-header mb-2">Payment Details:</h3>
+          <h3 className="font-bold mb-2" style={{ color: accent }}>Payment Details:</h3>
           <p className="font-semibold">Bank Transfer ({invoiceData.paymentDetails.bankName})</p>
           <div className="text-sm space-y-1 mt-2">
             <p>Account Name: {invoiceData.paymentDetails.accountName}</p>
@@ -191,7 +193,7 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
         {/* Notes */}
         {invoiceData.notes && invoiceData.notes.length > 0 && (
           <div className="mb-6 page-break-inside-avoid">
-            <h3 className="font-bold text-invoice-header mb-2">Notes:</h3>
+            <h3 className="font-bold mb-2" style={{ color: accent }}>Notes:</h3>
             <ul className="space-y-1">
               {invoiceData.notes.map((note, index) => (
                 <li key={index} className="text-sm flex items-start gap-2">
@@ -206,12 +208,12 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
         {/* Package Inclusions */}
         {invoiceData.packageInclusions && invoiceData.packageInclusions.length > 0 && (
           <div className="mb-8 page-break-inside-avoid">
-            <h3 className="font-bold text-invoice-header mb-3">What's Included in Your Package:</h3>
+            <h3 className="font-bold mb-3" style={{ color: accent }}>What's Included in Your Package:</h3>
             <div className="grid grid-cols-2 gap-2">
               {invoiceData.packageInclusions.map((item, index) => (
                 <div key={index} className="flex items-start gap-2 text-sm">
-                  <div className="w-5 h-5 rounded bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Check className="w-3 h-3 text-primary-foreground" />
+                  <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: accent }}>
+                    <Check className="w-3 h-3 text-white" />
                   </div>
                   <span className="break-words whitespace-pre-wrap">{item}</span>
                 </div>
@@ -221,9 +223,9 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
         )}
 
         {/* Footer */}
-        <div className="mt-auto pt-8 border-t border-border text-center text-sm text-muted-foreground">
+        <div className="mt-auto pt-8 text-center text-sm" style={{ borderTop: '1px solid #e5e7eb', color: '#6b7280' }}>
           <p>
-            Thank you for choosing {invoiceData.companyName}! | Questions? Email olu@redtechafrica.com
+            Thank you for choosing {invoiceData.companyName}! | Questions? Email {invoiceData.companyEmail}
           </p>
         </div>
       </div>
