@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Building2, User, FileText, Truck, Package, Settings } from "lucide-react";
+import { Plus, Trash2, Building2, User, FileText, Truck, Package, Settings, Palette } from "lucide-react";
+import { LogoUpload } from "@/components/shared/LogoUpload";
 
 interface WaybillFormProps {
   waybillData: WaybillData;
@@ -39,6 +40,86 @@ export const WaybillForm = ({ waybillData, setWaybillData }: WaybillFormProps) =
 
   return (
     <div className="space-y-6 p-6 overflow-y-auto max-h-[calc(100vh-120px)]">
+      {/* Company Branding */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Palette className="h-5 w-5" />
+            Company Branding
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="companyName">Company Name</Label>
+              <Input
+                id="companyName"
+                value={waybillData.companyName}
+                onChange={(e) => updateField('companyName', e.target.value)}
+                placeholder="REDtech Africa"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="accentColor">Accent Color</Label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={waybillData.accentColor}
+                  onChange={(e) => updateField('accentColor', e.target.value)}
+                  className="h-10 w-12 rounded border border-input cursor-pointer"
+                />
+                <Input
+                  value={waybillData.accentColor}
+                  onChange={(e) => updateField('accentColor', e.target.value)}
+                  placeholder="#C9A66B"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          </div>
+          <LogoUpload
+            logo={waybillData.companyLogo}
+            onLogoChange={(logo) => updateField('companyLogo', logo)}
+            onLogoRemove={() => updateField('companyLogo', undefined as any)}
+          />
+          <div className="space-y-2">
+            <Label htmlFor="companyAddress">Address</Label>
+            <Input
+              id="companyAddress"
+              value={waybillData.companyAddress}
+              onChange={(e) => updateField('companyAddress', e.target.value)}
+              placeholder="Trocadero Square, The Rock Drive"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="companyPhone">Phone</Label>
+              <Input
+                id="companyPhone"
+                value={waybillData.companyPhone}
+                onChange={(e) => updateField('companyPhone', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="companyEmail">Email</Label>
+              <Input
+                id="companyEmail"
+                value={waybillData.companyEmail}
+                onChange={(e) => updateField('companyEmail', e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="companyWebsite">Website</Label>
+            <Input
+              id="companyWebsite"
+              value={waybillData.companyWebsite}
+              onChange={(e) => updateField('companyWebsite', e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Waybill Details */}
       <Card>
         <CardHeader className="pb-4">

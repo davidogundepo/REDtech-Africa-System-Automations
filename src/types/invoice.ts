@@ -58,6 +58,9 @@ export interface InvoiceData {
   // VAT
   vatEnabled: boolean;
   vatRate: number; // percentage e.g. 7.5
+  
+  // Branding
+  accentColor: string;
 }
 
 export const defaultCompanyInfo = {
@@ -68,4 +71,5 @@ export const defaultCompanyInfo = {
   currency: "₦",
   vatEnabled: true,
   vatRate: 7.5, // Nigeria VAT rate
+  accentColor: "#C9A66B",
 };

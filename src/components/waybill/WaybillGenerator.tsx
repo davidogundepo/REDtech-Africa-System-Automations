@@ -42,6 +42,7 @@ const getInitialWaybillData = (): WaybillData => {
     showWebsite: defaultWaybillInfo.showWebsite ?? true,
     showThankYouMessage: defaultWaybillInfo.showThankYouMessage ?? true,
     thankYouMessage: defaultWaybillInfo.thankYouMessage || "Thank you for considering services.",
+    accentColor: defaultWaybillInfo.accentColor || "#C9A66B",
   };
 };
 
