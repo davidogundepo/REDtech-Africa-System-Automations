@@ -3,7 +3,7 @@ import {
   LayoutDashboard, LogOut, BarChart3, FolderOpen, TrendingUp, Megaphone
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { clearAuth } from "@/pages/Auth";
 import {
   Sidebar,
   SidebarContent,
@@ -40,8 +40,8 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    clearAuth();
     toast.success("Signed out");
     navigate("/auth");
   };
