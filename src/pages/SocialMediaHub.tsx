@@ -34,7 +34,7 @@ const SocialMediaHub = () => {
     platform: "linkedin", 
     content: "", 
     status: "draft", 
-    scheduled_for: new Date().toISOString().slice(0, 16) 
+    scheduled_date: new Date().toISOString().slice(0, 16) 
   });
 
   const queryClient = useQueryClient();
@@ -43,7 +43,7 @@ const SocialMediaHub = () => {
   const { data: posts, isLoading } = useQuery({
     queryKey: ['social_posts'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('social_posts').select('*').order('scheduled_for', { ascending: false });
+      const { data, error } = await supabase.from('social_posts').select('*').order('scheduled_date', { ascending: false });
       if (error) throw error;
       return data || [];
     }
@@ -58,7 +58,7 @@ const SocialMediaHub = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social_posts'] });
       setIsDialogOpen(false);
-      setNewPost({ platform: "linkedin", content: "", status: "draft", scheduled_for: new Date().toISOString().slice(0, 16) });
+      setNewPost({ platform: "linkedin", content: "", status: "draft", scheduled_date: new Date().toISOString().slice(0, 16) });
       toast.success("Post saved successfully");
     },
     onError: (error) => toast.error("Failed to save post: " + error.message)
@@ -81,7 +81,7 @@ const SocialMediaHub = () => {
     
     addPostMutation.mutate({
       ...newPost,
-      scheduled_for: new Date(newPost.scheduled_for).toISOString(),
+      scheduled_date: new Date(newPost.scheduled_date).toISOString(),
       likes: 0,
       comments: 0,
       shares: 0,
@@ -153,8 +153,8 @@ const SocialMediaHub = () => {
                 <Input 
                   type="datetime-local" 
                   required 
-                  value={newPost.scheduled_for} 
-                  onChange={e => setNewPost({...newPost, scheduled_for: e.target.value})} 
+                  value={newPost.scheduled_date} 
+                  onChange={e => setNewPost({...newPost, scheduled_date: e.target.value})} 
                 />
               </div>
               <DialogFooter>
@@ -258,7 +258,7 @@ const SocialMediaHub = () => {
                           <span className="font-semibold capitalize">{post.platform}</span>
                           <span className="text-muted-foreground text-sm flex items-center">
                             <Calendar className="h-4 w-4 mr-1.5" />
-                            {format(parseISO(post.scheduled_for || post.created_at), 'MMM dd, HH:mm')}
+                            {format(parseISO(post.scheduled_date || post.created_at), 'MMM dd, HH:mm')}
                           </span>
                         </div>
                         <Badge 
