@@ -45,10 +45,9 @@ const Leave = () => {
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState(emptyForm);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
     fetchRequests();
   }, []);
 
@@ -61,10 +60,8 @@ const Leave = () => {
 
   const handleSubmit = async () => {
     if (!formData.start_date || !formData.end_date) { toast.error("Please select dates"); return; }
-    if (!user) { toast.error("You must be logged in to submit a leave request"); return; }
 
     const { error } = await supabase.from("leave_requests").insert({
-      employee_id: user.id,
       leave_type: formData.leave_type,
       start_date: formData.start_date,
       end_date: formData.end_date,
@@ -78,8 +75,7 @@ const Leave = () => {
   };
 
   const handleApproval = async (id: string, status: "approved" | "rejected") => {
-    if (!user) return;
-    const { error } = await supabase.from("leave_requests").update({ status, approved_by: user.id }).eq("id", id);
+    const { error } = await supabase.from("leave_requests").update({ status }).eq("id", id);
     if (error) { toast.error("Failed to update status"); return; }
     toast.success(`Request ${status}`);
     fetchRequests();

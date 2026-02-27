@@ -63,7 +63,7 @@ export type Database = {
         Row: {
           approved_by: string | null
           created_at: string
-          employee_id: string
+          employee_id: string | null
           end_date: string
           id: string
           leave_type: string
@@ -75,7 +75,7 @@ export type Database = {
         Insert: {
           approved_by?: string | null
           created_at?: string
-          employee_id: string
+          employee_id?: string | null
           end_date: string
           id?: string
           leave_type?: string
@@ -87,7 +87,7 @@ export type Database = {
         Update: {
           approved_by?: string | null
           created_at?: string
-          employee_id?: string
+          employee_id?: string | null
           end_date?: string
           id?: string
           leave_type?: string
