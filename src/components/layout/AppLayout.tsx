@@ -13,7 +13,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <SidebarInset className="flex-1">
           <div className="flex items-center gap-2 p-2 border-b border-border md:hidden">
             <SidebarTrigger />
-            <span className="font-semibold text-sm">REDtech Tools</span>
+            <span className="font-semibold text-sm">RAC System Automations</span>
           </div>
           <main className="flex-1">
             {children}

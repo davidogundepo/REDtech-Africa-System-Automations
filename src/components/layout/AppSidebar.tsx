@@ -16,12 +16,12 @@ import companyLogo from "@/assets/company-logo.png";
 
 const menuItems = [
   {
-    title: "REDtech Africa Invoice Generator",
+    title: "Invoice Generator",
     icon: FileText,
     path: "/",
   },
   {
-    title: "REDtech Africa Waybill Generator",
+    title: "Waybill Generator",
     icon: Truck,
     path: "/waybill",
   },
@@ -41,7 +41,7 @@ export function AppSidebar() {
           />
           <div>
             <h2 className="font-bold text-sm" style={{ color: '#000' }}>REDtech Africa</h2>
-            <p className="text-xs text-muted-foreground">Business Tools</p>
+            <p className="text-xs text-muted-foreground">System Automations</p>
           </div>
         </div>
       </SidebarHeader>
