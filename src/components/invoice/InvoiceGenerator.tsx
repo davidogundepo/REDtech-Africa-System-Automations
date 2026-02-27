@@ -118,8 +118,7 @@ export const InvoiceGenerator = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-invoice-accent">REDtech Invoice Generator</h1>
-              <p className="text-sm text-muted-foreground">Create professional invoices ✨</p>
+              <h1 className="text-2xl font-bold text-invoice-accent">Invoice Generator</h1>
             </div>
             <div className="flex items-center gap-3">
               <Button
