@@ -1,7 +1,11 @@
+
 import { 
   FileText, Truck, Users, CheckSquare, CalendarDays, 
-  LayoutDashboard, LogOut, BarChart3, FolderOpen, TrendingUp, Megaphone
+  LayoutDashboard, LogOut, BarChart3, FolderOpen, TrendingUp, Megaphone,
+  Moon,
+  Sun
 } from "lucide-react";
+import { useTheme } from "@/components/ThemeProvider";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { clearAuth } from "@/pages/Auth";
 import {
@@ -27,18 +31,16 @@ const liveModules = [
   { title: "Client Directory", icon: Users, path: "/clients" },
   { title: "Task Tracker", icon: CheckSquare, path: "/tasks" },
   { title: "Leave Management", icon: CalendarDays, path: "/leave" },
-];
-
-const comingSoon = [
-  { title: "Finance Dashboard", icon: BarChart3 },
-  { title: "Document Repository", icon: FolderOpen },
-  { title: "Operations Dashboard", icon: TrendingUp },
-  { title: "Social Media Hub", icon: Megaphone },
+  { title: "Finance Dashboard", icon: BarChart3, path: "/finance-dashboard" },
+  { title: "Document Repository", icon: FolderOpen, path: "/documents" },
+  { title: "Operations Dashboard", icon: TrendingUp, path: "/ops-dashboard" },
+  { title: "Social Media Hub", icon: Megaphone, path: "/social" },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
 
   const handleLogout = () => {
     clearAuth();
@@ -81,26 +83,21 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Coming Soon</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {comingSoon.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton disabled tooltip={item.title}>
-                    <item.icon className="h-4 w-4 opacity-40" />
-                    <span className="opacity-40">{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+        </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
-        <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={handleLogout}>
-          <LogOut className="h-4 w-4 mr-2" /> Sign Out
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full justify-start text-muted-foreground" 
+          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+        >
+          {theme === "light" ? <Moon className="h-4 w-4 mr-2" /> : <Sun className="h-4 w-4 mr-2" />}
+          {theme === "light" ? "Dark Mode" : "Light Mode"}
+        </Button>
+        <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground hover:text-red-500" onClick={handleLogout}>
+          <LogOut className="h-4 w-4 mr-2" />
+          Log Out
         </Button>
         <p className="text-xs text-muted-foreground text-center">
           Made with ❤️ by{" "}

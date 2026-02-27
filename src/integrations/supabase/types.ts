@@ -206,6 +206,146 @@ export type Database = {
           },
         ]
       }
+      transactions: {
+        Row: {
+          id: string
+          amount: number
+          type: string
+          category: string
+          date: string
+          description: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          amount: number
+          type: string
+          category: string
+          date: string
+          description?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          amount?: number
+          type?: string
+          category?: string
+          date?: string
+          description?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          id: string
+          name: string
+          type: string
+          size: string | null
+          url: string | null
+          folder_id: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          type: string
+          size?: string | null
+          url?: string | null
+          folder_id?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          type?: string
+          size?: string | null
+          url?: string | null
+          folder_id?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      ops_metrics: {
+        Row: {
+          id: string
+          deliveries: number
+          issues: number
+          date: string
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          deliveries?: number
+          issues?: number
+          date: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          deliveries?: number
+          issues?: number
+          date?: string
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      social_posts: {
+        Row: {
+          id: string
+          content: string
+          platform: string
+          status: string
+          scheduled_date: string | null
+          likes: number | null
+          shares: number | null
+          comments: number | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          content: string
+          platform: string
+          status: string
+          scheduled_date?: string | null
+          likes?: number | null
+          shares?: number | null
+          comments?: number | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          content?: string
+          platform?: string
+          status?: string
+          scheduled_date?: string | null
+          likes?: number | null
+          shares?: number | null
+          comments?: number | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

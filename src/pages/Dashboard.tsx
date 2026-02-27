@@ -68,7 +68,7 @@ const modules: ModuleCard[] = [
     description: "Auto-generated monthly financial reports and cash flow visibility",
     icon: BarChart3,
     path: "/finance-dashboard",
-    status: "coming-soon",
+    status: "live",
     department: "Finance",
     benefit: "Better decisions",
   },
@@ -77,7 +77,7 @@ const modules: ModuleCard[] = [
     description: "Shared drive with organized document storage and wiki",
     icon: FolderOpen,
     path: "/documents",
-    status: "coming-soon",
+    status: "live",
     department: "Operations",
     benefit: "Centralized repository",
   },
@@ -86,7 +86,7 @@ const modules: ModuleCard[] = [
     description: "Project status reporting with auto-generated dashboards",
     icon: TrendingUp,
     path: "/ops-dashboard",
-    status: "coming-soon",
+    status: "live",
     department: "Delivery Ops",
     benefit: "Visibility",
   },
@@ -95,7 +95,7 @@ const modules: ModuleCard[] = [
     description: "Content calendar, scheduling, and analytics for RAC social presence",
     icon: Megaphone,
     path: "/social",
-    status: "coming-soon",
+    status: "live",
     department: "Marketing",
     benefit: "Brand growth",
   },
@@ -103,7 +103,6 @@ const modules: ModuleCard[] = [
 
 const Dashboard = () => {
   const liveModules = modules.filter((m) => m.status === "live");
-  const comingSoon = modules.filter((m) => m.status === "coming-soon");
 
   return (
     <div className="flex-1 min-h-screen bg-background">
@@ -122,7 +121,6 @@ const Dashboard = () => {
         {/* Stats row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard icon={CheckSquare} label="Active Modules" value={liveModules.length.toString()} />
-          <StatCard icon={Clock} label="Coming Soon" value={comingSoon.length.toString()} />
           <StatCard icon={Users} label="Departments" value="6" />
           <StatCard icon={TrendingUp} label="Processes Automated" value={liveModules.length.toString()} />
         </div>
@@ -155,33 +153,6 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
               </NavLink>
-            ))}
-          </div>
-        </section>
-
-        {/* Coming soon */}
-        <section>
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-            Coming Soon
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {comingSoon.map((mod) => (
-              <Card key={mod.path} className="h-full opacity-60">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="p-2 rounded-lg bg-muted">
-                      <mod.icon className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <Badge variant="outline" className="text-xs">{mod.department}</Badge>
-                  </div>
-                  <CardTitle className="text-base mt-3">{mod.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-3">{mod.description}</p>
-                  <span className="text-xs text-muted-foreground">{mod.benefit}</span>
-                </CardContent>
-              </Card>
             ))}
           </div>
         </section>
