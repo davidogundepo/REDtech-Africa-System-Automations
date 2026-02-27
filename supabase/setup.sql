@@ -58,7 +58,52 @@ CREATE POLICY "Allow public all operations on documents" ON documents FOR ALL US
 CREATE POLICY "Allow public all operations on ops_metrics" ON ops_metrics FOR ALL USING (true);
 CREATE POLICY "Allow public all operations on social_posts" ON social_posts FOR ALL USING (true);
 
+-- Create clients table for Client Directory
+CREATE TABLE clients (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  company TEXT,
+  email TEXT,
+  phone TEXT,
+  address TEXT,
+  industry TEXT,
+  source TEXT,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Create tasks table for Task Tracker
+CREATE TABLE tasks (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  assigned_to TEXT,
+  client_id UUID REFERENCES clients(id),
+  due_date DATE,
+  status TEXT NOT NULL,
+  priority TEXT NOT NULL,
+  department TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Create leave_requests table for Leave Management
+CREATE TABLE leave_requests (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  employee_id TEXT,
+  leave_type TEXT NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  reason TEXT,
+  status TEXT DEFAULT 'pending' NOT NULL,
+  approved_by TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- Adding policies for Lovable's original tables so they work with our password Auth
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "Allow public all operations on tasks" ON tasks FOR ALL USING (true);
 CREATE POLICY "Allow public all operations on clients" ON clients FOR ALL USING (true);
 CREATE POLICY "Allow public all operations on leave_requests" ON leave_requests FOR ALL USING (true);

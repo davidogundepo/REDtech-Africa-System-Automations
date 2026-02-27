@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, CalendarDays, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { sendNotificationEmail } from "@/lib/email";
 
 interface LeaveRequest {
   id: string;
@@ -68,6 +69,22 @@ const Leave = () => {
       reason: formData.reason || null,
     });
     if (error) { toast.error("Failed to submit request"); return; }
+    
+    // Send Email Notification
+    sendNotificationEmail({
+      to: 'management@redtechafrica.com',
+      subject: `New Leave Request: ${formData.leave_type.toUpperCase()}`,
+      html: `
+        <h2>New Leave Request Submitted</h2>
+        <p><strong>Type:</strong> ${formData.leave_type}</p>
+        <p><strong>From:</strong> ${new Date(formData.start_date).toLocaleDateString()}</p>
+        <p><strong>To:</strong> ${new Date(formData.end_date).toLocaleDateString()}</p>
+        <p><strong>Reason:</strong> ${formData.reason || 'None provided'}</p>
+        <br/>
+        <p>Please log in to the system automations dashboard to approve or reject this request.</p>
+      `
+    });
+
     toast.success("Leave request submitted");
     setFormData(emptyForm);
     setDialogOpen(false);

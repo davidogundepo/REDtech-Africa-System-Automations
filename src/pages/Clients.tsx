@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Search, Users, Mail, Phone, Building2, Trash2, Edit, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { sendNotificationEmail } from "@/lib/email";
 
 interface Client {
   id: string;
@@ -82,6 +83,23 @@ const Clients = () => {
       const { error } = await supabase.from("clients").insert(payload);
       if (error) { toast.error("Failed to add client"); return; }
       toast.success("Client added to directory");
+
+      // Send Email Notification for new clients
+      sendNotificationEmail({
+        to: formData.email || 'management@redtechafrica.com',
+        subject: `New Client Onboarded: ${formData.name}`,
+        html: `
+          <h2>A new client profile has been created in the directory</h2>
+          <p><strong>Name:</strong> ${formData.name}</p>
+          <p><strong>Company:</strong> ${formData.company || 'N/A'}</p>
+          <p><strong>Industry:</strong> ${formData.industry || 'N/A'}</p>
+          <p><strong>Email:</strong> ${formData.email || 'N/A'}</p>
+          <p><strong>Phone:</strong> ${formData.phone || 'N/A'}</p>
+          <p><strong>Source:</strong> ${formData.source}</p>
+          <br/>
+          <p>Log in to the REDtech Dashboard to manage this client relationship.</p>
+        `
+      });
     }
     
     setFormData(emptyClient);

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Search, CheckSquare, Clock, AlertTriangle, Circle } from "lucide-react";
 import { toast } from "sonner";
+import { sendNotificationEmail } from "@/lib/email";
 
 interface Task {
   id: string;
@@ -82,6 +83,22 @@ const Tasks = () => {
       const { error } = await supabase.from("tasks").insert(payload);
       if (error) { toast.error("Failed to create task"); return; }
       toast.success("Task created");
+      
+      // Send Email Notification for new tasks
+      sendNotificationEmail({
+        to: 'management@redtechafrica.com',
+        subject: `New Task Assigned: ${formData.title}`,
+        html: `
+          <h2>A new task has been created</h2>
+          <p><strong>Task:</strong> ${formData.title}</p>
+          <p><strong>Priority:</strong> ${formData.priority.toUpperCase()}</p>
+          <p><strong>Department:</strong> ${formData.department || 'General'}</p>
+          <p><strong>Due Date:</strong> ${formData.due_date || 'No deadline'}</p>
+          <p><strong>Status:</strong> ${formData.status}</p>
+          <br/>
+          <p>Log in to the REDtech Dashboard to view details and manage this task.</p>
+        `
+      });
     }
 
     setFormData(emptyTask);
