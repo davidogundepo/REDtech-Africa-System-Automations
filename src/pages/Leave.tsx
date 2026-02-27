@@ -45,7 +45,7 @@ const Leave = () => {
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState(emptyForm);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  
 
   useEffect(() => {
     fetchRequests();
