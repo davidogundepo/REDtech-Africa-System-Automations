@@ -4,8 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { isAuthenticated } from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
 import Waybill from "./pages/Waybill";
@@ -18,18 +17,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any>(undefined);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (user === undefined) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading...</div>;
-  if (user === null) return <Navigate to="/auth" replace />;
+  if (!isAuthenticated()) return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
 
