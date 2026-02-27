@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, CalendarDays } from "lucide-react";
+import { Plus, CalendarDays, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface LeaveRequest {
@@ -133,6 +133,14 @@ const Leave = () => {
       </header>
 
       <div className="container mx-auto px-4 py-6">
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-md mb-6 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" /> 
+          <div className="text-sm">
+            <strong className="block mb-1">Demo Environment:</strong> 
+            This module contains mock data for testing purposes. You can safely add, edit, or delete these records, and all changes will reflect in real-time as you input your rightful information.
+          </div>
+        </div>
+
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{counts.total}</p><p className="text-xs text-muted-foreground">Total Requests</p></CardContent></Card>

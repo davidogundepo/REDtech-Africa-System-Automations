@@ -185,6 +185,14 @@ const Tasks = () => {
       </header>
 
       <div className="container mx-auto px-4 py-6">
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-md mb-6 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" /> 
+          <div className="text-sm">
+            <strong className="block mb-1">Demo Environment:</strong> 
+            This module contains mock data for testing purposes. You can safely add, edit, or delete these records, and all changes will reflect in real-time as you input your rightful information.
+          </div>
+        </div>
+        
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <div className="flex items-center gap-2">

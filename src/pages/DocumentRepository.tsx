@@ -182,7 +182,10 @@ const DocumentRepository = () => {
               
               <div className="divide-y divide-border/30">
                 {filteredFiles.map((file) => (
-                  <div key={file.id} className="grid grid-cols-12 gap-4 p-4 items-center group hover:bg-muted/30 transition-colors cursor-pointer">
+                  <div key={file.id} 
+                       className="grid grid-cols-12 gap-4 p-4 items-center group hover:bg-muted/30 transition-colors cursor-pointer"
+                       onClick={() => window.open(file.url, '_blank')}
+                  >
                     <div className="col-span-6 md:col-span-5 flex items-center gap-3 pl-2">
                       <TypeIcon type={file.type} className="h-5 w-5" />
                       <span className="font-medium text-sm truncate">{file.name}</span>

@@ -57,3 +57,8 @@ CREATE POLICY "Allow public all operations on transactions" ON transactions FOR 
 CREATE POLICY "Allow public all operations on documents" ON documents FOR ALL USING (true);
 CREATE POLICY "Allow public all operations on ops_metrics" ON ops_metrics FOR ALL USING (true);
 CREATE POLICY "Allow public all operations on social_posts" ON social_posts FOR ALL USING (true);
+
+-- Adding policies for Lovable's original tables so they work with our password Auth
+CREATE POLICY "Allow public all operations on tasks" ON tasks FOR ALL USING (true);
+CREATE POLICY "Allow public all operations on clients" ON clients FOR ALL USING (true);
+CREATE POLICY "Allow public all operations on leave_requests" ON leave_requests FOR ALL USING (true);
