@@ -164,9 +164,9 @@ const Clients = () => {
                 <DialogHeader>
                   <DialogTitle>{editingId ? "Edit Client" : "New Client Intake"}</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 mt-4">
+                <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div><Label>Client Name *</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Full name" /></div>
+                    <div><Label>Client Name *</Label><Input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Full name" /></div>
                     <div><Label>Company</Label><Input value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} placeholder="Company name" /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -191,10 +191,10 @@ const Clients = () => {
                     </div>
                   </div>
                   <div><Label>Notes</Label><Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Additional notes..." rows={3} /></div>
-                  <Button onClick={handleSubmit} className="w-full" style={{ backgroundColor: '#C9A66B' }}>
+                  <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
                     {editingId ? "Update Client" : "Add to Directory"}
                   </Button>
-                </div>
+                </form>
               </DialogContent>
             </Dialog>
           </div>

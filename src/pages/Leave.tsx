@@ -126,7 +126,7 @@ const Leave = () => {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader><DialogTitle>Submit Leave Request</DialogTitle></DialogHeader>
-                <div className="space-y-4 mt-4">
+                <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4 py-4">
                   <div>
                     <Label>Leave Type</Label>
                     <Select value={formData.leave_type} onValueChange={(v) => setFormData({ ...formData, leave_type: v })}>
@@ -135,14 +135,14 @@ const Leave = () => {
                     </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div><Label>Start Date</Label><Input type="date" value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} /></div>
-                    <div><Label>End Date</Label><Input type="date" value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} /></div>
+                    <div><Label>Start Date *</Label><Input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} /></div>
+                    <div><Label>End Date *</Label><Input type="date" required value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} /></div>
                   </div>
                   <div><Label>Reason</Label><Textarea value={formData.reason} onChange={(e) => setFormData({ ...formData, reason: e.target.value })} placeholder="Reason for leave..." rows={3} /></div>
-                  <Button onClick={handleSubmit} className="w-full" style={{ backgroundColor: '#C9A66B' }}>
+                  <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
                     Submit Request
                   </Button>
-                </div>
+                </form>
               </DialogContent>
             </Dialog>
           </div>

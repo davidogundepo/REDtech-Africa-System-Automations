@@ -173,8 +173,8 @@ const Tasks = () => {
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader><DialogTitle>{editingId ? "Edit Task" : "Create Task"}</DialogTitle></DialogHeader>
-                <div className="space-y-4 mt-4">
-                  <div><Label>Title *</Label><Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Task title" /></div>
+                <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4 py-4">
+                  <div><Label>Title *</Label><Input required value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Task title" /></div>
                   <div><Label>Description</Label><Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Details..." rows={3} /></div>
                   <div className="grid grid-cols-2 gap-4">
                     <div><Label>Due Date</Label><Input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} /></div>
@@ -202,10 +202,10 @@ const Tasks = () => {
                       </Select>
                     </div>
                   </div>
-                  <Button onClick={handleSubmit} className="w-full" style={{ backgroundColor: '#C9A66B' }}>
+                  <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
                     {editingId ? "Update Task" : "Create Task"}
                   </Button>
-                </div>
+                </form>
               </DialogContent>
             </Dialog>
           </div>
