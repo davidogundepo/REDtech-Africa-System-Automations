@@ -107,3 +107,14 @@ ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public all operations on tasks" ON tasks FOR ALL USING (true);
 CREATE POLICY "Allow public all operations on clients" ON clients FOR ALL USING (true);
 CREATE POLICY "Allow public all operations on leave_requests" ON leave_requests FOR ALL USING (true);
+
+-- Create a storage bucket for Document Repository files
+INSERT INTO storage.buckets (id, name, public, file_size_limit) 
+VALUES ('documents', 'documents', true, 5242880) -- 5MB limit
+ON CONFLICT (id) DO NOTHING;
+
+-- Grant public access to the storage bucket
+CREATE POLICY "Allow public uploads to documents bucket" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'documents');
+CREATE POLICY "Allow public reads from documents bucket" ON storage.objects FOR SELECT USING (bucket_id = 'documents');
+CREATE POLICY "Allow public deletes from documents bucket" ON storage.objects FOR DELETE USING (bucket_id = 'documents');
+CREATE POLICY "Allow public updates to documents bucket" ON storage.objects FOR UPDATE USING (bucket_id = 'documents');

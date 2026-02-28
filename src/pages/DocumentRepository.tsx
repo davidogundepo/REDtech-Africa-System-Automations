@@ -58,9 +58,32 @@ const DocumentRepository = () => {
 
   // Mutations
   const uploadDocMutation = useMutation({
-    mutationFn: async (docData: any) => {
-      const { error } = await supabase.from('documents').insert([docData]);
-      if (error) throw error;
+    mutationFn: async (uploadData: { file: File, name: string, type: string, size: string, created_by: string }) => {
+      const { file, ...dbData } = uploadData;
+      
+      // 1. Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(fileName, file);
+
+      if (uploadError) {
+        throw new Error(`Storage upload failed: ${uploadError.message}. Did you run the latest setup.sql to create the 'documents' bucket?`);
+      }
+
+      // 2. Get the public URL for the file
+      const { data: publicUrlData } = supabase.storage
+        .from('documents')
+        .getPublicUrl(fileName);
+
+      // 3. Save the metadata and public URL to the database
+      const { error: dbError } = await supabase.from('documents').insert([{
+        ...dbData,
+        url: publicUrlData.publicUrl
+      }]);
+
+      if (dbError) throw dbError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
@@ -68,7 +91,7 @@ const DocumentRepository = () => {
       setNewDoc({ name: "", type: "pdf", size: "1.0 MB" });
       toast.success("Document uploaded successfully");
     },
-    onError: (error) => toast.error("Failed to upload: " + error.message)
+    onError: (error) => toast.error(error.message)
   });
 
   const deleteDocMutation = useMutation({
@@ -86,9 +109,6 @@ const DocumentRepository = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // In a full production app, you would upload this file to Supabase Storage here.
-    // For this demonstration, we'll store the real file's metadata in the database 
-    // to prove the UI/UX works flawlessly.
     const ext = file.name.split('.').pop()?.toLowerCase() || 'unknown';
     const sizeInMB = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
     
@@ -99,10 +119,10 @@ const DocumentRepository = () => {
     else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) type = 'image';
 
     uploadDocMutation.mutate({
+      file: file,
       name: file.name,
       type: type,
       size: sizeInMB,
-      url: URL.createObjectURL(file), // Creates a temporary local URL for immediate viewing
       created_by: "Admin User"
     });
     
