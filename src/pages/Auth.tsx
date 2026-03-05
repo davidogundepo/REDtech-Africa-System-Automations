@@ -18,8 +18,25 @@ const Auth = () => {
   const [signupName, setSignupName] = useState("");
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState("login");
+  const [randomPlaceholder, setRandomPlaceholder] = useState("Ayomide Oloko-Nwazue");
   const navigate = useNavigate();
   const { user, signIn, signUp, loading: authLoading } = useAuth();
+
+  const STAFF_NAMES = [
+    "Ayomide Oloko-Nwazue",
+    "Dolapo Lawal",
+    "Dapo Olawunmi",
+    "Olu Sowunmi",
+    "Martha Awoniyi",
+    "Wilson Adedeji",
+    "Theo"
+  ];
+
+  useEffect(() => {
+    // Pick a random name on component mount
+    const randomIndex = Math.floor(Math.random() * STAFF_NAMES.length);
+    setRandomPlaceholder(STAFF_NAMES[randomIndex]);
+  }, []);
 
   useEffect(() => {
     if (user) navigate("/", { replace: true });
@@ -171,7 +188,7 @@ const Auth = () => {
                       type="text"
                       value={signupName}
                       onChange={(e) => setSignupName(e.target.value)}
-                      placeholder="Ayomide Oloko-Nwazue"
+                      placeholder={randomPlaceholder}
                       required
                     />
                   </div>
