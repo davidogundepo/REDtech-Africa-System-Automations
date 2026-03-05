@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { isAuthenticated } from "./pages/Auth";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
 import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
 import Waybill from "./pages/Waybill";
@@ -18,13 +18,55 @@ import FinanceDashboard from "./pages/FinanceDashboard";
 import DocumentRepository from "./pages/DocumentRepository";
 import OpsDashboard from "./pages/OpsDashboard";
 import SocialMediaHub from "./pages/SocialMediaHub";
+import UserManagement from "./pages/UserManagement";
+import StaffUtilization from "./pages/StaffUtilization";
+import Attendance from "./pages/Attendance";
+import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  if (!isAuthenticated()) return <Navigate to="/auth" replace />;
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-[#C9A66B]" />
+      </div>
+    );
+  }
+  
+  if (!user) return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
+
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/auth" element={<Auth />} />
+    <Route path="/*" element={
+      <ProtectedRoute>
+        <AppLayout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/invoice" element={<Index />} />
+            <Route path="/waybill" element={<Waybill />} />
+            <Route path="/clients" element={<Clients />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/leave" element={<Leave />} />
+            <Route path="/finance-dashboard" element={<FinanceDashboard />} />
+            <Route path="/documents" element={<DocumentRepository />} />
+            <Route path="/ops-dashboard" element={<OpsDashboard />} />
+            <Route path="/social" element={<SocialMediaHub />} />
+            <Route path="/users" element={<UserManagement />} />
+            <Route path="/utilization" element={<StaffUtilization />} />
+            <Route path="/attendance" element={<Attendance />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AppLayout>
+      </ProtectedRoute>
+    } />
+  </Routes>
+);
 
 const App = () => (
   <ThemeProvider defaultTheme="light" storageKey="rac-ui-theme">
@@ -32,32 +74,13 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/*" element={
-            <ProtectedRoute>
-              <AppLayout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/invoice" element={<Index />} />
-                  <Route path="/waybill" element={<Waybill />} />
-                  <Route path="/clients" element={<Clients />} />
-                  <Route path="/tasks" element={<Tasks />} />
-                  <Route path="/leave" element={<Leave />} />
-                  <Route path="/finance-dashboard" element={<FinanceDashboard />} />
-                  <Route path="/documents" element={<DocumentRepository />} />
-                  <Route path="/ops-dashboard" element={<OpsDashboard />} />
-                  <Route path="/social" element={<SocialMediaHub />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </AppLayout>
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   </ThemeProvider>
 );
 

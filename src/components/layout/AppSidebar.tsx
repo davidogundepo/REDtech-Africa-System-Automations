@@ -2,12 +2,11 @@
 import { 
   FileText, Truck, Users, CheckSquare, CalendarDays, 
   LayoutDashboard, LogOut, BarChart3, FolderOpen, TrendingUp, Megaphone,
-  Moon,
-  Sun
+  Moon, Sun, Shield, Clock, UserCog
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { clearAuth } from "@/pages/Auth";
+import { useAuth } from "@/lib/auth-context";
 import {
   Sidebar,
   SidebarContent,
@@ -21,32 +20,74 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import companyLogo from "@/assets/company-logo.png";
 
-const liveModules = [
+const coreModules = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/" },
   { title: "Invoice Generator", icon: FileText, path: "/invoice" },
   { title: "Waybill Generator", icon: Truck, path: "/waybill" },
   { title: "Client Directory", icon: Users, path: "/clients" },
   { title: "Task Tracker", icon: CheckSquare, path: "/tasks" },
   { title: "Leave Management", icon: CalendarDays, path: "/leave" },
+  { title: "Attendance", icon: Clock, path: "/attendance" },
+];
+
+const businessModules = [
   { title: "Finance Dashboard", icon: BarChart3, path: "/finance-dashboard" },
   { title: "Document Repository", icon: FolderOpen, path: "/documents" },
   { title: "Operations Dashboard", icon: TrendingUp, path: "/ops-dashboard" },
   { title: "Social Media Hub", icon: Megaphone, path: "/social" },
 ];
 
+const adminModules = [
+  { title: "Staff Utilization", icon: UserCog, path: "/utilization" },
+  { title: "User Management", icon: Shield, path: "/users" },
+];
+
+const roleLabels: Record<string, string> = {
+  super_admin: "Super Admin",
+  admin: "Admin",
+  team_member: "Team Member",
+  viewer: "Viewer",
+};
+
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const { profile, signOut, isSuperAdmin, isAdmin } = useAuth();
 
-  const handleLogout = () => {
-    clearAuth();
+  const handleLogout = async () => {
+    await signOut();
     toast.success("Signed out");
     navigate("/auth");
   };
+
+  const renderNavGroup = (items: typeof coreModules, label: string) => (
+    <SidebarGroup>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton 
+                asChild 
+                isActive={location.pathname === item.path}
+                tooltip={item.title}
+              >
+                <NavLink to={item.path}>
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.title}</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
 
   return (
     <Sidebar>
@@ -54,38 +95,31 @@ export function AppSidebar() {
         <div className="flex items-center gap-3">
           <img src={companyLogo} alt="REDtech Africa" className="h-8 w-auto" />
           <div>
-            <h2 className="font-bold text-sm" style={{ color: '#000' }}>REDtech Africa</h2>
+            <h2 className="font-bold text-sm" style={{ color: '#C9A66B' }}>REDtech Africa</h2>
             <p className="text-xs text-muted-foreground">System Automations</p>
           </div>
         </div>
       </SidebarHeader>
       
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Modules</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {liveModules.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={location.pathname === item.path}
-                    tooltip={item.title}
-                  >
-                    <NavLink to={item.path}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        </SidebarContent>
+        {renderNavGroup(coreModules, "Core")}
+        {renderNavGroup(businessModules, "Business")}
+        {(isSuperAdmin || isAdmin) && renderNavGroup(adminModules, "Administration")}
+      </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
+        {/* Current User Info */}
+        {profile && (
+          <div className="flex items-center gap-2 px-1">
+            <div className="h-8 w-8 rounded-full bg-[#C9A66B]/20 flex items-center justify-center text-xs font-bold" style={{ color: '#C9A66B' }}>
+              {profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{profile.full_name}</p>
+              <p className="text-xs text-muted-foreground">{roleLabels[profile.role]}</p>
+            </div>
+          </div>
+        )}
         <Button 
           variant="outline" 
           size="sm" 

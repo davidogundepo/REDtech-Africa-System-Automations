@@ -1,21 +1,23 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, CalendarDays, AlertTriangle } from "lucide-react";
+import { Plus, CalendarDays, Filter, X } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
 
 interface LeaveRequest {
   id: string;
   employee_id: string;
+  user_id: string | null;
   leave_type: string;
   start_date: string;
   end_date: string;
@@ -30,27 +32,28 @@ const leaveTypes = [
   { value: "sick", label: "Sick Leave" },
   { value: "compassionate", label: "Compassionate Leave" },
   { value: "maternity", label: "Maternity Leave" },
-  { value: "paternity", label: "Paternity Leave" },
+  { value: "vacation", label: "Vacation" },
+  { value: "bereavement", label: "Bereavement" },
+  { value: "business", label: "Business Trip" },
 ];
 
 const statusColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  approved: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
+  pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+  approved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  rejected: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  cancelled: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
 };
 
 const emptyForm = { leave_type: "annual", start_date: "", end_date: "", reason: "" };
 
 const Leave = () => {
+  const { profile, isAdmin, isSuperAdmin, canEdit } = useAuth();
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState(emptyForm);
   const [dialogOpen, setDialogOpen] = useState(false);
-  
-
-  useEffect(() => {
-    fetchRequests();
-  }, []);
+  const [formData, setFormData] = useState(emptyForm);
+  const [showMyLeave, setShowMyLeave] = useState(true);
+  const [balances, setBalances] = useState<any[]>([]);
 
   const fetchRequests = async () => {
     const { data, error } = await supabase.from("leave_requests").select("*").order("created_at", { ascending: false });
@@ -59,158 +62,274 @@ const Leave = () => {
     setLoading(false);
   };
 
-  const handleSubmit = async () => {
-    if (!formData.start_date || !formData.end_date) { toast.error("Please select dates"); return; }
+  const fetchBalances = async () => {
+    if (!profile) return;
+    const { data } = await supabase
+      .from("leave_balances")
+      .select("*")
+      .eq("user_id", profile.id)
+      .eq("year", new Date().getFullYear());
+    setBalances(data || []);
+  };
 
-    const { error } = await supabase.from("leave_requests").insert({
+  useEffect(() => { fetchRequests(); fetchBalances(); }, [profile]);
+
+  const getDaysCount = (start: string, end: string) => {
+    const diff = new Date(end).getTime() - new Date(start).getTime();
+    return Math.max(1, Math.ceil(diff / (1000 * 3600 * 24)) + 1);
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.start_date || !formData.end_date) {
+      toast.error("Start and end dates are required");
+      return;
+    }
+
+    const days = getDaysCount(formData.start_date, formData.end_date);
+
+    const { error } = await supabase.from("leave_requests").insert([{
+      employee_id: profile?.full_name || "Unknown",
+      user_id: profile?.id || null,
       leave_type: formData.leave_type,
       start_date: formData.start_date,
       end_date: formData.end_date,
       reason: formData.reason || null,
-    });
+      status: "pending",
+    }]);
+
     if (error) { toast.error("Failed to submit request"); return; }
-    
-    // Send Email Notification
+    toast.success(`Leave request submitted (${days} days)`);
+
+    // Notify admins
     sendNotificationEmail({
-      to: 'management@redtechafrica.com',
-      subject: `New Leave Request: ${formData.leave_type.toUpperCase()}`,
+      to: "management@redtechafrica.com",
+      subject: `Leave Request: ${profile?.full_name} — ${formData.leave_type}`,
       html: `
-        <h2>New Leave Request Submitted</h2>
-        <p><strong>Type:</strong> ${formData.leave_type}</p>
-        <p><strong>From:</strong> ${new Date(formData.start_date).toLocaleDateString()}</p>
-        <p><strong>To:</strong> ${new Date(formData.end_date).toLocaleDateString()}</p>
-        <p><strong>Reason:</strong> ${formData.reason || 'None provided'}</p>
+        <h2>New Leave Request</h2>
+        <p><strong>Employee:</strong> ${profile?.full_name}</p>
+        <p><strong>Type:</strong> ${leaveTypes.find(t => t.value === formData.leave_type)?.label}</p>
+        <p><strong>Period:</strong> ${formData.start_date} to ${formData.end_date} (${days} days)</p>
+        <p><strong>Reason:</strong> ${formData.reason || 'Not specified'}</p>
         <br/>
-        <p>Please log in to the system automations dashboard to approve or reject this request.</p>
+        <p>Log in to the <a href="https://redtech-system.vercel.app/leave">REDtech Dashboard</a> to approve or reject.</p>
       `
     });
 
-    toast.success("Leave request submitted");
     setFormData(emptyForm);
     setDialogOpen(false);
     fetchRequests();
   };
 
   const handleApproval = async (id: string, status: "approved" | "rejected") => {
-    const { error } = await supabase.from("leave_requests").update({ status }).eq("id", id);
-    if (error) { toast.error("Failed to update status"); return; }
+    const { error } = await supabase
+      .from("leave_requests")
+      .update({ status, approved_by: profile?.full_name || "Admin" })
+      .eq("id", id);
+    if (error) { toast.error("Failed to update"); return; }
+    
+    // If approved, update balance
+    if (status === "approved") {
+      const request = requests.find(r => r.id === id);
+      if (request) {
+        const days = getDaysCount(request.start_date, request.end_date);
+        // Try to update existing balance, or create one if missing
+        const { data: existingBalance } = await supabase
+          .from("leave_balances")
+          .select("*")
+          .eq("user_id", request.user_id)
+          .eq("leave_type", request.leave_type)
+          .eq("year", new Date().getFullYear())
+          .maybeSingle();
+
+        if (existingBalance) {
+          await supabase.from("leave_balances")
+            .update({ used_days: existingBalance.used_days + days })
+            .eq("id", existingBalance.id);
+        }
+      }
+    }
+
     toast.success(`Request ${status}`);
     fetchRequests();
+    fetchBalances();
   };
 
-  const getDaysCount = (start: string, end: string) => {
-    const diff = new Date(end).getTime() - new Date(start).getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+  const handleCancel = async (id: string) => {
+    const request = requests.find(r => r.id === id);
+    if (!request) return;
+
+    const { error } = await supabase
+      .from("leave_requests")
+      .update({ status: "cancelled" })
+      .eq("id", id);
+    
+    if (error) { toast.error("Failed to cancel"); return; }
+
+    // If was approved, restore balance
+    if (request.status === "approved") {
+      const days = getDaysCount(request.start_date, request.end_date);
+      const { data: balance } = await supabase
+        .from("leave_balances")
+        .select("*")
+        .eq("user_id", request.user_id)
+        .eq("leave_type", request.leave_type)
+        .eq("year", new Date().getFullYear())
+        .maybeSingle();
+
+      if (balance) {
+        await supabase.from("leave_balances")
+          .update({ used_days: Math.max(0, balance.used_days - days) })
+          .eq("id", balance.id);
+      }
+    }
+
+    toast.success("Leave request cancelled");
+    fetchRequests();
+    fetchBalances();
   };
 
-  const counts = {
-    total: requests.length,
-    pending: requests.filter((r) => r.status === "pending").length,
-    approved: requests.filter((r) => r.status === "approved").length,
-  };
+  const filteredRequests = showMyLeave && !isAdmin && !isSuperAdmin
+    ? requests.filter(r => r.user_id === profile?.id || r.employee_id === profile?.full_name)
+    : showMyLeave
+    ? requests.filter(r => r.user_id === profile?.id || r.employee_id === profile?.full_name)
+    : requests;
 
   return (
-    <div className="flex-1 min-h-screen bg-background">
-      <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold" style={{ color: '#C9A66B' }}>Leave Management</h1>
-              <p className="text-sm text-muted-foreground">{counts.pending} pending · {counts.approved} approved</p>
-            </div>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button style={{ backgroundColor: '#C9A66B' }} className="text-white hover:opacity-90">
-                  <Plus className="h-4 w-4 mr-2" /> Request Leave
+    <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Leave Management</h1>
+          <p className="text-muted-foreground mt-2">Submit, track, and manage leave requests</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {(isAdmin || isSuperAdmin) && (
+            <Button 
+              variant={showMyLeave ? "default" : "outline"} 
+              size="sm" 
+              onClick={() => setShowMyLeave(!showMyLeave)}
+              style={showMyLeave ? { backgroundColor: '#C9A66B' } : {}}
+              className={showMyLeave ? "text-white" : ""}
+            >
+              <Filter className="h-4 w-4 mr-1" /> {showMyLeave ? "My Leave" : "All Leave"}
+            </Button>
+          )}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button style={{ backgroundColor: '#C9A66B' }} className="text-white hover:opacity-90">
+                <Plus className="h-4 w-4 mr-2" /> Request Leave
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Submit Leave Request</DialogTitle></DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4 py-4">
+                <div>
+                  <Label>Leave Type</Label>
+                  <Select value={formData.leave_type} onValueChange={(v) => setFormData({ ...formData, leave_type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {leaveTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Start Date *</Label><Input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} /></div>
+                  <div><Label>End Date *</Label><Input type="date" required value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} /></div>
+                </div>
+                <div><Label>Reason</Label><Textarea value={formData.reason} onChange={(e) => setFormData({ ...formData, reason: e.target.value })} placeholder="Reason for leave..." rows={3} /></div>
+                <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
+                  Submit Request
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Submit Leave Request</DialogTitle></DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4 py-4">
-                  <div>
-                    <Label>Leave Type</Label>
-                    <Select value={formData.leave_type} onValueChange={(v) => setFormData({ ...formData, leave_type: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{leaveTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><Label>Start Date *</Label><Input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} /></div>
-                    <div><Label>End Date *</Label><Input type="date" required value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} /></div>
-                  </div>
-                  <div><Label>Reason</Label><Textarea value={formData.reason} onChange={(e) => setFormData({ ...formData, reason: e.target.value })} placeholder="Reason for leave..." rows={3} /></div>
-                  <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
-                    Submit Request
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
-      </header>
+      </div>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-md mb-6 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" /> 
-          <div className="text-sm">
-            <strong className="block mb-1">Demo Environment:</strong> 
-            This module contains mock data for testing purposes. You can safely add, edit, or delete these records, and all changes will reflect in real-time as you input your rightful information.
-          </div>
+      {/* Leave Balances */}
+      {balances.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {balances.map((b: any) => (
+            <Card key={b.id}>
+              <CardContent className="p-4 text-center">
+                <p className="text-sm text-muted-foreground capitalize">{leaveTypes.find(t => t.value === b.leave_type)?.label || b.leave_type}</p>
+                <p className="text-2xl font-bold" style={{ color: '#C9A66B' }}>{b.total_days - b.used_days}</p>
+                <p className="text-xs text-muted-foreground">of {b.total_days} days remaining</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
+      )}
 
-        {/* Summary cards */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{counts.total}</p><p className="text-xs text-muted-foreground">Total Requests</p></CardContent></Card>
-          <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-yellow-600">{counts.pending}</p><p className="text-xs text-muted-foreground">Pending</p></CardContent></Card>
-          <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-green-600">{counts.approved}</p><p className="text-xs text-muted-foreground">Approved</p></CardContent></Card>
-        </div>
-
-        <Card>
-          <CardContent className="p-0">
+      {/* Requests Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5" /> Leave Requests
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-center py-8 text-muted-foreground">Loading...</p>
+          ) : filteredRequests.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground">No leave requests found.</p>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Employee</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Dates</TableHead>
-                  <TableHead>Days</TableHead>
+                  <TableHead>Period</TableHead>
+                  <TableHead className="text-center">Days</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
-                ) : requests.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No leave requests yet.</TableCell></TableRow>
-                ) : (
-                  requests.map((req) => (
-                    <TableRow key={req.id}>
-                      <TableCell className="capitalize font-medium">{req.leave_type.replace("_", " ")}</TableCell>
-                      <TableCell className="text-sm">
-                        {new Date(req.start_date).toLocaleDateString()} — {new Date(req.end_date).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>{getDaysCount(req.start_date, req.end_date)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{req.reason || "—"}</TableCell>
-                      <TableCell>
-                        <Badge className={statusColors[req.status]} variant="secondary">{req.status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {req.status === "pending" && (
-                          <div className="flex gap-1">
-                            <Button variant="outline" size="sm" onClick={() => handleApproval(req.id, "approved")} className="text-green-600 text-xs">Approve</Button>
-                            <Button variant="outline" size="sm" onClick={() => handleApproval(req.id, "rejected")} className="text-red-600 text-xs">Reject</Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                {filteredRequests.map((req) => (
+                  <TableRow key={req.id}>
+                    <TableCell className="font-medium">{req.employee_id}</TableCell>
+                    <TableCell className="capitalize">
+                      {leaveTypes.find(t => t.value === req.leave_type)?.label || req.leave_type}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {new Date(req.start_date).toLocaleDateString()} — {new Date(req.end_date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-center">{getDaysCount(req.start_date, req.end_date)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-32 truncate">{req.reason || "—"}</TableCell>
+                    <TableCell>
+                      <Badge className={statusColors[req.status] || ""} variant="secondary">
+                        {req.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {req.status === "pending" && (isAdmin || isSuperAdmin) && (
+                        <div className="flex gap-1 justify-end">
+                          <Button size="sm" variant="outline" className="text-green-600 hover:text-green-700" onClick={() => handleApproval(req.id, "approved")}>
+                            Approve
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => handleApproval(req.id, "rejected")}>
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                      {(req.status === "pending" || req.status === "approved") && 
+                        (req.user_id === profile?.id || req.employee_id === profile?.full_name) && (
+                        <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => handleCancel(req.id)}>
+                          <X className="h-3 w-3 mr-1" /> Cancel
+                        </Button>
+                      )}
+                      {req.status === "cancelled" && (
+                        <span className="text-xs text-muted-foreground">Cancelled</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

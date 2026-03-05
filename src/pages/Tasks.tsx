@@ -1,39 +1,44 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, CheckSquare, Clock, AlertTriangle, Circle } from "lucide-react";
+import { Plus, Search, CheckSquare, Clock, AlertTriangle, Circle, User, MessageSquare, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
+import { format } from "date-fns";
 
 interface Task {
   id: string;
   title: string;
   description: string | null;
   assigned_to: string | null;
+  assigned_to_user_id: string | null;
   client_id: string | null;
   due_date: string | null;
   status: string;
   priority: string;
   department: string | null;
+  blocker_notes: any[] | null;
   created_at: string;
+}
+
+interface Profile {
+  id: string;
+  full_name: string;
+  email: string;
+  department: string | null;
 }
 
 const departments = ["Finance", "Operations", "Delivery Ops", "Resourcing", "HR", "Business Dev", "Marketing"];
@@ -41,10 +46,10 @@ const priorities = ["low", "medium", "high", "urgent"];
 const statuses = ["pending", "in-progress", "completed", "overdue"];
 
 const priorityColors: Record<string, string> = {
-  low: "bg-slate-100 text-slate-700",
-  medium: "bg-blue-100 text-blue-700",
-  high: "bg-orange-100 text-orange-700",
-  urgent: "bg-red-100 text-red-700",
+  low: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  medium: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+  high: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
+  urgent: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
 };
 
 const statusIcons: Record<string, React.ElementType> = {
@@ -54,16 +59,21 @@ const statusIcons: Record<string, React.ElementType> = {
   overdue: AlertTriangle,
 };
 
-const emptyTask = { title: "", description: "", due_date: "", priority: "medium", department: "", status: "pending" };
+const emptyTask = { title: "", description: "", due_date: "", priority: "medium", department: "", status: "pending", assigned_to_user_id: "", blocker_note: "" };
 
 const Tasks = () => {
+  const { profile, canEdit } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [showMyTasks, setShowMyTasks] = useState(false);
   const [formData, setFormData] = useState(emptyTask);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [blockerDialogTask, setBlockerDialogTask] = useState<Task | null>(null);
+  const [newBlockerNote, setNewBlockerNote] = useState("");
 
   const fetchTasks = async () => {
     const { data, error } = await supabase.from("tasks").select("*").order("created_at", { ascending: false });
@@ -72,18 +82,27 @@ const Tasks = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchTasks(); }, []);
+  const fetchProfiles = async () => {
+    const { data } = await supabase.from("profiles").select("id, full_name, email, department").eq("is_active", true);
+    setProfiles(data || []);
+  };
+
+  useEffect(() => { fetchTasks(); fetchProfiles(); }, []);
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) { toast.error("Task title is required"); return; }
 
-    const payload = {
+    const assignedProfile = profiles.find(p => p.id === formData.assigned_to_user_id);
+
+    const payload: any = {
       title: formData.title,
       description: formData.description || null,
       due_date: formData.due_date || null,
       priority: formData.priority,
       department: formData.department || null,
       status: formData.status,
+      assigned_to_user_id: formData.assigned_to_user_id || null,
+      assigned_to: assignedProfile?.full_name || null,
     };
 
     if (editingId) {
@@ -91,25 +110,35 @@ const Tasks = () => {
       if (error) { toast.error("Failed to update task"); return; }
       toast.success("Task updated");
     } else {
+      // Add initial blocker note if provided
+      if (formData.blocker_note) {
+        payload.blocker_notes = [{
+          note: formData.blocker_note,
+          by: profile?.full_name || "System",
+          at: new Date().toISOString(),
+        }];
+      }
+
       const { error } = await supabase.from("tasks").insert(payload);
       if (error) { toast.error("Failed to create task"); return; }
       toast.success("Task created");
-      
-      // Send Email Notification for new tasks
-      sendNotificationEmail({
-        to: 'management@redtechafrica.com',
-        subject: `New Task Assigned: ${formData.title}`,
-        html: `
-          <h2>A new task has been created</h2>
-          <p><strong>Task:</strong> ${formData.title}</p>
-          <p><strong>Priority:</strong> ${formData.priority.toUpperCase()}</p>
-          <p><strong>Department:</strong> ${formData.department || 'General'}</p>
-          <p><strong>Due Date:</strong> ${formData.due_date || 'No deadline'}</p>
-          <p><strong>Status:</strong> ${formData.status}</p>
-          <br/>
-          <p>Log in to the REDtech Dashboard to view details and manage this task.</p>
-        `
-      });
+
+      // Send email if assigned to someone
+      if (assignedProfile) {
+        sendNotificationEmail({
+          to: assignedProfile.email,
+          subject: `New Task Assigned: ${formData.title}`,
+          html: `
+            <h2>You've been assigned a new task</h2>
+            <p><strong>Task:</strong> ${formData.title}</p>
+            <p><strong>Priority:</strong> ${formData.priority.toUpperCase()}</p>
+            <p><strong>Department:</strong> ${formData.department || 'General'}</p>
+            <p><strong>Due Date:</strong> ${formData.due_date || 'No deadline'}</p>
+            <br/>
+            <p>Log in to the <a href="https://redtech-system.vercel.app">REDtech Dashboard</a> to view details.</p>
+          `
+        });
+      }
     }
 
     setFormData(emptyTask);
@@ -121,6 +150,14 @@ const Tasks = () => {
   const handleStatusChange = async (id: string, newStatus: string) => {
     const { error } = await supabase.from("tasks").update({ status: newStatus }).eq("id", id);
     if (error) { toast.error("Failed to update status"); return; }
+    
+    // Log the status change in task_updates
+    await supabase.from("task_updates").insert({
+      task_id: id,
+      user_id: profile?.id,
+      action: `Status changed to ${newStatus}`,
+    });
+
     fetchTasks();
   };
 
@@ -132,6 +169,8 @@ const Tasks = () => {
       priority: task.priority,
       department: task.department || "",
       status: task.status,
+      assigned_to_user_id: task.assigned_to_user_id || "",
+      blocker_note: "",
     });
     setEditingId(task.id);
     setDialogOpen(true);
@@ -144,9 +183,33 @@ const Tasks = () => {
     fetchTasks();
   };
 
+  const handleAddBlockerNote = async () => {
+    if (!blockerDialogTask || !newBlockerNote.trim()) return;
+    
+    const existingNotes = blockerDialogTask.blocker_notes || [];
+    const updatedNotes = [...existingNotes, {
+      note: newBlockerNote,
+      by: profile?.full_name || "Unknown",
+      at: new Date().toISOString(),
+    }];
+
+    const { error } = await supabase
+      .from("tasks")
+      .update({ blocker_notes: updatedNotes })
+      .eq("id", blockerDialogTask.id);
+    
+    if (error) { toast.error("Failed to add note"); return; }
+    
+    toast.success("Note added");
+    setNewBlockerNote("");
+    setBlockerDialogTask(null);
+    fetchTasks();
+  };
+
   const filtered = tasks
+    .filter((t) => !showMyTasks || t.assigned_to_user_id === profile?.id || t.assigned_to === profile?.full_name)
     .filter((t) => filterStatus === "all" || t.status === filterStatus)
-    .filter((t) => [t.title, t.description, t.department].some((f) => f?.toLowerCase().includes(search.toLowerCase())));
+    .filter((t) => [t.title, t.description, t.department, t.assigned_to].some((f) => f?.toLowerCase().includes(search.toLowerCase())));
 
   const counts = {
     all: tasks.length,
@@ -163,71 +226,93 @@ const Tasks = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold" style={{ color: '#C9A66B' }}>Task Tracker</h1>
-              <p className="text-sm text-muted-foreground">{tasks.length} tasks across departments</p>
+              <p className="text-sm text-muted-foreground">{filtered.length} tasks{showMyTasks ? " (My Tasks)" : ""}</p>
             </div>
-            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setFormData(emptyTask); setEditingId(null); } }}>
-              <DialogTrigger asChild>
-                <Button style={{ backgroundColor: '#C9A66B' }} className="text-white hover:opacity-90">
-                  <Plus className="h-4 w-4 mr-2" /> New Task
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader><DialogTitle>{editingId ? "Edit Task" : "Create Task"}</DialogTitle></DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4 py-4">
-                  <div><Label>Title *</Label><Input required value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Task title" /></div>
-                  <div><Label>Description</Label><Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Details..." rows={3} /></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><Label>Due Date</Label><Input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} /></div>
-                    <div>
-                      <Label>Priority</Label>
-                      <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{priorities.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Department</Label>
-                      <Select value={formData.department} onValueChange={(v) => setFormData({ ...formData, department: v })}>
-                        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                        <SelectContent>{departments.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Status</Label>
-                      <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{statuses.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
-                    {editingId ? "Update Task" : "Create Task"}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant={showMyTasks ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => setShowMyTasks(!showMyTasks)}
+                style={showMyTasks ? { backgroundColor: '#C9A66B' } : {}}
+                className={showMyTasks ? "text-white" : ""}
+              >
+                <Filter className="h-4 w-4 mr-1" /> My Tasks
+              </Button>
+              {canEdit && (
+                <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setFormData(emptyTask); setEditingId(null); } }}>
+                  <DialogTrigger asChild>
+                    <Button style={{ backgroundColor: '#C9A66B' }} className="text-white hover:opacity-90">
+                      <Plus className="h-4 w-4 mr-2" /> New Task
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader><DialogTitle>{editingId ? "Edit Task" : "Create Task"}</DialogTitle></DialogHeader>
+                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4 py-4">
+                      <div><Label>Title *</Label><Input required value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Task title" /></div>
+                      <div><Label>Description</Label><Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Details..." rows={3} /></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Assign To</Label>
+                          <Select value={formData.assigned_to_user_id} onValueChange={(v) => setFormData({ ...formData, assigned_to_user_id: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select user" /></SelectTrigger>
+                            <SelectContent>
+                              {profiles.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div><Label>Due Date</Label><Input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} /></div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label>Priority</Label>
+                          <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>{priorities.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Department</Label>
+                          <Select value={formData.department} onValueChange={(v) => setFormData({ ...formData, department: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectContent>{departments.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Status</Label>
+                          <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>{statuses.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      {!editingId && (
+                        <div>
+                          <Label>Initial Note (optional)</Label>
+                          <Textarea value={formData.blocker_note} onChange={(e) => setFormData({ ...formData, blocker_note: e.target.value })} placeholder="Add context, blockers, or dependencies..." rows={2} />
+                        </div>
+                      )}
+                      <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
+                        {editingId ? "Update Task" : "Create Task"}
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-6">
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-md mb-6 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" /> 
-          <div className="text-sm">
-            <strong className="block mb-1">Demo Environment:</strong> 
-            This module contains mock data for testing purposes. You can safely add, edit, or delete these records, and all changes will reflect in real-time as you input your rightful information.
-          </div>
-        </div>
-        
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search tasks..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {(["all", ...statuses] as const).map((s) => (
               <Button key={s} variant={filterStatus === s ? "default" : "outline"} size="sm" onClick={() => setFilterStatus(s)}
                 style={filterStatus === s ? { backgroundColor: '#C9A66B' } : {}} className={filterStatus === s ? "text-white" : ""}>
@@ -247,6 +332,7 @@ const Tasks = () => {
           ) : (
             filtered.map((task) => {
               const StatusIcon = statusIcons[task.status] || Circle;
+              const blockerCount = (task.blocker_notes || []).length;
               return (
                 <Card key={task.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4 flex items-start gap-4">
@@ -263,27 +349,46 @@ const Tasks = () => {
                         {task.department && <Badge variant="outline" className="text-xs">{task.department}</Badge>}
                       </div>
                       {task.description && <p className="text-sm text-muted-foreground mt-1 truncate">{task.description}</p>}
-                      {task.due_date && <p className="text-xs text-muted-foreground mt-1">Due: {new Date(task.due_date).toLocaleDateString()}</p>}
+                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                        {task.assigned_to && (
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" /> {task.assigned_to}
+                          </span>
+                        )}
+                        {task.due_date && (
+                          <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
+                        )}
+                        {blockerCount > 0 && (
+                          <span className="flex items-center gap-1 text-yellow-600">
+                            <MessageSquare className="h-3 w-3" /> {blockerCount} note{blockerCount > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(task)}>Edit</Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-destructive">Delete</Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete this task.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(task.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <Button variant="ghost" size="sm" onClick={() => setBlockerDialogTask(task)} title="Notes">
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                      {canEdit && (
+                        <>
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(task)}>Edit</Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="text-destructive">Delete</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>This will permanently delete this task.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(task.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -292,6 +397,48 @@ const Tasks = () => {
           )}
         </div>
       </div>
+
+      {/* Blocker Notes Dialog */}
+      <Dialog open={!!blockerDialogTask} onOpenChange={(o) => { if (!o) setBlockerDialogTask(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" /> Notes: {blockerDialogTask?.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Existing notes */}
+            <div className="max-h-60 overflow-y-auto space-y-3">
+              {(blockerDialogTask?.blocker_notes || []).length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No notes yet. Add one below.</p>
+              ) : (
+                (blockerDialogTask?.blocker_notes || []).map((note: any, i: number) => (
+                  <div key={i} className="bg-muted p-3 rounded-lg">
+                    <p className="text-sm">{note.note}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      — {note.by}, {format(new Date(note.at), "MMM d, yyyy 'at' HH:mm")}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+            {/* Add new note */}
+            {canEdit && (
+              <form onSubmit={(e) => { e.preventDefault(); handleAddBlockerNote(); }} className="space-y-2">
+                <Textarea
+                  value={newBlockerNote}
+                  onChange={(e) => setNewBlockerNote(e.target.value)}
+                  placeholder="Add a progress update, blocker, or dependency note..."
+                  rows={2}
+                />
+                <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }} disabled={!newBlockerNote.trim()}>
+                  Add Note
+                </Button>
+              </form>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

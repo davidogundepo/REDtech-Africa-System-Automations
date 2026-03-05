@@ -1,13 +1,14 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 import { format, parseISO } from "date-fns";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,30 +20,32 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSpreadsheet, FileImage, Link as LinkIcon, ExternalLink, Trash2, Clock } from "lucide-react";
 import { toast } from "sonner";
-import { 
-  FolderOpen, FileText, FileSpreadsheet, FileIcon, Search, 
-  MoreVertical, Download, Upload, Plus, Clock, FileImage, Trash2 
-} from "lucide-react";
+import { sendNotificationEmail } from "@/lib/email";
 
 const TypeIcon = ({ type, className }: { type: string, className?: string }) => {
-  switch (type) {
+  switch (type.toLowerCase()) {
     case "folder": return <FolderOpen className={`text-[#C9A66B] ${className}`} />;
     case "pdf": return <FileText className={`text-red-500 ${className}`} />;
-    case "excel": return <FileSpreadsheet className={`text-green-500 ${className}`} />;
+    case "excel": 
+    case "csv": return <FileSpreadsheet className={`text-green-500 ${className}`} />;
     case "word": 
     case "docx": return <FileIcon className={`text-blue-500 ${className}`} />;
     case "image": return <FileImage className={`text-purple-500 ${className}`} />;
+    case "link": return <LinkIcon className={`text-blue-400 ${className}`} />;
     default: return <FileIcon className={`text-gray-500 ${className}`} />;
   }
 };
 
 const DocumentRepository = () => {
+  const { profile, canEdit } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isLinkOpen, setIsLinkOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [currentPath, setCurrentPath] = useState([{ id: "root", name: "Team Drive" }]);
-  const [newDoc, setNewDoc] = useState({ name: "", type: "pdf", size: "1.0 MB" });
+  
+  const [newLink, setNewLink] = useState({ name: "", url: "" });
   
   const queryClient = useQueryClient();
 
@@ -58,38 +61,46 @@ const DocumentRepository = () => {
 
   // Mutations
   const uploadDocMutation = useMutation({
-    mutationFn: async (uploadData: { file: File, name: string, type: string, size: string, created_by: string }) => {
+    mutationFn: async (uploadData: { file: File, name: string, type: string, size: string, created_by: string, uploaded_by_id: string }) => {
       const { file, ...dbData } = uploadData;
       
-      // 1. Upload to Supabase Storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(fileName, file);
+      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const { error: uploadError } = await supabase.storage.from('documents').upload(fileName, file);
+      if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
 
-      if (uploadError) {
-        throw new Error(`Storage upload failed: ${uploadError.message}. Did you run the latest setup.sql to create the 'documents' bucket?`);
-      }
+      const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(fileName);
 
-      // 2. Get the public URL for the file
-      const { data: publicUrlData } = supabase.storage
-        .from('documents')
-        .getPublicUrl(fileName);
-
-      // 3. Save the metadata and public URL to the database
       const { error: dbError } = await supabase.from('documents').insert([{
         ...dbData,
         url: publicUrlData.publicUrl
       }]);
-
       if (dbError) throw dbError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       setIsUploadOpen(false);
-      setNewDoc({ name: "", type: "pdf", size: "1.0 MB" });
       toast.success("Document uploaded successfully");
+    },
+    onError: (error) => toast.error(error.message)
+  });
+
+  const addLinkMutation = useMutation({
+    mutationFn: async (linkData: { name: string, url: string, created_by: string, uploaded_by_id: string }) => {
+      const { error } = await supabase.from('documents').insert([{
+        name: linkData.name,
+        type: 'link',
+        size: 'External',
+        url: linkData.url,
+        created_by: linkData.created_by,
+        uploaded_by_id: linkData.uploaded_by_id
+      }]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      setIsLinkOpen(false);
+      setNewLink({ name: "", url: "" });
+      toast.success("OneDrive link added");
     },
     onError: (error) => toast.error(error.message)
   });
@@ -108,6 +119,7 @@ const DocumentRepository = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!profile) { toast.error("You must be logged in to upload"); return; }
 
     const ext = file.name.split('.').pop()?.toLowerCase() || 'unknown';
     const sizeInMB = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
@@ -119,174 +131,182 @@ const DocumentRepository = () => {
     else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) type = 'image';
 
     uploadDocMutation.mutate({
-      file: file,
-      name: file.name,
-      type: type,
-      size: sizeInMB,
-      created_by: "Admin User"
+      file: file, name: file.name, type: type, size: sizeInMB,
+      created_by: profile.full_name, uploaded_by_id: profile.id
     });
     
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const filteredFiles = documents?.filter(f => 
-    f.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const handleLinkSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLink.name || !newLink.url) return toast.error("Name and URL are required");
+    if (!profile) return toast.error("Not logged in");
+
+    // Basic URL validation
+    let finalUrl = newLink.url;
+    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+      finalUrl = 'https://' + finalUrl;
+    }
+
+    addLinkMutation.mutate({
+      name: newLink.name, url: finalUrl,
+      created_by: profile.full_name, uploaded_by_id: profile.id
+    });
+  };
+
+  const filteredDocs = documents?.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase())) || [];
 
   return (
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Document Repository</h1>
-          <p className="text-muted-foreground mt-2">Centralized secure storage for all RAC templates and files</p>
+          <p className="text-muted-foreground mt-2">Centralized secure storage for templates, files, and OneDrive links</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="border-[#C9A66B]/50 hover:bg-[#C9A66B]/10">
-                <Upload className="h-4 w-4 mr-2" /> Upload
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Upload Document</DialogTitle>
-                <DialogDescription>Add a new file to the repository.</DialogDescription>
-              </DialogHeader>
-              <div className="py-6 flex flex-col items-center justify-center space-y-4 text-center">
-                <div className="p-4 bg-muted/50 rounded-full border-2 border-dashed border-border/60">
-                  <Upload className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-medium">Click to select a file</h4>
-                  <p className="text-sm text-muted-foreground w-64">Upload real PDFs, images, or documents from your computer.</p>
-                </div>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileUpload} 
-                  className="hidden" 
-                />
-                <Button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="bg-[#C9A66B] hover:bg-[#C9A66B]/90 mt-2" 
-                  disabled={uploadDocMutation.isPending}
-                >
-                  {uploadDocMutation.isPending ? "Uploading..." : "Browse Files"}
+        
+        {canEdit && (
+          <div className="flex items-center gap-3">
+            <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="border-blue-500/50 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <LinkIcon className="h-4 w-4 mr-2" /> Add OneDrive Link
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add External Link</DialogTitle>
+                  <DialogDescription>Link to a SharePoint or OneDrive document.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleLinkSubmit} className="space-y-4 py-4">
+                  <div>
+                    <Label>Document Name *</Label>
+                    <Input required value={newLink.name} onChange={(e) => setNewLink({...newLink, name: e.target.value})} placeholder="e.g., Q3 Marketing Strategy" />
+                  </div>
+                  <div>
+                    <Label>OneDrive / SharePoint URL *</Label>
+                    <Input required type="url" value={newLink.url} onChange={(e) => setNewLink({...newLink, url: e.target.value})} placeholder="https://redtechafrica-my.sharepoint.com/..." />
+                  </div>
+                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={addLinkMutation.isPending}>
+                    {addLinkMutation.isPending ? "Adding..." : "Save Link"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
 
-          <Button className="bg-[#1f2937] hover:bg-[#1f2937]/90 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200">
-            <Plus className="h-4 w-4 mr-2" /> New Folder
-          </Button>
-        </div>
+            <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+              <DialogTrigger asChild>
+                <Button style={{ backgroundColor: '#C9A66B' }}>
+                  <Upload className="h-4 w-4 mr-2" /> Upload File
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Upload Document</DialogTitle>
+                  <DialogDescription>Directly upload a file to Supabase storage.</DialogDescription>
+                </DialogHeader>
+                <div className="py-6 flex flex-col items-center justify-center space-y-4 text-center">
+                  <div className="p-4 bg-muted/50 rounded-full border-2 border-dashed border-border/60">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-medium">Click to select a file</h4>
+                    <p className="text-sm text-muted-foreground w-64">Upload PDFs, images, or Office documents.</p>
+                  </div>
+                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                  <Button onClick={() => fileInputRef.current?.click()} className="bg-[#C9A66B] hover:bg-[#C9A66B]/90 mt-2" disabled={uploadDocMutation.isPending}>
+                    {uploadDocMutation.isPending ? "Uploading..." : "Browse Files"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
       </div>
 
       <Card className="shadow-sm border-[#C9A66B]/20 flex-1 flex flex-col min-h-[500px]">
         <CardHeader className="border-b border-border/50 pb-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center space-x-2 text-sm">
-              {currentPath.map((crumb, index) => (
-                <div key={crumb.id} className="flex items-center">
-                  <span className={`font-medium cursor-pointer hover:text-[#C9A66B] transition-colors ${index === currentPath.length - 1 ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    {crumb.name}
-                  </span>
-                  {index < currentPath.length - 1 && <span className="mx-2 text-muted-foreground">/</span>}
-                </div>
-              ))}
+            <div className="flex items-center space-x-2 text-sm font-medium text-foreground">
+              <FolderOpen className="h-4 w-4 text-[#C9A66B]" /> Team Drive
             </div>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search files..."
-                className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-[#C9A66B]/50"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <Input type="search" placeholder="Search files..." className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-[#C9A66B]/50" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0 flex-1">
           {isLoading ? (
             <div className="py-16 text-center text-muted-foreground">Loading documents...</div>
-          ) : (
-            <div className="w-full">
-              <div className="grid grid-cols-12 gap-4 p-4 border-b border-border/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                <div className="col-span-6 md:col-span-5 pl-2">Name</div>
-                <div className="hidden md:block col-span-3">Owner</div>
-                <div className="hidden sm:block col-span-3 lg:col-span-2 text-right">Size/Items</div>
-                <div className="col-span-5 sm:col-span-3 lg:col-span-2 text-right pr-6">Last Modified</div>
-              </div>
-              
-              <div className="divide-y divide-border/30">
-                {filteredFiles.map((file) => (
-                  <div key={file.id} 
-                       className="grid grid-cols-12 gap-4 p-4 items-center group hover:bg-muted/30 transition-colors cursor-pointer"
-                       onClick={() => window.open(file.url, '_blank')}
-                  >
-                    <div className="col-span-6 md:col-span-5 flex items-center gap-3 pl-2">
-                      <TypeIcon type={file.type} className="h-5 w-5" />
-                      <span className="font-medium text-sm truncate">{file.name}</span>
-                    </div>
-                    <div className="hidden md:flex col-span-3 items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-[#C9A66B]/20 flex items-center justify-center text-[10px] font-bold text-[#C9A66B] shrink-0">
-                        {file.created_by?.substring(0,2).toUpperCase() || 'RA'}
-                      </div>
-                      <span className="text-xs text-muted-foreground truncate">{file.created_by || 'System'}</span>
-                    </div>
-                    <div className="hidden sm:block col-span-3 lg:col-span-2 text-right text-sm text-muted-foreground">
-                      {file.type === 'folder' ? 'Folder' : file.size}
-                    </div>
-                    <div className="col-span-5 sm:col-span-3 lg:col-span-2 flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground truncate ml-auto pr-4">
-                        {format(parseISO(file.created_at), 'MMM dd, yyyy')}
-                      </span>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center bg-background/80 md:bg-transparent -mr-2">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500" onClick={(e) => e.stopPropagation()}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete this document.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteDocMutation.mutate(file.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={(e) => e.stopPropagation()}>
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {filteredFiles.length === 0 && (
-                <div className="py-16 text-center flex flex-col items-center">
-                  <FolderOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                  <h3 className="text-lg font-medium">No files found</h3>
-                  <p className="text-muted-foreground max-w-sm mt-2">
-                    We couldn't find any files matching "{searchQuery}". Try changing your search terms.
-                  </p>
-                </div>
-              )}
+          ) : filteredDocs.length === 0 ? (
+            <div className="py-16 text-center flex flex-col items-center">
+              <FolderOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-medium">No files found</h3>
+              <p className="text-muted-foreground mt-2">Upload a file or link a OneDrive document to get started.</p>
             </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead className="text-right">Size/Type</TableHead>
+                  <TableHead className="text-right">Added On</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredDocs.map((file) => (
+                  <TableRow key={file.id} className="cursor-pointer hover:bg-muted/50" onClick={() => window.open(file.url, '_blank')}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <TypeIcon type={file.type} className="h-5 w-5 shrink-0" />
+                        <span className="font-medium">{file.name}</span>
+                        {file.type === 'link' && <ExternalLink className="h-3 w-3 text-muted-foreground ml-1" />}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-full bg-[#C9A66B]/20 flex items-center justify-center text-[10px] font-bold text-[#C9A66B] shrink-0">
+                          {file.created_by?.substring(0,2).toUpperCase() || 'RA'}
+                        </div>
+                        <span className="text-sm text-muted-foreground">{file.created_by || 'System'}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">{file.size}</TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">{format(parseISO(file.created_at), 'MMM dd, yyyy')}</TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {canEdit && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => window.open(file.url, '_blank')}>
+                              <ExternalLink className="h-4 w-4 mr-2" /> Open
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600 focus:bg-red-50 focus:text-red-600" onClick={(e) => {
+                              e.preventDefault();
+                              if (window.confirm("Are you sure you want to delete this document?")) {
+                                deleteDocMutation.mutate(file.id);
+                              }
+                            }}>
+                              <Trash2 className="h-4 w-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
-
+      
+      {/* Recent Activity */}
       <div className="mt-8">
         <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
         <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
@@ -297,11 +317,9 @@ const DocumentRepository = () => {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">{doc.created_by} uploaded</p>
-                  <p className="text-sm text-[#C9A66B] font-medium truncate w-[200px]" title={doc.name}>{doc.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {format(parseISO(doc.created_at), 'MMM dd, HH:mm')}
-                  </p>
+                  <p className="text-sm font-medium">{doc.created_by} {doc.type === 'link' ? 'linked' : 'uploaded'}</p>
+                  <p className="text-xs text-[#C9A66B] font-medium truncate w-[200px]" title={doc.name}>{doc.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{format(parseISO(doc.created_at), 'MMM d, h:mm a')}</p>
                 </div>
               </CardContent>
             </Card>

@@ -1,46 +1,59 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 import { format, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { 
-  Megaphone, Calendar, CheckCircle2,
-  Clock, Image as ImageIcon, MessageSquare, Heart, Share2, 
-  TrendingUp, Instagram, Linkedin, Twitter, Target, Plus, Trash2 
-} from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Linkedin, Twitter, Instagram, Facebook, Plus, Clock, CheckCircle2, Megaphone, Trash2, Heart, MessageSquare, Share2, Upload, Download, Calendar } from "lucide-react";
+import { toast } from "sonner";
+import { sendNotificationEmail } from "@/lib/email";
+
+// Simple CSV parser for browsers
+const parseCSV = (text: string) => {
+  const result = [];
+  const lines = text.split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+  
+  for(let i = 1; i < lines.length; i++) {
+    if(!lines[i].trim()) continue;
+    // Handle quotes in CSV naive regex
+    const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+    const obj: any = {};
+    for(let j = 0; j < headers.length; j++) {
+      if(currentline[j]) {
+        obj[headers[j]] = currentline[j].trim().replace(/^"|"$/g, '');
+      }
+    }
+    result.push(obj);
+  }
+  return result;
+};
 
 const PlatformIcon = ({ platform }: { platform: string }) => {
   switch (platform.toLowerCase()) {
     case "linkedin": return <Linkedin className="h-5 w-5 text-blue-600" />;
-    case "instagram": return <Instagram className="h-5 w-5 text-pink-600" />;
     case "twitter": return <Twitter className="h-5 w-5 text-sky-500" />;
-    default: return <Megaphone className="h-5 w-5" />;
+    case "instagram": return <Instagram className="h-5 w-5 text-pink-600" />;
+    case "facebook": return <Facebook className="h-5 w-5 text-blue-800" />;
+    default: return <Megaphone className="h-5 w-5 text-muted-foreground" />;
   }
 };
 
 const SocialMediaHub = () => {
+  const { profile, canEdit } = useAuth();
   const [activeTab, setActiveTab] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [newPost, setNewPost] = useState({ 
     platform: "linkedin", 
     content: "", 
@@ -75,6 +88,19 @@ const SocialMediaHub = () => {
     onError: (error) => toast.error("Failed to save post: " + error.message)
   });
 
+  const batchAddPostsMutation = useMutation({
+    mutationFn: async (postsArray: any[]) => {
+      const { error } = await supabase.from('social_posts').insert(postsArray);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['social_posts'] });
+      toast.success("Content calendar imported successfully");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    },
+    onError: (error) => toast.error("Import failed: " + error.message)
+  });
+
   const deletePostMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('social_posts').delete().eq('id', id);
@@ -96,8 +122,94 @@ const SocialMediaHub = () => {
       likes: 0,
       comments: 0,
       shares: 0,
-      created_by: "System Admin"
+      created_by: profile?.full_name || "System Admin"
     });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
+      toast.error("Please upload a valid CSV file");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result;
+      if (typeof text !== "string") return;
+
+      try {
+        const parsed = parseCSV(text);
+        if (parsed.length === 0) {
+          toast.error("Empty CSV file");
+          return;
+        }
+
+        // Validate headers roughly
+        const validPosts = parsed.filter(p => p.content && p.platform).map(p => ({
+          platform: p.platform.toLowerCase(),
+          content: p.content,
+          status: p.status ? p.status.toLowerCase() : "draft",
+          scheduled_date: p.date ? new Date(p.date).toISOString() : new Date().toISOString(),
+          created_by: profile?.full_name || "CSV Import",
+          likes: 0, comments: 0, shares: 0
+        }));
+
+        if (validPosts.length === 0) {
+          toast.error("CSV must contain 'platform' and 'content' columns");
+          return;
+        }
+
+        batchAddPostsMutation.mutate(validPosts);
+      } catch (err) {
+        toast.error("Error parsing CSV. Please check formatting.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExportCSV = () => {
+    if (!posts || posts.length === 0) {
+      toast.error("No posts to export");
+      return;
+    }
+    
+    // Create template with headers if no data, or export existing data
+    const headers = ["Platform", "Content", "Date", "Status"];
+    const csvContent = [
+      headers.join(","),
+      ...posts.map(p => [
+        p.platform,
+        `"${p.content.replace(/"/g, '""')}"`, // escape quotes in content
+        format(parseISO(p.scheduled_date || p.created_at), 'yyyy-MM-dd HH:mm'),
+        p.status
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-use;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `REDtech_Content_Calendar_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Calendar exported");
+  };
+
+  const downloadTemplate = () => {
+    const headers = ["Platform", "Content", "Date", "Status"];
+    const sampleBody = ["linkedin", "\"Excited to announce our new V2 platform! #Tech #Africa\"", "2026-03-10 10:00", "scheduled"];
+    const csvContent = [headers.join(","), sampleBody.join(",")].join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-use;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", "REDtech_Content_Calendar_Template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const filteredPosts = posts?.filter(post => 
@@ -109,73 +221,87 @@ const SocialMediaHub = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Social Media Hub</h1>
-          <p className="text-muted-foreground mt-2">Content calendar, scheduling, and brand presence analytics</p>
+          <p className="text-muted-foreground mt-2">Content calendar, bulk scheduling, and brand presence analytics</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#1f2937] hover:bg-[#1f2937]/90 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200">
-              <Plus className="h-4 w-4 mr-2" /> Create Post
+        {canEdit && (
+          <div className="flex items-center gap-3">
+            <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="border-[#C9A66B]/50 hover:bg-[#C9A66B]/10 disabled:opacity-50" disabled={batchAddPostsMutation.isPending}>
+              <Upload className="h-4 w-4 mr-2" /> 
+              {batchAddPostsMutation.isPending ? "Importing..." : "Import CSV"}
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Create New Post</DialogTitle>
-              <DialogDescription>Draft or schedule a social media post across platforms.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Platform</Label>
-                  <Select value={newPost.platform} onValueChange={(v) => setNewPost({...newPost, platform: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="linkedin">LinkedIn</SelectItem>
-                      <SelectItem value="twitter">Twitter / X</SelectItem>
-                      <SelectItem value="instagram">Instagram</SelectItem>
-                      <SelectItem value="facebook">Facebook</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={newPost.status} onValueChange={(v) => setNewPost({...newPost, status: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="scheduled">Scheduled</SelectItem>
-                      <SelectItem value="published">Published</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Content</Label>
-                <Textarea 
-                  required 
-                  value={newPost.content} 
-                  onChange={e => setNewPost({...newPost, content: e.target.value})} 
-                  placeholder="What do you want to share?"
-                  className="min-h-[120px] resize-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Date & Time</Label>
-                <Input 
-                  type="datetime-local" 
-                  required 
-                  value={newPost.scheduled_date} 
-                  onChange={e => setNewPost({...newPost, scheduled_date: e.target.value})} 
-                />
-              </div>
-              <DialogFooter>
-                <Button type="submit" className="w-full bg-[#C9A66B] hover:bg-[#C9A66B]/90 mt-4" disabled={addPostMutation.isPending}>
-                  {addPostMutation.isPending ? "Saving..." : "Save Post"}
+            
+            <Button variant="outline" onClick={handleExportCSV} className="border-[#C9A66B]/50 hover:bg-[#C9A66B]/10">
+              <Download className="h-4 w-4 mr-2" /> Export
+            </Button>
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-[#1f2937] hover:bg-[#1f2937]/90 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200">
+                  <Plus className="h-4 w-4 mr-2" /> Create Post
                 </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Create New Post</DialogTitle>
+                  <DialogDescription>Draft or schedule a social media post across platforms.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreate} className="space-y-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Platform</Label>
+                      <Select value={newPost.platform} onValueChange={(v) => setNewPost({...newPost, platform: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="linkedin">LinkedIn</SelectItem>
+                          <SelectItem value="twitter">Twitter / X</SelectItem>
+                          <SelectItem value="instagram">Instagram</SelectItem>
+                          <SelectItem value="facebook">Facebook</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select value={newPost.status} onValueChange={(v) => setNewPost({...newPost, status: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="scheduled">Scheduled</SelectItem>
+                          <SelectItem value="published">Published</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Content</Label>
+                    <Textarea 
+                      required 
+                      value={newPost.content} 
+                      onChange={e => setNewPost({...newPost, content: e.target.value})} 
+                      placeholder="What do you want to share?"
+                      className="min-h-[120px] resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date & Time</Label>
+                    <Input 
+                      type="datetime-local" 
+                      required 
+                      value={newPost.scheduled_date} 
+                      onChange={e => setNewPost({...newPost, scheduled_date: e.target.value})} 
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" className="w-full bg-[#C9A66B] hover:bg-[#C9A66B]/90 mt-4" disabled={addPostMutation.isPending}>
+                      {addPostMutation.isPending ? "Saving..." : "Save Post"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -228,6 +354,10 @@ const SocialMediaHub = () => {
         </Card>
       </div>
 
+      <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
+        Need to bulk import? <Button variant="link" className="p-0 h-auto text-blue-500" onClick={downloadTemplate}>Download Calendar Template CSV</Button>
+      </div>
+
       <Card className="shadow-sm border-[#C9A66B]/20 flex-1">
         <CardHeader className="pb-4 border-b border-border/50">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
@@ -264,7 +394,7 @@ const SocialMediaHub = () => {
                   
                   <div className="flex-1 space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                       <div className="flex items-center gap-4">
+                       <div className="flex items-center gap-4 flex-wrap">
                         <div className="flex items-center gap-3">
                           <span className="font-semibold capitalize">{post.platform}</span>
                           <span className="text-muted-foreground text-sm flex items-center">
@@ -285,8 +415,10 @@ const SocialMediaHub = () => {
                           {post.status.toLowerCase() === 'draft' && <Megaphone className="h-3 w-3 mr-1" />}
                           {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
                         </Badge>
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">By {post.created_by}</span>
                        </div>
                        
+                       {canEdit && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button 
@@ -311,6 +443,7 @@ const SocialMediaHub = () => {
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+                       )}
                     </div>
                     
                     <div className="bg-muted/50 p-4 rounded-lg border border-border/50 text-sm flex items-start gap-4 shadow-sm">
@@ -343,5 +476,9 @@ const SocialMediaHub = () => {
     </div>
   );
 };
+
+// Simple Lucide icons missing from imports to satisfy compiler
+const Target = (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
+const TrendingUp = (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
 
 export default SocialMediaHub;

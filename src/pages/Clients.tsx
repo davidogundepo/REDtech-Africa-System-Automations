@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,9 +22,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Users, Mail, Phone, Building2, Trash2, Edit, AlertTriangle } from "lucide-react";
+import { Plus, Search, Users, Mail, Phone, Building2, Trash2, Edit, User, Calendar, Activity, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
+import { format } from "date-fns";
 
 interface Client {
   id: string;
@@ -34,11 +37,19 @@ interface Client {
   industry: string | null;
   source: string | null;
   notes: string | null;
+  deal_status: string;
+  assigned_to: string | null;
+  last_contact_date: string | null;
   created_at: string;
 }
 
+interface Profile {
+  id: string;
+  full_name: string;
+}
+
 const emptyClient = {
-  name: "", company: "", email: "", phone: "", address: "", industry: "", source: "direct", notes: "",
+  name: "", company: "", email: "", phone: "", address: "", industry: "", source: "direct", notes: "", deal_status: "lead", assigned_to: "",
 };
 
 const industries = [
@@ -55,8 +66,28 @@ const sources = [
   { value: "other", label: "Other" },
 ];
 
+const dealStatuses = [
+  { value: "lead", label: "Lead (New)" },
+  { value: "contacted", label: "Contacted" },
+  { value: "proposal", label: "Proposal Sent" },
+  { value: "negotiation", label: "In Negotiation" },
+  { value: "won", label: "Closed Won" },
+  { value: "lost", label: "Closed Lost" },
+];
+
+const statusColors: Record<string, string> = {
+  lead: "bg-slate-100 text-slate-800",
+  contacted: "bg-blue-100 text-blue-800",
+  proposal: "bg-yellow-100 text-yellow-800",
+  negotiation: "bg-orange-100 text-orange-800",
+  won: "bg-green-100 text-green-800",
+  lost: "bg-red-100 text-red-800",
+};
+
 const Clients = () => {
+  const { profile, canEdit } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [formData, setFormData] = useState(emptyClient);
@@ -70,12 +101,20 @@ const Clients = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchClients(); }, []);
+  const fetchProfiles = async () => {
+    const { data } = await supabase.from("profiles").select("id, full_name").eq("is_active", true);
+    setProfiles(data || []);
+  };
+
+  useEffect(() => { fetchClients(); fetchProfiles(); }, []);
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) { toast.error("Client name is required"); return; }
     
-    const payload = {
+    // Auto-update last_contact_date if moving out of 'lead' status
+    const isNewContact = formData.deal_status !== 'lead' && (!editingId || clients.find(c => c.id === editingId)?.deal_status === 'lead');
+
+    const payload: any = {
       name: formData.name,
       company: formData.company || null,
       email: formData.email || null,
@@ -84,6 +123,9 @@ const Clients = () => {
       industry: formData.industry || null,
       source: formData.source || null,
       notes: formData.notes || null,
+      deal_status: formData.deal_status,
+      assigned_to: formData.assigned_to || null,
+      ...(isNewContact && { last_contact_date: new Date().toISOString() })
     };
 
     if (editingId) {
@@ -93,29 +135,41 @@ const Clients = () => {
     } else {
       const { error } = await supabase.from("clients").insert(payload);
       if (error) { toast.error("Failed to add client"); return; }
-      toast.success("Client added to directory");
+      toast.success("Client added to Deal Book");
 
-      // Send Email Notification for new clients
-      sendNotificationEmail({
-        to: formData.email || 'management@redtechafrica.com',
-        subject: `New Client Onboarded: ${formData.name}`,
-        html: `
-          <h2>A new client profile has been created in the directory</h2>
-          <p><strong>Name:</strong> ${formData.name}</p>
-          <p><strong>Company:</strong> ${formData.company || 'N/A'}</p>
-          <p><strong>Industry:</strong> ${formData.industry || 'N/A'}</p>
-          <p><strong>Email:</strong> ${formData.email || 'N/A'}</p>
-          <p><strong>Phone:</strong> ${formData.phone || 'N/A'}</p>
-          <p><strong>Source:</strong> ${formData.source}</p>
-          <br/>
-          <p>Log in to the REDtech Dashboard to manage this client relationship.</p>
-        `
-      });
+      // Notify Assignee if different from creator
+      if (formData.assigned_to && formData.assigned_to !== profile?.id) {
+        const assignedProfile = profiles.find(p => p.id === formData.assigned_to);
+        if (assignedProfile) {
+          sendNotificationEmail({
+            to: "management@redtechafrica.com", // System default for now since we don't have their email in Profile type here easily without a join
+            subject: `New Lead Assigned to You: ${formData.name}`,
+            html: `
+              <h2>A new lead has been assigned to you</h2>
+              <p><strong>Name:</strong> ${formData.name} (${formData.company || 'N/A'})</p>
+              <p><strong>Status:</strong> ${dealStatuses.find(s => s.value === formData.deal_status)?.label}</p>
+              <br/>
+              <p>Log in to the REDtech Dashboard to manage this pipeline.</p>
+            `
+          });
+        }
+      }
     }
     
     setFormData(emptyClient);
     setEditingId(null);
     setDialogOpen(false);
+    fetchClients();
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    const payload: any = { deal_status: newStatus };
+    if (newStatus !== 'lead') {
+      payload.last_contact_date = new Date().toISOString();
+    }
+    const { error } = await supabase.from("clients").update(payload).eq("id", id);
+    if (error) { toast.error("Failed to update status"); return; }
+    toast.success("Deal status updated");
     fetchClients();
   };
 
@@ -129,6 +183,8 @@ const Clients = () => {
       industry: client.industry || "",
       source: client.source || "direct",
       notes: client.notes || "",
+      deal_status: client.deal_status || "lead",
+      assigned_to: client.assigned_to || "",
     });
     setEditingId(client.id);
     setDialogOpen(true);
@@ -141,141 +197,263 @@ const Clients = () => {
     fetchClients();
   };
 
-  const filtered = clients.filter((c) =>
-    [c.name, c.company, c.email, c.industry].some((f) => f?.toLowerCase().includes(search.toLowerCase()))
+  const updateLastContact = async (id: string) => {
+    const { error } = await supabase.from("clients").update({ last_contact_date: new Date().toISOString() }).eq("id", id);
+    if (error) { toast.error("Failed to log activity"); return; }
+    toast.success("Activity logged");
+    fetchClients();
+  };
+
+  const filtered = clients.filter(c => 
+    [c.name, c.company, c.email, c.industry].some(f => f?.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const pipelineValue = {
+    total: clients.length,
+    won: clients.filter(c => c.deal_status === 'won').length,
+    active: clients.filter(c => !['won', 'lost'].includes(c.deal_status)).length,
+  };
+
   return (
-    <div className="flex-1 min-h-screen bg-background">
-      <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold" style={{ color: '#C9A66B' }}>Client Directory</h1>
-              <p className="text-sm text-muted-foreground">{clients.length} clients in directory</p>
-            </div>
-            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setFormData(emptyClient); setEditingId(null); } }}>
-              <DialogTrigger asChild>
-                <Button style={{ backgroundColor: '#C9A66B' }} className="text-white hover:opacity-90">
-                  <Plus className="h-4 w-4 mr-2" /> Add Client
+    <div className="flex-1 w-full flex flex-col min-h-screen bg-background border-l p-8 overflow-y-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Deal Book CRM</h1>
+          <p className="text-muted-foreground mt-2">Manage client relationships and sales pipeline</p>
+        </div>
+        {canEdit && (
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setFormData(emptyClient); setEditingId(null); } }}>
+            <DialogTrigger asChild>
+              <Button style={{ backgroundColor: '#C9A66B' }} className="text-white hover:opacity-90">
+                <Plus className="h-4 w-4 mr-2" /> New Contact
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>{editingId ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
+                <DialogDescription>Enter client details and pipeline information.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Contact Name *</Label>
+                    <Input required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Full name" />
+                  </div>
+                  <div>
+                    <Label>Company</Label>
+                    <Input value={formData.company} onChange={(e) => setFormData({...formData, company: e.target.value})} placeholder="Company name" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Email</Label>
+                    <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="email@example.com" />
+                  </div>
+                  <div>
+                    <Label>Phone</Label>
+                    <Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="+234..." />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Assigned To</Label>
+                    <Select value={formData.assigned_to} onValueChange={(v) => setFormData({...formData, assigned_to: v})}>
+                      <SelectTrigger><SelectValue placeholder="Select team member" /></SelectTrigger>
+                      <SelectContent>
+                        {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Deal Status</Label>
+                    <Select value={formData.deal_status} onValueChange={(v) => setFormData({...formData, deal_status: v})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {dealStatuses.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Industry</Label>
+                    <Select value={formData.industry} onValueChange={(v) => setFormData({...formData, industry: v})}>
+                      <SelectTrigger><SelectValue placeholder="Select industry" /></SelectTrigger>
+                      <SelectContent>
+                        {industries.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Lead Source</Label>
+                    <Select value={formData.source} onValueChange={(v) => setFormData({...formData, source: v})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {sources.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Address</Label>
+                  <Input value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} placeholder="Physical location" />
+                </div>
+
+                <div>
+                  <Label>Notes & Requirements</Label>
+                  <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Key background info, pain points, etc." rows={3} />
+                </div>
+
+                <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
+                  {editingId ? "Update Contact" : "Save to Deal Book"}
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{editingId ? "Edit Client" : "New Client Intake"}</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><Label>Client Name *</Label><Input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Full name" /></div>
-                    <div><Label>Company</Label><Input value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} placeholder="Company name" /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><Label>Email</Label><Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="email@example.com" /></div>
-                    <div><Label>Phone</Label><Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+234..." /></div>
-                  </div>
-                  <div><Label>Address</Label><Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Full address" /></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Industry</Label>
-                      <Select value={formData.industry} onValueChange={(v) => setFormData({ ...formData, industry: v })}>
-                        <SelectTrigger><SelectValue placeholder="Select industry" /></SelectTrigger>
-                        <SelectContent>{industries.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Source</Label>
-                      <Select value={formData.source} onValueChange={(v) => setFormData({ ...formData, source: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{sources.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div><Label>Notes</Label><Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Additional notes..." rows={3} /></div>
-                  <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
-                    {editingId ? "Update Client" : "Add to Directory"}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-      </header>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-md mb-6 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" /> 
-          <div className="text-sm">
-            <strong className="block mb-1">Demo Environment:</strong> 
-            This module contains mock data for testing purposes. You can safely add, edit, or delete these records, and all changes will reflect in real-time as you input your rightful information.
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 mb-6">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search clients by name, company, email, or industry..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-md" />
-        </div>
-
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Industry</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
-                ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No clients found. Add your first client above.</TableCell></TableRow>
-                ) : (
-                  filtered.map((client) => (
-                    <TableRow key={client.id}>
-                      <TableCell className="font-medium">{client.name}</TableCell>
-                      <TableCell>{client.company || "—"}</TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {client.email && <div className="flex items-center gap-1 text-xs"><Mail className="h-3 w-3" />{client.email}</div>}
-                          {client.phone && <div className="flex items-center gap-1 text-xs"><Phone className="h-3 w-3" />{client.phone}</div>}
-                        </div>
-                      </TableCell>
-                      <TableCell>{client.industry ? <Badge variant="secondary">{client.industry}</Badge> : "—"}</TableCell>
-                      <TableCell><Badge variant="outline">{client.source || "direct"}</Badge></TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(client)}><Edit className="h-3.5 w-3.5" /></Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Client?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently remove the client and their data from the directory.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(client.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div><p className="text-sm text-muted-foreground">Total Contacts</p><p className="text-2xl font-bold">{pipelineValue.total}</p></div>
+            <Users className="h-8 w-8 text-blue-500/20" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div><p className="text-sm text-muted-foreground">Active Deals</p><p className="text-2xl font-bold">{pipelineValue.active}</p></div>
+            <Activity className="h-8 w-8 text-orange-500/20" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div><p className="text-sm text-muted-foreground">Closed Won</p><p className="text-2xl font-bold">{pipelineValue.won}</p></div>
+            <Briefcase className="h-8 w-8 text-green-500/20" />
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle>Directory</CardTitle>
+          <div className="relative w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input type="search" placeholder="Search accounts..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+             <p className="text-center py-8 text-muted-foreground">Loading pipeline...</p>
+          ) : filtered.length === 0 ? (
+             <p className="text-center py-8 text-muted-foreground">No accounts found.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Contact Info</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Assigned To</TableHead>
+                  <TableHead>Last Contact</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((client) => {
+                  const assignee = profiles.find(p => p.id === client.assigned_to)?.full_name || "Unassigned";
+                  return (
+                    <TableRow key={client.id}>
+                      <TableCell>
+                        <div className="font-medium flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          {client.company || "Independent"}
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1">{client.name}</div>
+                        {client.industry && <Badge variant="outline" className="mt-1 text-xs">{client.industry}</Badge>}
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1 text-sm">
+                          {client.email && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Mail className="h-3 w-3" /> <a href={`mailto:${client.email}`} className="hover:text-primary">{client.email}</a>
+                            </div>
+                          )}
+                          {client.phone && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Phone className="h-3 w-3" /> <a href={`tel:${client.phone}`} className="hover:text-primary">{client.phone}</a>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Select disabled={!canEdit} value={client.deal_status} onValueChange={(v) => handleStatusChange(client.id, v)}>
+                          <SelectTrigger className={`w-[140px] h-8 text-xs font-semibold ${statusColors[client.deal_status] || 'bg-gray-100'} border-0`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {dealStatuses.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          {assignee}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {client.last_contact_date ? (
+                          <div className="text-sm">
+                            {format(new Date(client.last_contact_date), 'MMM d, yyyy')}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Never</span>
+                        )}
+                        {canEdit && (
+                          <Button variant="ghost" size="sm" className="h-6 px-2 mt-1 text-xs font-normal" onClick={() => updateLastContact(client.id)}>
+                            <Calendar className="h-3 w-3 mr-1" /> Log Activity
+                          </Button>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {canEdit && (
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(client)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive hover:text-red-600">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Account?</AlertDialogTitle>
+                                  <AlertDialogDescription>This will permanently delete this client and all associated notes.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(client.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
