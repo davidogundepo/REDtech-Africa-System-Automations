@@ -89,7 +89,15 @@ const Auth = () => {
     setLoading(true);
     const { error } = await signUp(signupEmail, signupPassword, signupName);
     if (error) {
-      toast.error(error);
+      // Smart detection: if user already exists, guide them to login
+      const isExisting = error.toLowerCase().includes("already") || error.toLowerCase().includes("registered") || error.toLowerCase().includes("exists");
+      if (isExisting) {
+        toast.info("Welcome back! 👋 This email is already registered. Switching you to the login page.", { duration: 5000 });
+        setTab("login");
+        setLoginEmail(signupEmail);
+      } else {
+        toast.error(error);
+      }
       setLoading(false);
     } else {
       // Send Welcome Email
@@ -148,9 +156,9 @@ const Auth = () => {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Password updated successfully!");
+      toast.success("Password updated successfully! Welcome back 🎉");
       setIsRecoveryFlow(false);
-      setTab("login");
+      // Auto-navigate to dashboard — user is already authenticated via recovery session
       navigate("/", { replace: true });
     }
     setLoading(false);
