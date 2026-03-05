@@ -13,7 +13,7 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
       : waybillData.deliveryMethod;
 
     const logoSrc = waybillData.companyLogo || defaultLogo;
-    const accent = waybillData.accentColor || '#C9A66B';
+    const accent = waybillData.accentColor || '#bc7e57';
 
     return (
       <div 

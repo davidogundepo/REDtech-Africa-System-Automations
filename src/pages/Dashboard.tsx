@@ -108,7 +108,7 @@ const Dashboard = () => {
     <div className="flex-1 min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-6">
-          <h1 className="text-2xl font-bold" style={{ color: '#C9A66B' }}>
+          <h1 className="text-2xl font-bold" style={{ color: '#bc7e57' }}>
             System Automations
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -134,11 +134,11 @@ const Dashboard = () => {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {liveModules.map((mod) => (
               <NavLink key={mod.path} to={mod.path} className="group">
-                <Card className="h-full transition-all hover:shadow-lg hover:border-[#C9A66B]/50 cursor-pointer">
+                <Card className="h-full transition-all hover:shadow-lg hover:border-[#bc7e57]/50 cursor-pointer">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <div className="p-2 rounded-lg" style={{ backgroundColor: '#C9A66B20' }}>
-                        <mod.icon className="h-5 w-5" style={{ color: '#C9A66B' }} />
+                      <div className="p-2 rounded-lg" style={{ backgroundColor: '#bc7e5720' }}>
+                        <mod.icon className="h-5 w-5" style={{ color: '#bc7e57' }} />
                       </div>
                       <Badge variant="secondary" className="text-xs">{mod.department}</Badge>
                     </div>
@@ -147,7 +147,7 @@ const Dashboard = () => {
                   <CardContent>
                     <p className="text-sm text-muted-foreground mb-3">{mod.description}</p>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium" style={{ color: '#C9A66B' }}>{mod.benefit}</span>
+                      <span className="text-xs font-medium" style={{ color: '#bc7e57' }}>{mod.benefit}</span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                     </div>
                   </CardContent>
@@ -165,8 +165,8 @@ function StatCard({ icon: Icon, label, value }: { icon: React.ElementType; label
   return (
     <Card>
       <CardContent className="p-4 flex items-center gap-3">
-        <div className="p-2 rounded-lg" style={{ backgroundColor: '#C9A66B20' }}>
-          <Icon className="h-4 w-4" style={{ color: '#C9A66B' }} />
+        <div className="p-2 rounded-lg" style={{ backgroundColor: '#bc7e5720' }}>
+          <Icon className="h-4 w-4" style={{ color: '#bc7e57' }} />
         </div>
         <div>
           <p className="text-2xl font-bold">{value}</p>

@@ -234,7 +234,7 @@ const Tasks = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: '#C9A66B' }}>Task Tracker</h1>
+              <h1 className="text-2xl font-bold" style={{ color: '#bc7e57' }}>Task Tracker</h1>
               <p className="text-sm text-muted-foreground">{filtered.length} tasks{showMyTasks ? " (My Tasks)" : ""}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -242,7 +242,7 @@ const Tasks = () => {
                 variant={showMyTasks ? "default" : "outline"} 
                 size="sm" 
                 onClick={() => setShowMyTasks(!showMyTasks)}
-                style={showMyTasks ? { backgroundColor: '#C9A66B' } : {}}
+                style={showMyTasks ? { backgroundColor: '#bc7e57' } : {}}
                 className={showMyTasks ? "text-white" : ""}
               >
                 <Filter className="h-4 w-4 mr-1" /> My Tasks
@@ -250,7 +250,7 @@ const Tasks = () => {
               {canEdit && (
                 <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setFormData(emptyTask); setEditingId(null); } }}>
                   <DialogTrigger asChild>
-                    <Button style={{ backgroundColor: '#C9A66B' }} className="text-white hover:opacity-90">
+                    <Button style={{ backgroundColor: '#bc7e57' }} className="text-white hover:opacity-90">
                       <Plus className="h-4 w-4 mr-2" /> New Task
                     </Button>
                   </DialogTrigger>
@@ -302,7 +302,7 @@ const Tasks = () => {
                           <Textarea value={formData.blocker_note} onChange={(e) => setFormData({ ...formData, blocker_note: e.target.value })} placeholder="Add context, blockers, or dependencies..." rows={2} />
                         </div>
                       )}
-                      <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
+                      <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }}>
                         {editingId ? "Update Task" : "Create Task"}
                       </Button>
                     </form>
@@ -324,7 +324,7 @@ const Tasks = () => {
           <div className="flex gap-2 flex-wrap">
             {(["all", ...statuses] as const).map((s) => (
               <Button key={s} variant={filterStatus === s ? "default" : "outline"} size="sm" onClick={() => setFilterStatus(s)}
-                style={filterStatus === s ? { backgroundColor: '#C9A66B' } : {}} className={filterStatus === s ? "text-white" : ""}>
+                style={filterStatus === s ? { backgroundColor: '#bc7e57' } : {}} className={filterStatus === s ? "text-white" : ""}>
                 <span className="capitalize">{s}</span>
                 <Badge variant="secondary" className="ml-1 text-xs">{counts[s as keyof typeof counts]}</Badge>
               </Button>
@@ -440,7 +440,7 @@ const Tasks = () => {
                   placeholder="Add a progress update, blocker, or dependency note..."
                   rows={2}
                 />
-                <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }} disabled={!newBlockerNote.trim()}>
+                <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }} disabled={!newBlockerNote.trim()}>
                   Add Note
                 </Button>
               </form>

@@ -26,11 +26,11 @@ const formatCurrency = (amount: number) => {
 };
 
 const StatCard = ({ title, value, change, isPositive, icon: Icon }: any) => (
-  <Card className="hover:shadow-md transition-all border-[#C9A66B]/20">
+  <Card className="hover:shadow-md transition-all border-[#bc7e57]/20">
     <CardHeader className="flex flex-row items-center justify-between pb-2">
       <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-      <div className="p-2 bg-[#C9A66B]/10 rounded-full">
-        <Icon className="h-4 w-4 text-[#C9A66B]" />
+      <div className="p-2 bg-[#bc7e57]/10 rounded-full">
+        <Icon className="h-4 w-4 text-[#bc7e57]" />
       </div>
     </CardHeader>
     <CardContent>
@@ -60,7 +60,7 @@ const FinanceDashboard = () => {
   const expensesFill = theme === "dark" ? "#9ca3af" : "#1f2937";
   const tooltipBg = theme === "dark" ? "#1f2937" : "#ffffff";
   const tooltipBorder = theme === "dark" ? "#374151" : "#e5e7eb";
-  const pieColors = ["#C9A66B", expensesFill, theme === "dark" ? "#4b5563" : "#f3f4f6", "#9ca3af", "#d1d5db", "#ef4444"];
+  const pieColors = ["#bc7e57", expensesFill, theme === "dark" ? "#4b5563" : "#f3f4f6", "#9ca3af", "#d1d5db", "#ef4444"];
 
   // 1. Fetch Active Transactions
   const { data: transactions, isLoading: loadingTx } = useQuery({
@@ -332,12 +332,12 @@ const FinanceDashboard = () => {
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Financial Performance</h1>
+          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Financial Performance</h1>
           <p className="text-muted-foreground mt-2">Real-time revenue, expense tracking, and approvals</p>
         </div>
         <div className="flex items-center gap-3">
           <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[140px] focus:ring-[#C9A66B]">
+            <SelectTrigger className="w-[140px] focus:ring-[#bc7e57]">
               <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Date Range" />
             </SelectTrigger>
@@ -361,14 +361,14 @@ const FinanceDashboard = () => {
                 onChange={handleImportCSV} 
               />
               <Label htmlFor="csv-upload" className="cursor-pointer">
-                <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 border-[#C9A66B]/50 hover:bg-[#C9A66B]/10">
+                <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 border-[#bc7e57]/50 hover:bg-[#bc7e57]/10">
                   <ArrowUpRight className="h-4 w-4 mr-2" /> Import CSV
                 </div>
               </Label>
             </div>
           )}
 
-          <Button variant="outline" className="border-[#C9A66B]/50 hover:bg-[#C9A66B]/10 disabled:opacity-50" onClick={handleExportCSV} disabled={!transactions?.length}>
+          <Button variant="outline" className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 disabled:opacity-50" onClick={handleExportCSV} disabled={!transactions?.length}>
             <Download className="h-4 w-4 mr-2" /> Export CSV
           </Button>
           
@@ -398,7 +398,7 @@ const FinanceDashboard = () => {
           {(isAdmin || isSuperAdmin) && (
             <Dialog open={isTxDialogOpen} onOpenChange={setIsTxDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-[#C9A66B] hover:bg-[#C9A66B]/90">
+                <Button className="bg-[#bc7e57] hover:bg-[#bc7e57]/90">
                   <Plus className="h-4 w-4 mr-2" /> Add Transaction
                 </Button>
               </DialogTrigger>
@@ -424,7 +424,7 @@ const FinanceDashboard = () => {
                     <div><Label>Category *</Label><Input required value={newTx.category} onChange={(e) => setNewTx({...newTx, category: e.target.value})} placeholder="e.g., Retainer, AWS, Payroll" /></div>
                   </div>
                   <div><Label>Description</Label><Input value={newTx.description} onChange={(e) => setNewTx({...newTx, description: e.target.value})} placeholder="Notes..." /></div>
-                  <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }} disabled={addTxMutation.isPending}>Save Transaction</Button>
+                  <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }} disabled={addTxMutation.isPending}>Save Transaction</Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -440,7 +440,7 @@ const FinanceDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="col-span-1 lg:col-span-2 shadow-sm border-[#C9A66B]/20">
+        <Card className="col-span-1 lg:col-span-2 shadow-sm border-[#bc7e57]/20">
           <CardHeader>
             <CardTitle>Cash Flow Overview</CardTitle>
             <CardDescription>Revenue vs Expenses over time</CardDescription>
@@ -454,7 +454,7 @@ const FinanceDashboard = () => {
                   <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₦${val/1000}k`} tick={{ fontSize: 12, fill: textFill }} />
                   <Tooltip cursor={{ fill: 'rgba(201, 166, 107, 0.1)' }} contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '8px' }} formatter={(val: number) => formatCurrency(val)} />
                   <Legend iconType="circle" />
-                  <Bar dataKey="revenue" name="Revenue" fill="#C9A66B" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="revenue" name="Revenue" fill="#bc7e57" radius={[4, 4, 0, 0]} maxBarSize={40} />
                   <Bar dataKey="expense" name="Expenses" fill={expensesFill} radius={[4, 4, 0, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
@@ -464,7 +464,7 @@ const FinanceDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-[#C9A66B]/20">
+        <Card className="shadow-sm border-[#bc7e57]/20">
           <CardHeader>
             <CardTitle>Expense Breakdown</CardTitle>
             <CardDescription>By Category</CardDescription>
@@ -679,7 +679,7 @@ const FinanceDashboard = () => {
                 </div>
                 <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="border-[#C9A66B] text-[#C9A66B] hover:bg-[#C9A66B]/10">
+                    <Button variant="outline" className="border-[#bc7e57] text-[#bc7e57] hover:bg-[#bc7e57]/10">
                       <Plus className="h-4 w-4 mr-2" /> Set Budget
                     </Button>
                   </DialogTrigger>
@@ -721,7 +721,7 @@ const FinanceDashboard = () => {
                         <Label>Budgeted Amount (NGN)</Label>
                         <Input type="number" required min="0" step="1000" value={newBudget.budgeted_amount} onChange={(e) => setNewBudget({...newBudget, budgeted_amount: e.target.value})} />
                       </div>
-                      <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }} disabled={addBudgetMutation.isPending}>Save Budget</Button>
+                      <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }} disabled={addBudgetMutation.isPending}>Save Budget</Button>
                     </form>
                   </DialogContent>
                 </Dialog>

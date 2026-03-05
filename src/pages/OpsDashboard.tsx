@@ -30,11 +30,11 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianG
 import { useTheme } from "@/components/ThemeProvider";
 
 const StatCard = ({ title, value, change, isPositive, icon: Icon, subtitle }: any) => (
-  <Card className="hover:shadow-md transition-all border-[#C9A66B]/20">
+  <Card className="hover:shadow-md transition-all border-[#bc7e57]/20">
     <CardHeader className="flex flex-row items-center justify-between pb-2">
       <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-      <div className="p-2 bg-[#C9A66B]/10 rounded-full">
-        <Icon className="h-4 w-4 text-[#C9A66B]" />
+      <div className="p-2 bg-[#bc7e57]/10 rounded-full">
+        <Icon className="h-4 w-4 text-[#bc7e57]" />
       </div>
     </CardHeader>
     <CardContent>
@@ -141,7 +141,7 @@ const OperationsDashboard = () => {
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex justify-between items-end mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Operations Dashboard</h1>
+          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Operations Dashboard</h1>
           <p className="text-muted-foreground mt-2">Real-time overview of deliveries, tasks, and team performance</p>
         </div>
 
@@ -174,7 +174,7 @@ const OperationsDashboard = () => {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" className="w-full bg-[#C9A66B] hover:bg-[#C9A66B]/90 mt-4" disabled={addMetricMutation.isPending}>
+                <Button type="submit" className="w-full bg-[#bc7e57] hover:bg-[#bc7e57]/90 mt-4" disabled={addMetricMutation.isPending}>
                   {addMetricMutation.isPending ? "Logging..." : "Save Metrics"}
                 </Button>
               </DialogFooter>
@@ -191,7 +191,7 @@ const OperationsDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="lg:col-span-2 shadow-sm border-[#C9A66B]/20">
+        <Card className="lg:col-span-2 shadow-sm border-[#bc7e57]/20">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
@@ -210,8 +210,8 @@ const OperationsDashboard = () => {
                 <AreaChart data={performanceData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorDeliveries" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#C9A66B" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#C9A66B" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/>
                     </linearGradient>
                     <linearGradient id="colorIssues" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
@@ -224,7 +224,7 @@ const OperationsDashboard = () => {
                   <Tooltip 
                     contentStyle={{backgroundColor: tooltipBg, color: textFill, borderRadius: '8px', border: `1px solid ${tooltipBorder}`}}
                   />
-                  <Area type="monotone" dataKey="deliveries" stroke="#C9A66B" fillOpacity={1} fill="url(#colorDeliveries)" name="Deliveries" />
+                  <Area type="monotone" dataKey="deliveries" stroke="#bc7e57" fillOpacity={1} fill="url(#colorDeliveries)" name="Deliveries" />
                   <Area type="monotone" dataKey="issues" stroke="#ef4444" fillOpacity={1} fill="url(#colorIssues)" name="Issues" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -234,7 +234,7 @@ const OperationsDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-[#C9A66B]/20">
+        <Card className="shadow-sm border-[#bc7e57]/20">
           <CardHeader>
             <CardTitle>Team Efficiency</CardTitle>
             <CardDescription>Average performance by group</CardDescription>
@@ -255,14 +255,14 @@ const OperationsDashboard = () => {
                     <Bar dataKey="efficiency" fill={barFill} radius={[0, 4, 4, 0]} barSize={20}>
                       {
                         efficiencyData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={entry.efficiency > 90 ? '#C9A66B' : barFill} />
+                          <Cell key={`cell-${index}`} fill={entry.efficiency > 90 ? '#bc7e57' : barFill} />
                         ))
                       }
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
                 <div className="mt-4 text-center text-sm text-muted-foreground">
-                  Groups with <span className="font-semibold text-[#C9A66B]">gold</span> bars exceed the 90% SLA target.
+                  Groups with <span className="font-semibold text-[#bc7e57]">gold</span> bars exceed the 90% SLA target.
                 </div>
               </>
             ) : (
@@ -273,7 +273,7 @@ const OperationsDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="shadow-sm border-[#C9A66B]/20 overflow-hidden flex flex-col h-[400px]">
+        <Card className="shadow-sm border-[#bc7e57]/20 overflow-hidden flex flex-col h-[400px]">
           <CardHeader className="pb-2">
              <CardTitle className="text-lg">Raw Metrics Data</CardTitle>
             <CardDescription>Recently logged operations records</CardDescription>
@@ -327,7 +327,7 @@ const OperationsDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-[#C9A66B]/20 h-[400px] flex flex-col">
+        <Card className="shadow-sm border-[#bc7e57]/20 h-[400px] flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Active Projects</CardTitle>
             <CardDescription>Ongoing strategic initiatives</CardDescription>
@@ -346,7 +346,7 @@ const OperationsDashboard = () => {
                     <span className="text-muted-foreground">{project.progress}%</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <Progress value={project.progress} className="h-2 flex-1 [&>div]:bg-[#C9A66B]" />
+                    <Progress value={project.progress} className="h-2 flex-1 [&>div]:bg-[#bc7e57]" />
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${project.status === 'On Track' ? 'bg-green-100 text-green-700' : project.status === 'Delayed' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
                       {project.status}
                     </span>

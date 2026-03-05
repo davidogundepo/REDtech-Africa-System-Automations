@@ -142,7 +142,7 @@ export const InvoiceForm = ({ invoiceData, setInvoiceData }: InvoiceFormProps) =
                 <Input
                   value={invoiceData.accentColor}
                   onChange={(e) => updateField('accentColor', e.target.value)}
-                  placeholder="#C9A66B"
+                  placeholder="#bc7e57"
                   className="flex-1"
                 />
               </div>

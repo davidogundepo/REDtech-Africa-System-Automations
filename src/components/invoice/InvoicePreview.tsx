@@ -27,7 +27,7 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
     const vatAmount = invoiceData.vatEnabled ? subtotal * (invoiceData.vatRate / 100) : 0;
     const total = subtotal + vatAmount;
     const logoSrc = invoiceData.companyLogo || defaultLogo;
-    const accent = invoiceData.accentColor || '#C9A66B';
+    const accent = invoiceData.accentColor || '#bc7e57';
 
     return (
       <div 

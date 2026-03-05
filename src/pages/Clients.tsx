@@ -221,7 +221,7 @@ const Clients = () => {
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background border-l p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Deal Book CRM</h1>
+          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Deal Book CRM</h1>
           <p className="text-muted-foreground mt-2">Manage client relationships and sales pipeline</p>
         </div>
         {canEdit && (
@@ -230,14 +230,14 @@ const Clients = () => {
               variant={showMyClients ? "default" : "outline"} 
               size="sm" 
               onClick={() => setShowMyClients(!showMyClients)}
-              style={showMyClients ? { backgroundColor: '#C9A66B' } : {}}
+              style={showMyClients ? { backgroundColor: '#bc7e57' } : {}}
               className={showMyClients ? "text-white" : ""}
             >
               <User className="h-4 w-4 mr-1" /> My Clients
             </Button>
             <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setFormData(emptyClient); setEditingId(null); } }}>
               <DialogTrigger asChild>
-                <Button style={{ backgroundColor: '#C9A66B' }} className="text-white hover:opacity-90">
+                <Button style={{ backgroundColor: '#bc7e57' }} className="text-white hover:opacity-90">
                   <Plus className="h-4 w-4 mr-2" /> New Contact
                 </Button>
               </DialogTrigger>
@@ -321,7 +321,7 @@ const Clients = () => {
                   <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Key background info, pain points, etc." rows={3} />
                 </div>
 
-                <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
+                <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }}>
                   {editingId ? "Update Contact" : "Save to Deal Book"}
                 </Button>
               </form>

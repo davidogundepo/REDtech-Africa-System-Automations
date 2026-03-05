@@ -188,7 +188,7 @@ const UserManagement = () => {
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>User Management</h1>
+          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>User Management</h1>
           <p className="text-muted-foreground mt-2">Manage team members, roles, and department assignments</p>
         </div>
         <div className="flex items-center gap-4">
@@ -227,7 +227,7 @@ const UserManagement = () => {
           {/* Admin Broadcast Button */}
           <Dialog open={broadcastDialogOpen} onOpenChange={setBroadcastDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#C9A66B] hover:bg-[#a88a56] text-white">
+              <Button className="bg-[#bc7e57] hover:bg-[#a88a56] text-white">
                 <Bell className="h-4 w-4 mr-2" /> Admin Broadcast
               </Button>
             </DialogTrigger>
@@ -285,7 +285,7 @@ const UserManagement = () => {
                     broadcastMutation.mutate();
                   }} 
                   disabled={!broadcastTitle || !broadcastMessage || broadcastMutation.isPending}
-                  className="w-full bg-[#C9A66B] hover:bg-[#a88a56] text-white"
+                  className="w-full bg-[#bc7e57] hover:bg-[#a88a56] text-white"
                 >
                   {broadcastMutation.isPending ? "Sending..." : "Send Broadcast"}
                 </Button>
@@ -429,7 +429,7 @@ const UserManagement = () => {
             <Button
               onClick={handleSaveEdit}
               className="w-full"
-              style={{ backgroundColor: '#C9A66B' }}
+              style={{ backgroundColor: '#bc7e57' }}
               disabled={updateUserMutation.isPending}
             >
               {updateUserMutation.isPending ? "Saving..." : "Save Changes"}

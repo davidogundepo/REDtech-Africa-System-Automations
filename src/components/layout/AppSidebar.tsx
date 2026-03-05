@@ -95,7 +95,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-3">
           <img src={companyLogo} alt="REDtech Africa" className="h-8 w-auto" />
           <div>
-            <h2 className="font-bold text-sm" style={{ color: '#C9A66B' }}>REDtech Africa</h2>
+            <h2 className="font-bold text-sm" style={{ color: '#bc7e57' }}>REDtech Africa</h2>
             <p className="text-xs text-muted-foreground">RAC System Automations</p>
           </div>
         </div>
@@ -111,7 +111,7 @@ export function AppSidebar() {
         {/* Current User Info */}
         {profile && (
           <div className="flex items-center gap-2 px-1">
-            <div className="h-8 w-8 rounded-full bg-[#C9A66B]/20 flex items-center justify-center text-xs font-bold" style={{ color: '#C9A66B' }}>
+            <div className="h-8 w-8 rounded-full bg-[#bc7e57]/20 flex items-center justify-center text-xs font-bold" style={{ color: '#bc7e57' }}>
               {profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
             </div>
             <div className="flex-1 min-w-0">

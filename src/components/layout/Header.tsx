@@ -91,7 +91,7 @@ export function Header() {
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
       <div className="flex items-center gap-2 md:hidden">
         <SidebarTrigger />
-        <span className="font-semibold text-sm" style={{ color: '#C9A66B' }}>RAC System Automations</span>
+        <span className="font-semibold text-sm" style={{ color: '#bc7e57' }}>RAC System Automations</span>
       </div>
       <div className="hidden md:flex flex-1" />
       
@@ -163,7 +163,7 @@ export function Header() {
                       </div>
                       {!n.is_read && (
                         <div className="flex-shrink-0 mt-1.5">
-                          <span className="block h-2 w-2 rounded-full bg-[#C9A66B]"></span>
+                          <span className="block h-2 w-2 rounded-full bg-[#bc7e57]"></span>
                         </div>
                       )}
                     </div>

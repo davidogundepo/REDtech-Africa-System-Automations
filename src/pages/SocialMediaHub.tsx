@@ -240,19 +240,19 @@ const SocialMediaHub = () => {
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Social Media Hub</h1>
+          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Social Media Hub</h1>
           <p className="text-muted-foreground mt-2">Content calendar, bulk scheduling, and brand presence analytics</p>
         </div>
         
         {canEdit && (
           <div className="flex items-center gap-3">
             <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="border-[#C9A66B]/50 hover:bg-[#C9A66B]/10 disabled:opacity-50" disabled={batchAddPostsMutation.isPending}>
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 disabled:opacity-50" disabled={batchAddPostsMutation.isPending}>
               <Upload className="h-4 w-4 mr-2" /> 
               {batchAddPostsMutation.isPending ? "Importing..." : "Import CSV"}
             </Button>
             
-            <Button variant="outline" onClick={handleExportCSV} className="border-[#C9A66B]/50 hover:bg-[#C9A66B]/10">
+            <Button variant="outline" onClick={handleExportCSV} className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10">
               <Download className="h-4 w-4 mr-2" /> Export
             </Button>
 
@@ -325,7 +325,7 @@ const SocialMediaHub = () => {
                     />
                   </div>
                   <DialogFooter>
-                    <Button type="submit" className="w-full bg-[#C9A66B] hover:bg-[#C9A66B]/90 mt-4" disabled={addPostMutation.isPending}>
+                    <Button type="submit" className="w-full bg-[#bc7e57] hover:bg-[#bc7e57]/90 mt-4" disabled={addPostMutation.isPending}>
                       {addPostMutation.isPending ? "Saving..." : "Save Post"}
                     </Button>
                   </DialogFooter>
@@ -337,7 +337,7 @@ const SocialMediaHub = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="hover:shadow-md transition-all border-[#C9A66B]/20">
+        <Card className="hover:shadow-md transition-all border-[#bc7e57]/20">
           <CardContent className="p-6 flex items-center gap-4">
             <div className="p-3 bg-blue-100 text-blue-600 rounded-full">
               <Linkedin className="h-6 w-6" />
@@ -349,7 +349,7 @@ const SocialMediaHub = () => {
           </CardContent>
         </Card>
         
-        <Card className="hover:shadow-md transition-all border-[#C9A66B]/20">
+        <Card className="hover:shadow-md transition-all border-[#bc7e57]/20">
           <CardContent className="p-6 flex items-center gap-4">
             <div className="p-3 bg-pink-100 text-pink-600 rounded-full">
               <Instagram className="h-6 w-6" />
@@ -361,7 +361,7 @@ const SocialMediaHub = () => {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-all border-[#C9A66B]/20">
+        <Card className="hover:shadow-md transition-all border-[#bc7e57]/20">
           <CardContent className="p-6 flex items-center gap-4">
             <div className="p-3 bg-green-100 text-green-600 rounded-full">
               <Target className="h-6 w-6" />
@@ -373,7 +373,7 @@ const SocialMediaHub = () => {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-all border-[#C9A66B]/20">
+        <Card className="hover:shadow-md transition-all border-[#bc7e57]/20">
           <CardContent className="p-6 flex items-center gap-4">
             <div className="p-3 bg-purple-100 text-purple-600 rounded-full">
               <TrendingUp className="h-6 w-6" />
@@ -390,7 +390,7 @@ const SocialMediaHub = () => {
         Need to bulk import? <Button variant="link" className="p-0 h-auto text-blue-500" onClick={downloadTemplate}>Download Calendar Template CSV</Button>
       </div>
 
-      <Card className="shadow-sm border-[#C9A66B]/20 flex-1">
+      <Card className="shadow-sm border-[#bc7e57]/20 flex-1">
         <CardHeader className="pb-4 border-b border-border/50">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
             <div>
@@ -534,10 +534,10 @@ const SocialMediaHub = () => {
       </Card>
 
       {/* Analytics & API Insights — Phase 8 Free API Research */}
-      <Card className="border-[#C9A66B]/20 mt-6">
+      <Card className="border-[#bc7e57]/20 mt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <TrendingUp className="h-5 w-5 text-[#C9A66B]" /> Analytics & API Insights
+            <TrendingUp className="h-5 w-5 text-[#bc7e57]" /> Analytics & API Insights
           </CardTitle>
           <CardDescription>Free social media read APIs researched for basic analytics integration</CardDescription>
         </CardHeader>
@@ -588,7 +588,7 @@ const SocialMediaHub = () => {
               <Badge variant="secondary" className="text-xs">200 calls/hr free</Badge>
             </div>
           </div>
-          <div className="mt-4 p-3 rounded-lg bg-[#C9A66B]/5 border border-[#C9A66B]/20">
+          <div className="mt-4 p-3 rounded-lg bg-[#bc7e57]/5 border border-[#bc7e57]/20">
             <p className="text-xs text-muted-foreground">
               <strong className="text-foreground">Recommendation:</strong> Start with LinkedIn Community Management API and X (Twitter) Basic access — both are free 
               and cover REDtech's primary platforms. Instagram and Facebook APIs require Meta Business Suite but are also free for business accounts.

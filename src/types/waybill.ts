@@ -68,5 +68,5 @@ export const defaultWaybillInfo: Partial<WaybillData> = {
   showWebsite: true,
   showThankYouMessage: true,
   thankYouMessage: "Thank You",
-  accentColor: "#C9A66B",
+  accentColor: "#bc7e57",
 };

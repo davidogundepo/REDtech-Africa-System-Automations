@@ -117,7 +117,7 @@ const StaffUtilization = () => {
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Staff Utilization</h1>
+          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Staff Utilization</h1>
           <p className="text-muted-foreground mt-2">Monitor team performance and workload distribution</p>
         </div>
         <Select value={selectedDept} onValueChange={setSelectedDept}>
@@ -142,7 +142,7 @@ const StaffUtilization = () => {
                 <p className="text-sm text-muted-foreground">Total Tasks</p>
                 <p className="text-2xl font-bold">{totalTasks}</p>
               </div>
-              <BarChart3 className="h-8 w-8 text-[#C9A66B]/50" />
+              <BarChart3 className="h-8 w-8 text-[#bc7e57]/50" />
             </div>
           </CardContent>
         </Card>
@@ -256,11 +256,11 @@ const StaffUtilization = () => {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {departmentMetrics.map((dept) => (
-                <Card key={dept.name} className="border-l-4 hover:shadow-lg transition-shadow" style={{ borderLeftColor: '#C9A66B' }}>
+                <Card key={dept.name} className="border-l-4 hover:shadow-lg transition-shadow" style={{ borderLeftColor: '#bc7e57' }}>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-[#C9A66B]" />
+                        <Building2 className="h-5 w-5 text-[#bc7e57]" />
                         {dept.name}
                       </CardTitle>
                       <Badge variant="secondary" className="text-xs">{dept.memberCount} member{dept.memberCount !== 1 ? 's' : ''}</Badge>
@@ -307,7 +307,7 @@ const StaffUtilization = () => {
                               if (found) setSelectedUser(found);
                             }}>
                               <div className="flex items-center gap-2">
-                                <div className="h-7 w-7 rounded-full bg-[#C9A66B]/20 flex items-center justify-center text-[10px] font-bold text-[#C9A66B] shrink-0">
+                                <div className="h-7 w-7 rounded-full bg-[#bc7e57]/20 flex items-center justify-center text-[10px] font-bold text-[#bc7e57] shrink-0">
                                   {member.full_name?.substring(0, 2).toUpperCase()}
                                 </div>
                                 <span className="text-sm font-medium">{member.full_name}</span>

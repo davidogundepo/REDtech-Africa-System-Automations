@@ -210,7 +210,7 @@ const Leave = () => {
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Leave Management</h1>
+          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Leave Management</h1>
           <p className="text-muted-foreground mt-2">Submit, track, and manage leave requests</p>
         </div>
         <div className="flex items-center gap-2">
@@ -219,7 +219,7 @@ const Leave = () => {
               variant={showMyLeave ? "default" : "outline"} 
               size="sm" 
               onClick={() => setShowMyLeave(!showMyLeave)}
-              style={showMyLeave ? { backgroundColor: '#C9A66B' } : {}}
+              style={showMyLeave ? { backgroundColor: '#bc7e57' } : {}}
               className={showMyLeave ? "text-white" : ""}
             >
               <Filter className="h-4 w-4 mr-1" /> {showMyLeave ? "My Leave" : "All Leave"}
@@ -227,7 +227,7 @@ const Leave = () => {
           )}
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button style={{ backgroundColor: '#C9A66B' }} className="text-white hover:opacity-90">
+              <Button style={{ backgroundColor: '#bc7e57' }} className="text-white hover:opacity-90">
                 <Plus className="h-4 w-4 mr-2" /> Request Leave
               </Button>
             </DialogTrigger>
@@ -248,7 +248,7 @@ const Leave = () => {
                   <div><Label>End Date *</Label><Input type="date" required value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} /></div>
                 </div>
                 <div><Label>Reason</Label><Textarea value={formData.reason} onChange={(e) => setFormData({ ...formData, reason: e.target.value })} placeholder="Reason for leave..." rows={3} /></div>
-                <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }}>
+                <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }}>
                   Submit Request
                 </Button>
               </form>
@@ -264,7 +264,7 @@ const Leave = () => {
             <Card key={b.id}>
               <CardContent className="p-4 text-center">
                 <p className="text-sm text-muted-foreground capitalize">{leaveTypes.find(t => t.value === b.leave_type)?.label || b.leave_type}</p>
-                <p className="text-2xl font-bold" style={{ color: '#C9A66B' }}>{b.total_days - b.used_days}</p>
+                <p className="text-2xl font-bold" style={{ color: '#bc7e57' }}>{b.total_days - b.used_days}</p>
                 <p className="text-xs text-muted-foreground">of {b.total_days} days remaining</p>
               </CardContent>
             </Card>

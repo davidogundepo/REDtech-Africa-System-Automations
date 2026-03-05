@@ -71,5 +71,5 @@ export const defaultCompanyInfo = {
   currency: "₦",
   vatEnabled: true,
   vatRate: 7.5, // Nigeria VAT rate
-  accentColor: "#C9A66B",
+  accentColor: "#bc7e57",
 };

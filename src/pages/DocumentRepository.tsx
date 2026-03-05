@@ -27,7 +27,7 @@ import { sendNotificationEmail } from "@/lib/email";
 
 const TypeIcon = ({ type, className }: { type: string, className?: string }) => {
   switch (type.toLowerCase()) {
-    case "folder": return <FolderOpen className={`text-[#C9A66B] ${className}`} />;
+    case "folder": return <FolderOpen className={`text-[#bc7e57] ${className}`} />;
     case "pdf": return <FileText className={`text-red-500 ${className}`} />;
     case "excel": 
     case "csv": return <FileSpreadsheet className={`text-green-500 ${className}`} />;
@@ -179,7 +179,7 @@ const DocumentRepository = () => {
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Document Repository</h1>
+          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Document Repository</h1>
           <p className="text-muted-foreground mt-2">Centralized secure storage for templates, files, and OneDrive links</p>
         </div>
         
@@ -232,7 +232,7 @@ const DocumentRepository = () => {
 
             <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
               <DialogTrigger asChild>
-                <Button style={{ backgroundColor: '#C9A66B' }}>
+                <Button style={{ backgroundColor: '#bc7e57' }}>
                   <Upload className="h-4 w-4 mr-2" /> Upload File
                 </Button>
               </DialogTrigger>
@@ -268,7 +268,7 @@ const DocumentRepository = () => {
                     <p className="text-xs text-muted-foreground">Omit to share with all staff.</p>
                   </div>
                   <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                  <Button onClick={() => fileInputRef.current?.click()} className="bg-[#C9A66B] hover:bg-[#C9A66B]/90 mt-2" disabled={uploadDocMutation.isPending}>
+                  <Button onClick={() => fileInputRef.current?.click()} className="bg-[#bc7e57] hover:bg-[#bc7e57]/90 mt-2" disabled={uploadDocMutation.isPending}>
                     {uploadDocMutation.isPending ? "Uploading..." : "Browse Files"}
                   </Button>
                 </div>
@@ -278,15 +278,15 @@ const DocumentRepository = () => {
         )}
       </div>
 
-      <Card className="shadow-sm border-[#C9A66B]/20 flex-1 flex flex-col min-h-[500px]">
+      <Card className="shadow-sm border-[#bc7e57]/20 flex-1 flex flex-col min-h-[500px]">
         <CardHeader className="border-b border-border/50 pb-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center space-x-2 text-sm font-medium text-foreground">
-              <FolderOpen className="h-4 w-4 text-[#C9A66B]" /> Team Drive
+              <FolderOpen className="h-4 w-4 text-[#bc7e57]" /> Team Drive
             </div>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input type="search" placeholder="Search files..." className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-[#C9A66B]/50" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <Input type="search" placeholder="Search files..." className="pl-9 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-[#bc7e57]/50" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
           </div>
         </CardHeader>
@@ -329,7 +329,7 @@ const DocumentRepository = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-[#C9A66B]/20 flex items-center justify-center text-[10px] font-bold text-[#C9A66B] shrink-0">
+                        <div className="h-6 w-6 rounded-full bg-[#bc7e57]/20 flex items-center justify-center text-[10px] font-bold text-[#bc7e57] shrink-0">
                           {file.created_by?.substring(0,2).toUpperCase() || 'RA'}
                         </div>
                         <span className="text-sm text-muted-foreground">{file.created_by || 'System'}</span>
@@ -372,14 +372,14 @@ const DocumentRepository = () => {
         <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
         <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
           {documents?.slice(0, 4).map((doc, i) => (
-            <Card key={i} className="min-w-[280px] flex-shrink-0 shadow-sm border-[#C9A66B]/10">
+            <Card key={i} className="min-w-[280px] flex-shrink-0 shadow-sm border-[#bc7e57]/10">
               <CardContent className="p-4 flex items-start gap-3">
                 <div className="p-2 rounded-full bg-muted mt-1">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">{doc.created_by} {doc.type === 'link' ? 'linked' : 'uploaded'}</p>
-                  <p className="text-xs text-[#C9A66B] font-medium truncate w-[200px]" title={doc.name}>{doc.name}</p>
+                  <p className="text-xs text-[#bc7e57] font-medium truncate w-[200px]" title={doc.name}>{doc.name}</p>
                   <p className="text-xs text-muted-foreground mt-1">{format(parseISO(doc.created_at), 'MMM d, h:mm a')}</p>
                 </div>
               </CardContent>

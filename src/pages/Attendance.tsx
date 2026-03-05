@@ -170,7 +170,7 @@ const Attendance = () => {
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>Attendance</h1>
+          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Attendance</h1>
           <p className="text-muted-foreground mt-2">Clock in/out and track daily attendance</p>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -179,7 +179,7 @@ const Attendance = () => {
       </div>
 
       {/* Clock In/Out Card */}
-      <Card className="mb-8 border-[#C9A66B]/20">
+      <Card className="mb-8 border-[#bc7e57]/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" /> My Attendance Today

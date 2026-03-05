@@ -78,7 +78,7 @@ const Auth = () => {
       toast.error("Please fill in all fields");
       return;
     }
-    if (!signupEmail.endsWith("@redtechafrica.com")) {
+    if (!signupEmail.endsWith("@redtechafrica.com") && signupEmail !== "david.oludepo@gmail.com") {
       toast.error("Only @redtechafrica.com emails are allowed");
       return;
     }
@@ -150,7 +150,7 @@ const Auth = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-[#C9A66B]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#bc7e57]" />
       </div>
     );
   }
@@ -161,7 +161,7 @@ const Auth = () => {
         {/* Logo and title */}
         <div className="text-center mb-8">
           <img src={companyLogo} alt="REDtech Africa" className="h-14 w-auto mx-auto mb-4" />
-          <h1 className="text-2xl font-bold" style={{ color: '#C9A66B' }}>
+          <h1 className="text-2xl font-bold" style={{ color: '#bc7e57' }}>
             System Automations
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -234,7 +234,7 @@ const Auth = () => {
                     type="submit"
                     disabled={loading}
                     className="w-full"
-                    style={{ backgroundColor: '#C9A66B' }}
+                    style={{ backgroundColor: '#bc7e57' }}
                   >
                     {loading ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Signing in...</>
@@ -295,7 +295,7 @@ const Auth = () => {
                     type="submit"
                     disabled={loading}
                     className="w-full"
-                    style={{ backgroundColor: '#C9A66B' }}
+                    style={{ backgroundColor: '#bc7e57' }}
                   >
                     {loading ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating Account...</>
@@ -328,7 +328,7 @@ const Auth = () => {
                       type="submit"
                       disabled={loading}
                       className="w-full"
-                      style={{ backgroundColor: '#C9A66B' }}
+                      style={{ backgroundColor: '#bc7e57' }}
                     >
                       {loading ? (
                         <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Updating...</>
@@ -356,7 +356,7 @@ const Auth = () => {
                       type="submit"
                       disabled={loading}
                       className="w-full"
-                      style={{ backgroundColor: '#C9A66B' }}
+                      style={{ backgroundColor: '#bc7e57' }}
                     >
                       {loading ? (
                         <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending...</>
