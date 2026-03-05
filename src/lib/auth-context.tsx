@@ -22,6 +22,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   isRole: (...roles: UserRole[]) => boolean;
   isSuperAdmin: boolean;
@@ -89,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     // Client-side domain check (server trigger also enforces)
-    if (!email.endsWith("@redtechafrica.com")) {
+    if (!email.endsWith("@redtechafrica.com") && email !== "david.oludepo@gmail.com") {
       return { error: "Only @redtechafrica.com email addresses are allowed." };
     }
 
@@ -99,6 +100,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: {
         data: { full_name: fullName },
       },
+    });
+    if (error) return { error: error.message };
+    return { error: null };
+  };
+
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth?reset=true`,
     });
     if (error) return { error: error.message };
     return { error: null };
@@ -129,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         signIn,
         signUp,
+        resetPassword,
         signOut,
         isRole,
         isSuperAdmin,
