@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -93,6 +93,7 @@ const Clients = () => {
   const [formData, setFormData] = useState(emptyClient);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showMyClients, setShowMyClients] = useState(false);
 
   const fetchClients = async () => {
     const { data, error } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
@@ -102,7 +103,7 @@ const Clients = () => {
   };
 
   const fetchProfiles = async () => {
-    const { data } = await supabase.from("profiles").select("id, full_name").eq("is_active", true);
+    const { data } = await (supabase as any).from("profiles").select("id, full_name").eq("is_active", true);
     setProfiles(data || []);
   };
 
@@ -204,9 +205,11 @@ const Clients = () => {
     fetchClients();
   };
 
-  const filtered = clients.filter(c => 
-    [c.name, c.company, c.email, c.industry].some(f => f?.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = clients
+    .filter(c => !showMyClients || c.assigned_to === profile?.id)
+    .filter(c => 
+      [c.name, c.company, c.email, c.industry].some(f => f?.toLowerCase().includes(search.toLowerCase()))
+    );
 
   const pipelineValue = {
     total: clients.length,
@@ -222,12 +225,22 @@ const Clients = () => {
           <p className="text-muted-foreground mt-2">Manage client relationships and sales pipeline</p>
         </div>
         {canEdit && (
-          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setFormData(emptyClient); setEditingId(null); } }}>
-            <DialogTrigger asChild>
-              <Button style={{ backgroundColor: '#C9A66B' }} className="text-white hover:opacity-90">
-                <Plus className="h-4 w-4 mr-2" /> New Contact
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant={showMyClients ? "default" : "outline"} 
+              size="sm" 
+              onClick={() => setShowMyClients(!showMyClients)}
+              style={showMyClients ? { backgroundColor: '#C9A66B' } : {}}
+              className={showMyClients ? "text-white" : ""}
+            >
+              <User className="h-4 w-4 mr-1" /> My Clients
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setFormData(emptyClient); setEditingId(null); } }}>
+              <DialogTrigger asChild>
+                <Button style={{ backgroundColor: '#C9A66B' }} className="text-white hover:opacity-90">
+                  <Plus className="h-4 w-4 mr-2" /> New Contact
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>{editingId ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
@@ -314,6 +327,7 @@ const Clients = () => {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         )}
       </div>
 

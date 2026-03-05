@@ -149,6 +149,18 @@ const Leave = () => {
       }
     }
 
+    // Send in-app notification to the requesting user
+    const currentReq = requests.find(r => r.id === id);
+    if (currentReq && currentReq.user_id) {
+      supabase.from("notifications").insert({
+        user_id: currentReq.user_id,
+        title: `Leave Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+        message: `Your ${currentReq.leave_type} leave request has been ${status}.`,
+        type: status === "approved" ? "success" : "alert",
+        link: "/leave"
+      }).then();
+    }
+
     toast.success(`Request ${status}`);
     fetchRequests();
     fetchBalances();

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
+import Papa from "papaparse";
 
 // NGN Currency Formatter
 const formatCurrency = (amount: number) => {
@@ -48,9 +49,12 @@ const FinanceDashboard = () => {
   const queryClient = useQueryClient();
   const [isTxDialogOpen, setIsTxDialogOpen] = useState(false);
   const [isReqDialogOpen, setIsReqDialogOpen] = useState(false);
+  const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
+  const [dateRange, setDateRange] = useState("30d");
   
   const [newTx, setNewTx] = useState({ amount: "", type: "revenue", category: "", date: format(new Date(), 'yyyy-MM-dd'), description: "" });
   const [newReq, setNewReq] = useState({ amount: "", category: "", description: "" });
+  const [newBudget, setNewBudget] = useState({ category: "", budgeted_amount: "", quarter: "1", year: new Date().getFullYear().toString() });
 
   const textFill = theme === "dark" ? "#f3f4f6" : "#1f2937";
   const expensesFill = theme === "dark" ? "#9ca3af" : "#1f2937";
@@ -99,6 +103,20 @@ const FinanceDashboard = () => {
     }
   });
 
+  // 4. Fetch Budgets
+  const { data: budgets, isLoading: loadingBudgets } = useQuery({
+    queryKey: ['budgets'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('budgets')
+        .select('*')
+        .order('year', { ascending: false })
+        .order('quarter', { ascending: false })
+        .order('category', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
   // Export to CSV function
   const handleExportCSV = () => {
     if (!transactions || transactions.length === 0) {
@@ -121,6 +139,45 @@ const FinanceDashboard = () => {
     link.click();
     document.body.removeChild(link);
     toast.success("Export downloaded");
+  };
+
+  // Import from CSV function
+  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const rows = results.data as any[];
+        const parsedTxs = rows.map(row => ({
+          amount: parseFloat(row["Amount (NGN)"] || row["Amount"] || "0"),
+          type: (row["Type"] || "expense").toLowerCase(),
+          category: row["Category"] || "Uncategorized",
+          date: row["Date"] || format(new Date(), 'yyyy-MM-dd'),
+          description: row["Description"] || "",
+          created_by: profile?.full_name || "CSV Import"
+        })).filter(tx => tx.amount > 0);
+
+        if (parsedTxs.length === 0) {
+          toast.error("No valid transactions found in CSV.");
+          return;
+        }
+
+        const { error } = await supabase.from('transactions').insert(parsedTxs);
+        if (error) {
+          toast.error("Failed to import CSV: " + error.message);
+        } else {
+          toast.success(`Imported ${parsedTxs.length} transactions successfully.`);
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        }
+        
+        // Reset file input
+        event.target.value = '';
+      },
+      error: (error) => toast.error("CSV Parse Error: " + error.message)
+    });
   };
 
   // Mutations: Transactions
@@ -222,19 +279,54 @@ const FinanceDashboard = () => {
     onError: (error) => toast.error(error.message)
   });
 
+  const addBudgetMutation = useMutation({
+    mutationFn: async (budgetData: any) => {
+      const { error } = await supabase.from('budgets').upsert([{
+        ...budgetData,
+        actual_amount: 0 // Will be calculated dynamically or synced later
+      }], { onConflict: 'quarter,year,category' });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      setIsBudgetDialogOpen(false);
+      setNewBudget({ category: "", budgeted_amount: "", quarter: "1", year: new Date().getFullYear().toString() });
+      toast.success("Budget tracking updated");
+    },
+    onError: (error) => toast.error("Failed to set budget: " + error.message)
+  });
+
+  const filteredTransactions = useMemo(() => {
+    if (!transactions) return [];
+    if (dateRange === "all") return transactions;
+    const days = parseInt(dateRange);
+    const cutoffDate = subDays(new Date(), days);
+    return transactions.filter(t => new Date(t.date) >= cutoffDate);
+  }, [transactions, dateRange]);
+
   // Aggregations
-  const totalRevenue = transactions?.filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0) || 0;
-  const totalExpenses = transactions?.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0) || 0;
+  const totalRevenue = filteredTransactions.filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0) || 0;
+  const totalExpenses = filteredTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0) || 0;
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : "0";
   const pendingRequestsTotal = paymentRequests?.filter(r => r.status === 'pending').reduce((sum, r) => sum + r.amount, 0) || 0;
 
-  // Chart Data Preparation... (omitted for brevity, assume similar to original)
-  const expensesByCategory = transactions?.filter(t => t.type === 'expense').reduce((acc: any, t) => {
+  // Chart Data Preparation
+  const expensesByCategory = filteredTransactions.filter(t => t.type === 'expense').reduce((acc: any, t) => {
     acc[t.category] = (acc[t.category] || 0) + t.amount;
     return acc;
   }, {});
-  const pieData = Object.keys(expensesByCategory || {}).map(key => ({ name: key, value: expensesByCategory[key] }));
+  const pieData = Object.keys(expensesByCategory).map(key => ({ name: key, value: expensesByCategory[key] }));
+
+  const barDataObj = [...filteredTransactions].reverse().reduce((acc: any, t) => {
+    const key = dateRange === '365d' || dateRange === 'all' 
+      ? format(new Date(t.date), 'MMM yyyy') 
+      : format(new Date(t.date), 'MMM dd');
+    if (!acc[key]) acc[key] = { name: key, revenue: 0, expense: 0 };
+    acc[key][t.type] += t.amount;
+    return acc;
+  }, {});
+  const barData = Object.values(barDataObj);
 
   return (
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
@@ -244,6 +336,38 @@ const FinanceDashboard = () => {
           <p className="text-muted-foreground mt-2">Real-time revenue, expense tracking, and approvals</p>
         </div>
         <div className="flex items-center gap-3">
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className="w-[140px] focus:ring-[#C9A66B]">
+              <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Date Range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="14d">Last 14 Days</SelectItem>
+              <SelectItem value="30d">Last 30 Days</SelectItem>
+              <SelectItem value="90d">Last 3 Months</SelectItem>
+              <SelectItem value="180d">Last 6 Months</SelectItem>
+              <SelectItem value="365d">Last Year</SelectItem>
+              <SelectItem value="all">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {(isAdmin || isSuperAdmin) && (
+            <div className="relative">
+              <input 
+                type="file" 
+                accept=".csv" 
+                id="csv-upload" 
+                className="hidden" 
+                onChange={handleImportCSV} 
+              />
+              <Label htmlFor="csv-upload" className="cursor-pointer">
+                <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 border-[#C9A66B]/50 hover:bg-[#C9A66B]/10">
+                  <ArrowUpRight className="h-4 w-4 mr-2" /> Import CSV
+                </div>
+              </Label>
+            </div>
+          )}
+
           <Button variant="outline" className="border-[#C9A66B]/50 hover:bg-[#C9A66B]/10 disabled:opacity-50" onClick={handleExportCSV} disabled={!transactions?.length}>
             <Download className="h-4 w-4 mr-2" /> Export CSV
           </Button>
@@ -315,6 +439,56 @@ const FinanceDashboard = () => {
         <StatCard title="Profit Margin" value={`${profitMargin}%`} change="+1.2% vs last month" isPositive={parseFloat(profitMargin) > 20} icon={Activity} />
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <Card className="col-span-1 lg:col-span-2 shadow-sm border-[#C9A66B]/20">
+          <CardHeader>
+            <CardTitle>Cash Flow Overview</CardTitle>
+            <CardDescription>Revenue vs Expenses over time</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            {barData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={tooltipBorder} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: textFill }} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₦${val/1000}k`} tick={{ fontSize: 12, fill: textFill }} />
+                  <Tooltip cursor={{ fill: 'rgba(201, 166, 107, 0.1)' }} contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '8px' }} formatter={(val: number) => formatCurrency(val)} />
+                  <Legend iconType="circle" />
+                  <Bar dataKey="revenue" name="Revenue" fill="#C9A66B" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="expense" name="Expenses" fill={expensesFill} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No transaction data for this period</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-[#C9A66B]/20">
+          <CardHeader>
+            <CardTitle>Expense Breakdown</CardTitle>
+            <CardDescription>By Category</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '8px' }} formatter={(val: number) => formatCurrency(val)} />
+                  <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No expenses logged for this period</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <Tabs defaultValue="transactions" className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="transactions">Ledger</TabsTrigger>
@@ -322,6 +496,7 @@ const FinanceDashboard = () => {
             Payment Requests
             {pendingRequestsTotal > 0 && <span className="ml-2 w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
           </TabsTrigger>
+          {(isAdmin || isSuperAdmin) && <TabsTrigger value="budgets">Budgets</TabsTrigger>}
           {(isAdmin || isSuperAdmin) && <TabsTrigger value="recycle">Recycle Bin</TabsTrigger>}
         </TabsList>
 
@@ -488,6 +663,95 @@ const FinanceDashboard = () => {
                     )}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* Budgets Tab */}
+        {(isAdmin || isSuperAdmin) && (
+          <TabsContent value="budgets">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Quarterly Budgets</CardTitle>
+                  <CardDescription>Track allocated spend vs actuals.</CardDescription>
+                </div>
+                <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="border-[#C9A66B] text-[#C9A66B] hover:bg-[#C9A66B]/10">
+                      <Plus className="h-4 w-4 mr-2" /> Set Budget
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>Set Category Budget</DialogTitle></DialogHeader>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!newBudget.category || !newBudget.budgeted_amount) return toast.error("Required fields missing");
+                      addBudgetMutation.mutate({ 
+                        ...newBudget, 
+                        budgeted_amount: parseFloat(newBudget.budgeted_amount),
+                        quarter: parseInt(newBudget.quarter),
+                        year: parseInt(newBudget.year)
+                      });
+                    }} className="space-y-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Quarter</Label>
+                          <Select value={newBudget.quarter} onValueChange={(v) => setNewBudget({...newBudget, quarter: v})}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">Q1 (Jan-Mar)</SelectItem>
+                              <SelectItem value="2">Q2 (Apr-Jun)</SelectItem>
+                              <SelectItem value="3">Q3 (Jul-Sep)</SelectItem>
+                              <SelectItem value="4">Q4 (Oct-Dec)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Year (YYYY)</Label>
+                          <Input type="number" required min="2020" value={newBudget.year} onChange={(e) => setNewBudget({...newBudget, year: e.target.value})} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Category</Label>
+                        <Input required value={newBudget.category} onChange={(e) => setNewBudget({...newBudget, category: e.target.value})} placeholder="e.g., Marketing, Engineering" />
+                      </div>
+                      <div>
+                        <Label>Budgeted Amount (NGN)</Label>
+                        <Input type="number" required min="0" step="1000" value={newBudget.budgeted_amount} onChange={(e) => setNewBudget({...newBudget, budgeted_amount: e.target.value})} />
+                      </div>
+                      <Button type="submit" className="w-full" style={{ backgroundColor: '#C9A66B' }} disabled={addBudgetMutation.isPending}>Save Budget</Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {loadingBudgets ? (
+                  <p className="text-center py-8 text-muted-foreground">Loading budgets...</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Period</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead className="text-right">Budget Limit</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {budgets?.map((b: any) => (
+                        <TableRow key={b.id}>
+                          <TableCell className="font-medium">Q{b.quarter} {b.year}</TableCell>
+                          <TableCell><Badge variant="outline">{b.category}</Badge></TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(b.budgeted_amount)}</TableCell>
+                        </TableRow>
+                      ))}
+                      {(!budgets || budgets.length === 0) && (
+                        <TableRow><TableCell colSpan={3} className="text-center py-8">No budgets set yet.</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

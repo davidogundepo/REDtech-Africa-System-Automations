@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Clock, LogIn, LogOut, CalendarDays, Timer, Users, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 
 const Attendance = () => {
@@ -52,7 +53,6 @@ const Attendance = () => {
     enabled: isAdmin || isSuperAdmin,
   });
 
-  // Fetch all profiles for cross-referencing absent users
   const { data: allProfiles } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
@@ -62,6 +62,53 @@ const Attendance = () => {
     },
     enabled: isAdmin || isSuperAdmin,
   });
+
+  const { data: activeLeaves } = useQuery({
+    queryKey: ["active-leaves", selectedDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leave_requests")
+        .select("user_id, leave_type")
+        .eq("status", "approved")
+        .lte("start_date", selectedDate)
+        .gte("end_date", selectedDate);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin || isSuperAdmin,
+  });
+
+  const { data: monthlyRecords } = useQuery({
+    queryKey: ["monthly-attendance", selectedDate.substring(0, 7)],
+    queryFn: async () => {
+      const monthPrefix = selectedDate.substring(0, 7);
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .select("*")
+        .like("date", `${monthPrefix}%`);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin || isSuperAdmin,
+  });
+
+  const generateMonthlySummary = () => {
+    if (!allProfiles || !monthlyRecords) return [];
+    
+    return allProfiles.map(user => {
+      const userRecords = monthlyRecords.filter(r => r.user_id === user.id);
+      const daysPresent = userRecords.filter(r => r.status === "present").length;
+      const daysLate = userRecords.filter(r => r.status === "late").length;
+      const totalDays = daysPresent + daysLate;
+      
+      return {
+        ...user,
+        daysPresent,
+        daysLate,
+        totalDays
+      };
+    }).sort((a: any, b: any) => b.totalDays - a.totalDays);
+  };
 
   const clockInMutation = useMutation({
     mutationFn: async () => {
@@ -203,64 +250,104 @@ const Attendance = () => {
       {(isAdmin || isSuperAdmin) && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Users className="h-5 w-5" /> Team Attendance
-              </span>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="text-sm border rounded px-3 py-1.5 bg-background"
-              />
-            </CardTitle>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" /> Team Attendance Snapshot
+              </CardTitle>
+              <div className="flex items-center gap-3">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="text-sm border rounded px-3 py-1.5 bg-background shadow-sm"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead className="text-center">Clock In</TableHead>
-                  <TableHead className="text-center">Clock Out</TableHead>
-                  <TableHead className="text-center">Hours</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allRecords?.map((record: any) => (
-                  <TableRow key={record.id}>
-                    <TableCell className="font-medium">
-                      {record.profiles?.full_name || "Unknown"}
-                    </TableCell>
-                    <TableCell>{record.profiles?.department || "—"}</TableCell>
-                    <TableCell className="text-center">
-                      {record.clock_in ? format(new Date(record.clock_in), "HH:mm") : "—"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {record.clock_out ? format(new Date(record.clock_out), "HH:mm") : "—"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {record.clock_in && record.clock_out
-                        ? getWorkingHours(record.clock_in, record.clock_out)
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={record.status === "late" ? "destructive" : "default"}>
-                        {record.status === "late" ? "Late" : "Present"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {(!allRecords || allRecords.length === 0) && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No attendance records for this date.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <Tabs defaultValue="daily" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="daily">Daily View</TabsTrigger>
+                <TabsTrigger value="monthly">Monthly Summary</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="daily">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead className="text-center">Clock In</TableHead>
+                      <TableHead className="text-center">Clock Out</TableHead>
+                      <TableHead className="text-center">Hours</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allProfiles?.map((user: any) => {
+                      const record = allRecords?.find(r => r.user_id === user.id);
+                      const leave = activeLeaves?.find(l => l.user_id === user.id);
+                      
+                      let statusStr = "Absent";
+                      let statusVariant: "default" | "secondary" | "destructive" | "outline" = "secondary";
+                      
+                      if (leave) {
+                        statusStr = `On Leave (${leave.leave_type})`;
+                        statusVariant = "outline";
+                      } else if (record) {
+                        statusStr = record.status === "late" ? "Late" : "Present";
+                        statusVariant = record.status === "late" ? "destructive" : "default";
+                      }
+
+                      return (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.full_name}</TableCell>
+                          <TableCell className="capitalize">{user.department || "—"}</TableCell>
+                          <TableCell className="text-center">{record?.clock_in ? format(new Date(record.clock_in), "HH:mm") : "—"}</TableCell>
+                          <TableCell className="text-center">{record?.clock_out ? format(new Date(record.clock_out), "HH:mm") : "—"}</TableCell>
+                          <TableCell className="text-center">{record?.clock_in && record?.clock_out ? getWorkingHours(record.clock_in, record.clock_out) : "—"}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant={statusVariant}>{statusStr}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {(!allProfiles || allProfiles.length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No profiles found to display attendance.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TabsContent>
+
+              <TabsContent value="monthly">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead className="text-center">Total Days Logged</TableHead>
+                      <TableHead className="text-center">Days On-Time</TableHead>
+                      <TableHead className="text-center">Days Late</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {generateMonthlySummary().map((summary: any) => (
+                      <TableRow key={summary.id}>
+                        <TableCell className="font-medium">{summary.full_name}</TableCell>
+                        <TableCell className="capitalize">{summary.department || "—"}</TableCell>
+                        <TableCell className="text-center font-bold">{summary.totalDays}</TableCell>
+                        <TableCell className="text-center text-green-600 font-medium">{summary.daysPresent}</TableCell>
+                        <TableCell className="text-center text-red-500 font-medium">{summary.daysLate}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       )}

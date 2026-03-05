@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { format, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,14 @@ const SocialMediaHub = () => {
     scheduled_date: new Date().toISOString().slice(0, 16) 
   });
 
+  const platformLimits: Record<string, number> = {
+    linkedin: 3000,
+    twitter: 280,
+    instagram: 2200,
+    facebook: 63206
+  };
+  const currentLimit = platformLimits[newPost.platform] || 2000;
+
   const queryClient = useQueryClient();
 
   // Fetch Posts
@@ -110,6 +118,18 @@ const SocialMediaHub = () => {
       queryClient.invalidateQueries({ queryKey: ['social_posts'] });
       toast.success("Post deleted");
     }
+  });
+
+  const updatePostStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string, status: string }) => {
+      const { error } = await supabase.from('social_posts').update({ status }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['social_posts'] });
+      toast.success(`Post marked as ${variables.status}`);
+    },
+    onError: (error) => toast.error("Failed to update status: " + error.message)
   });
 
   const handleCreate = (e: React.FormEvent) => {
@@ -267,6 +287,8 @@ const SocialMediaHub = () => {
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="pending">Pending Approval</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
                           <SelectItem value="scheduled">Scheduled</SelectItem>
                           <SelectItem value="published">Published</SelectItem>
                         </SelectContent>
@@ -274,14 +296,24 @@ const SocialMediaHub = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Content</Label>
+                    <Label className="flex justify-between items-center">
+                      <span>Content</span>
+                      <span className={`text-xs ${newPost.content.length > currentLimit ? 'text-red-500 font-bold' : 'text-muted-foreground'}`}>
+                        {newPost.content.length} / {currentLimit} characters
+                      </span>
+                    </Label>
                     <Textarea 
                       required 
                       value={newPost.content} 
                       onChange={e => setNewPost({...newPost, content: e.target.value})} 
                       placeholder="What do you want to share?"
-                      className="min-h-[120px] resize-none"
+                      className={`min-h-[120px] resize-none ${newPost.content.length > currentLimit ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     />
+                    {newPost.content.length > currentLimit && (
+                      <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                        <Megaphone className="h-3 w-3" /> Exceeds {newPost.platform} character limit.
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Date & Time</Label>
@@ -370,6 +402,7 @@ const SocialMediaHub = () => {
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="published">Published</TabsTrigger>
                 <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+                <TabsTrigger value="pending">Pending</TabsTrigger>
                 <TabsTrigger value="draft">Drafts</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -406,12 +439,14 @@ const SocialMediaHub = () => {
                           variant="outline" 
                           className={`
                             ${post.status.toLowerCase() === 'published' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                            ${post.status.toLowerCase() === 'approved' ? 'bg-green-50 text-green-700 border-green-200' : ''}
                             ${post.status.toLowerCase() === 'scheduled' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
+                            ${post.status.toLowerCase() === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : ''}
                             ${post.status.toLowerCase() === 'draft' ? 'bg-orange-50 text-orange-700 border-orange-200' : ''}
                           `}
                         >
-                          {post.status.toLowerCase() === 'published' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                          {post.status.toLowerCase() === 'scheduled' && <Clock className="h-3 w-3 mr-1" />}
+                          {(post.status.toLowerCase() === 'published' || post.status.toLowerCase() === 'approved') && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                          {(post.status.toLowerCase() === 'scheduled' || post.status.toLowerCase() === 'pending') && <Clock className="h-3 w-3 mr-1" />}
                           {post.status.toLowerCase() === 'draft' && <Megaphone className="h-3 w-3 mr-1" />}
                           {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
                         </Badge>
@@ -419,30 +454,54 @@ const SocialMediaHub = () => {
                        </div>
                        
                        {canEdit && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 transition-all h-8 w-8 ml-auto"
-                              title="Delete Post"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete this social media post.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deletePostMutation.mutate(post.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex items-center gap-2 mt-2 md:mt-0 md:ml-auto">
+                          {post.status.toLowerCase() === 'pending' && (
+                            <>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50 h-8"
+                                onClick={() => updatePostStatusMutation.mutate({ id: post.id, status: 'approved' })}
+                                disabled={updatePostStatusMutation.isPending}
+                              >
+                                Approve
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8"
+                                onClick={() => updatePostStatusMutation.mutate({ id: post.id, status: 'draft' })}
+                                disabled={updatePostStatusMutation.isPending}
+                              >
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 transition-all h-8 w-8 ml-auto"
+                                title="Delete Post"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete this social media post.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deletePostMutation.mutate(post.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                        )}
                     </div>
                     
@@ -471,6 +530,70 @@ const SocialMediaHub = () => {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Analytics & API Insights — Phase 8 Free API Research */}
+      <Card className="border-[#C9A66B]/20 mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <TrendingUp className="h-5 w-5 text-[#C9A66B]" /> Analytics & API Insights
+          </CardTitle>
+          <CardDescription>Free social media read APIs researched for basic analytics integration</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-lg border p-4 space-y-2 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <Twitter className="h-5 w-5 text-sky-500" />
+                <span className="font-semibold text-sm">X (Twitter)</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <strong>Free Tier:</strong> API v2 Basic access provides <strong>read-only</strong> tweet lookup, user profiles, and recent search (up to 10k tweets/month). 
+                Requires a developer account at developer.twitter.com. Sufficient for tracking REDtech's post engagement.
+              </p>
+              <Badge variant="secondary" className="text-xs">10k tweets/mo free</Badge>
+            </div>
+            <div className="rounded-lg border p-4 space-y-2 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <Linkedin className="h-5 w-5 text-blue-600" />
+                <span className="font-semibold text-sm">LinkedIn</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <strong>Community Management API:</strong> Free read access to organization posts, comments, and reactions. 
+                Requires LinkedIn Developer App + Company Page admin approval. Ideal for tracking REDtech's company page analytics.
+              </p>
+              <Badge variant="secondary" className="text-xs">Free with approval</Badge>
+            </div>
+            <div className="rounded-lg border p-4 space-y-2 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <Instagram className="h-5 w-5 text-pink-600" />
+                <span className="font-semibold text-sm">Instagram</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <strong>Instagram Graph API:</strong> Free for business/creator accounts. Provides media insights (likes, comments, reach, impressions). 
+                Requires a Facebook App and Instagram Business account connection.
+              </p>
+              <Badge variant="secondary" className="text-xs">Free for business</Badge>
+            </div>
+            <div className="rounded-lg border p-4 space-y-2 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <Facebook className="h-5 w-5 text-blue-800" />
+                <span className="font-semibold text-sm">Facebook</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <strong>Graph API v18+:</strong> Free page insights (reach, engagement, post analytics). 
+                Requires Facebook App with page_read_engagement permission. Rate-limited to 200 calls/user/hour.
+              </p>
+              <Badge variant="secondary" className="text-xs">200 calls/hr free</Badge>
+            </div>
+          </div>
+          <div className="mt-4 p-3 rounded-lg bg-[#C9A66B]/5 border border-[#C9A66B]/20">
+            <p className="text-xs text-muted-foreground">
+              <strong className="text-foreground">Recommendation:</strong> Start with LinkedIn Community Management API and X (Twitter) Basic access — both are free 
+              and cover REDtech's primary platforms. Instagram and Facebook APIs require Meta Business Suite but are also free for business accounts.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

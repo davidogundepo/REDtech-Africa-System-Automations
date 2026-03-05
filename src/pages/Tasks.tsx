@@ -125,6 +125,15 @@ const Tasks = () => {
 
       // Send email if assigned to someone
       if (assignedProfile) {
+        // Fire an in-app global notification
+        supabase.from("notifications").insert({
+          user_id: assignedProfile.id,
+          title: "New Task Assigned",
+          message: formData.title,
+          type: "info",
+          link: "/tasks"
+        }).then();
+
         sendNotificationEmail({
           to: assignedProfile.email,
           subject: `New Task Assigned: ${formData.title}`,

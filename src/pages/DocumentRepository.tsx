@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -45,7 +46,8 @@ const DocumentRepository = () => {
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [newLink, setNewLink] = useState({ name: "", url: "" });
+  const [newLink, setNewLink] = useState({ name: "", url: "", department: "all" });
+  const [uploadDepartment, setUploadDepartment] = useState("all");
   
   const queryClient = useQueryClient();
 
@@ -55,13 +57,25 @@ const DocumentRepository = () => {
     queryFn: async () => {
       const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      return data || [];
+      
+      let filteredDb = data || [];
+      const userRole = profile?.role?.toLowerCase();
+      const userDept = profile?.department?.toLowerCase();
+      
+      if (userRole !== 'super_admin' && userRole !== 'admin') {
+         filteredDb = filteredDb.filter(doc => 
+           doc.department === null || 
+           doc.department === 'all' || 
+           doc.department?.toLowerCase() === userDept
+         );
+      }
+      return filteredDb;
     }
   });
 
   // Mutations
   const uploadDocMutation = useMutation({
-    mutationFn: async (uploadData: { file: File, name: string, type: string, size: string, created_by: string, uploaded_by_id: string }) => {
+    mutationFn: async (uploadData: { file: File, name: string, type: string, size: string, department: string | null, created_by: string, uploaded_by_id: string }) => {
       const { file, ...dbData } = uploadData;
       
       const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
@@ -85,12 +99,13 @@ const DocumentRepository = () => {
   });
 
   const addLinkMutation = useMutation({
-    mutationFn: async (linkData: { name: string, url: string, created_by: string, uploaded_by_id: string }) => {
+    mutationFn: async (linkData: { name: string, url: string, department: string | null, created_by: string, uploaded_by_id: string }) => {
       const { error } = await supabase.from('documents').insert([{
         name: linkData.name,
         type: 'link',
         size: 'External',
         url: linkData.url,
+        department: linkData.department,
         created_by: linkData.created_by,
         uploaded_by_id: linkData.uploaded_by_id
       }]);
@@ -99,7 +114,7 @@ const DocumentRepository = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       setIsLinkOpen(false);
-      setNewLink({ name: "", url: "" });
+      setNewLink({ name: "", url: "", department: "all" });
       toast.success("OneDrive link added");
     },
     onError: (error) => toast.error(error.message)
@@ -132,10 +147,12 @@ const DocumentRepository = () => {
 
     uploadDocMutation.mutate({
       file: file, name: file.name, type: type, size: sizeInMB,
+      department: uploadDepartment === "all" ? null : uploadDepartment,
       created_by: profile.full_name, uploaded_by_id: profile.id
     });
     
     if (fileInputRef.current) fileInputRef.current.value = "";
+    setUploadDepartment("all"); // Reset
   };
 
   const handleLinkSubmit = (e: React.FormEvent) => {
@@ -151,6 +168,7 @@ const DocumentRepository = () => {
 
     addLinkMutation.mutate({
       name: newLink.name, url: finalUrl,
+      department: newLink.department === "all" ? null : newLink.department,
       created_by: profile.full_name, uploaded_by_id: profile.id
     });
   };
@@ -187,7 +205,25 @@ const DocumentRepository = () => {
                     <Label>OneDrive / SharePoint URL *</Label>
                     <Input required type="url" value={newLink.url} onChange={(e) => setNewLink({...newLink, url: e.target.value})} placeholder="https://redtechafrica-my.sharepoint.com/..." />
                   </div>
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={addLinkMutation.isPending}>
+                  <div>
+                    <Label>Department Visibility</Label>
+                    <Select value={newLink.department} onValueChange={(v) => setNewLink({ ...newLink, department: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        <SelectItem value="finance">Finance & Accounting</SelectItem>
+                        <SelectItem value="hr">Human Resources</SelectItem>
+                        <SelectItem value="operations">Operations</SelectItem>
+                        <SelectItem value="marketing">Marketing & Growth</SelectItem>
+                        <SelectItem value="tech">Technology</SelectItem>
+                        <SelectItem value="executive">Executive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">If specified, only this department and Admins can view it.</p>
+                  </div>
+                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 mt-2" disabled={addLinkMutation.isPending}>
                     {addLinkMutation.isPending ? "Adding..." : "Save Link"}
                   </Button>
                 </form>
@@ -212,6 +248,24 @@ const DocumentRepository = () => {
                   <div className="space-y-1">
                     <h4 className="font-medium">Click to select a file</h4>
                     <p className="text-sm text-muted-foreground w-64">Upload PDFs, images, or Office documents.</p>
+                  </div>
+                  <div className="w-full max-w-xs text-left mt-4 space-y-2">
+                    <Label>Department Access</Label>
+                    <Select value={uploadDepartment} onValueChange={setUploadDepartment}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        <SelectItem value="finance">Finance & Accounting</SelectItem>
+                        <SelectItem value="hr">Human Resources</SelectItem>
+                        <SelectItem value="operations">Operations</SelectItem>
+                        <SelectItem value="marketing">Marketing & Growth</SelectItem>
+                        <SelectItem value="tech">Technology</SelectItem>
+                        <SelectItem value="executive">Executive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Omit to share with all staff.</p>
                   </div>
                   <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
                   <Button onClick={() => fileInputRef.current?.click()} className="bg-[#C9A66B] hover:bg-[#C9A66B]/90 mt-2" disabled={uploadDocMutation.isPending}>
@@ -262,7 +316,14 @@ const DocumentRepository = () => {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <TypeIcon type={file.type} className="h-5 w-5 shrink-0" />
-                        <span className="font-medium">{file.name}</span>
+                        <div>
+                          <span className="font-medium flex items-center">{file.name}</span>
+                          {file.department && (
+                            <span className="text-xs text-muted-foreground capitalize flex items-center mt-1">
+                              <FolderOpen className="w-3 h-3 mr-1"/>{file.department} Only
+                            </span>
+                          )}
+                        </div>
                         {file.type === 'link' && <ExternalLink className="h-3 w-3 text-muted-foreground ml-1" />}
                       </div>
                     </TableCell>

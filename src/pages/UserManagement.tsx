@@ -45,6 +45,11 @@ const UserManagement = () => {
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [userToRemove, setUserToRemove] = useState<any>(null);
   const [removeReason, setRemoveReason] = useState("");
+  const [broadcastDialogOpen, setBroadcastDialogOpen] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastType, setBroadcastType] = useState("info");
+  const [broadcastTarget, setBroadcastTarget] = useState("all");
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["profiles"],
@@ -129,6 +134,37 @@ const UserManagement = () => {
     );
   };
 
+  const broadcastMutation = useMutation({
+    mutationFn: async () => {
+      let targetUserIds = [];
+      if (broadcastTarget === "all") {
+        targetUserIds = users?.map((u: any) => u.id) || [];
+      } else {
+        targetUserIds = [broadcastTarget];
+      }
+
+      if (targetUserIds.length === 0) throw new Error("No users to broadcast to.");
+
+      const notifications = targetUserIds.map(id => ({
+        user_id: id,
+        title: broadcastTitle,
+        message: broadcastMessage,
+        type: broadcastType,
+        link: "/user-management" // Optional generic link
+      }));
+
+      const { error } = await supabase.from("notifications").insert(notifications);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Broadcast sent successfully!");
+      setBroadcastDialogOpen(false);
+      setBroadcastTitle("");
+      setBroadcastMessage("");
+    },
+    onError: (err: any) => toast.error("Broadcast failed: " + err.message)
+  });
+
   const filteredUsers = users?.filter((u: any) =>
     u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -187,6 +223,75 @@ const UserManagement = () => {
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Admin Broadcast Button */}
+          <Dialog open={broadcastDialogOpen} onOpenChange={setBroadcastDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#C9A66B] hover:bg-[#a88a56] text-white">
+                <Bell className="h-4 w-4 mr-2" /> Admin Broadcast
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Send Global Notification</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label>Target</Label>
+                  <Select value={broadcastTarget} onValueChange={setBroadcastTarget}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select target..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Every User</SelectItem>
+                      {users?.map((u:any) => (
+                        <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Type</Label>
+                  <Select value={broadcastType} onValueChange={setBroadcastType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="info">Info</SelectItem>
+                      <SelectItem value="success">Success</SelectItem>
+                      <SelectItem value="warning">Warning</SelectItem>
+                      <SelectItem value="alert">Alert</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Title</Label>
+                  <Input 
+                    value={broadcastTitle} 
+                    onChange={e => setBroadcastTitle(e.target.value)} 
+                    placeholder="E.g., System Update" 
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Message</Label>
+                  <Textarea 
+                    value={broadcastMessage} 
+                    onChange={e => setBroadcastMessage(e.target.value)} 
+                    placeholder="Enter announcement..." 
+                  />
+                </div>
+                <Button 
+                  onClick={() => {
+                    broadcastMutation.mutate();
+                  }} 
+                  disabled={!broadcastTitle || !broadcastMessage || broadcastMutation.isPending}
+                  className="w-full bg-[#C9A66B] hover:bg-[#a88a56] text-white"
+                >
+                  {broadcastMutation.isPending ? "Sending..." : "Send Broadcast"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

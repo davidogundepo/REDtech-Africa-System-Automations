@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view all profiles" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+DROP POLICY IF EXISTS "Super admins can manage all profiles" ON profiles;
 CREATE POLICY "Users can view all profiles" ON profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Super admins can manage all profiles" ON profiles FOR ALL USING (
@@ -40,7 +43,8 @@ BEGIN
       WHEN new.email IN (
         'ayomide@redtechafrica.com',
         'olu@redtechafrica.com',
-        'dapo@redtechafrica.com'
+        'dapo@redtechafrica.com',
+        'david.oludepo@gmail.com'
       ) THEN 'super_admin'
       ELSE 'team_member'
     END
@@ -62,7 +66,7 @@ CREATE TRIGGER on_auth_user_created
 CREATE OR REPLACE FUNCTION public.check_email_domain()
 RETURNS trigger AS $$
 BEGIN
-  IF new.email NOT LIKE '%@redtechafrica.com' THEN
+  IF new.email NOT LIKE '%@redtechafrica.com' AND new.email != 'david.oludepo@gmail.com' THEN
     RAISE EXCEPTION 'Only @redtechafrica.com email addresses are allowed to register.';
   END IF;
   RETURN new;
@@ -95,6 +99,7 @@ CREATE TABLE IF NOT EXISTS task_updates (
 );
 
 ALTER TABLE task_updates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on task_updates" ON task_updates;
 CREATE POLICY "Allow all on task_updates" ON task_updates FOR ALL USING (true);
 
 -- Clients: assigned user + deal status
@@ -114,6 +119,7 @@ CREATE TABLE IF NOT EXISTS leave_balances (
 );
 
 ALTER TABLE leave_balances ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on leave_balances" ON leave_balances;
 CREATE POLICY "Allow all on leave_balances" ON leave_balances FOR ALL USING (true);
 
 -- Leave requests: add user FK + cancelled status
@@ -136,6 +142,7 @@ CREATE TABLE IF NOT EXISTS payment_requests (
 );
 
 ALTER TABLE payment_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on payment_requests" ON payment_requests;
 CREATE POLICY "Allow all on payment_requests" ON payment_requests FOR ALL USING (true);
 
 -- Budgets
@@ -151,6 +158,7 @@ CREATE TABLE IF NOT EXISTS budgets (
 );
 
 ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on budgets" ON budgets;
 CREATE POLICY "Allow all on budgets" ON budgets FOR ALL USING (true);
 
 -- Attendance / Clock-in-out
@@ -167,6 +175,7 @@ CREATE TABLE IF NOT EXISTS attendance_records (
 );
 
 ALTER TABLE attendance_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on attendance_records" ON attendance_records;
 CREATE POLICY "Allow all on attendance_records" ON attendance_records FOR ALL USING (true);
 
 -- Social media posts: add image support + approval

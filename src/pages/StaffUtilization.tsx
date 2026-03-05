@@ -7,11 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Shield, BarChart3, Users, TrendingUp, AlertTriangle, Award } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
+import { Shield, BarChart3, Users, TrendingUp, AlertTriangle, Award, Building2, ChevronRight } from "lucide-react";
 
 const StaffUtilization = () => {
   const { isSuperAdmin, isAdmin } = useAuth();
   const [selectedDept, setSelectedDept] = useState("all");
+  const [selectedUser, setSelectedUser] = useState<any>(null);
 
   // Fetch all profiles
   const { data: profiles } = useQuery({
@@ -51,9 +55,16 @@ const StaffUtilization = () => {
     ? profiles
     : profiles?.filter((p: any) => p.department === selectedDept);
 
+  const profileNames = new Set(filteredProfiles?.map((p: any) => p.full_name) || []);
+  const profileIds = new Set(filteredProfiles?.map((p: any) => p.id) || []);
+  
+  const departmentTasks = tasks?.filter((t: any) => 
+    profileNames.has(t.assigned_to) || profileIds.has(t.assigned_to_user_id)
+  ) || [];
+
   // Calculate utilization per user
   const userMetrics = filteredProfiles?.map((profile: any) => {
-    const userTasks = tasks?.filter((t: any) => t.assigned_to === profile.full_name || t.assigned_to_user_id === profile.id) || [];
+    const userTasks = departmentTasks.filter((t: any) => t.assigned_to === profile.full_name || t.assigned_to_user_id === profile.id);
     const completed = userTasks.filter((t: any) => t.status === "completed").length;
     const total = userTasks.length;
     const overdue = userTasks.filter((t: any) => t.status === "overdue").length;
@@ -62,6 +73,7 @@ const StaffUtilization = () => {
 
     return {
       ...profile,
+      userTasks,
       totalTasks: total,
       completed,
       inProgress,
@@ -70,12 +82,36 @@ const StaffUtilization = () => {
     };
   }) || [];
 
-  const totalTasks = tasks?.length || 0;
-  const totalCompleted = tasks?.filter((t: any) => t.status === "completed").length || 0;
-  const totalOverdue = tasks?.filter((t: any) => t.status === "overdue").length || 0;
+  const totalTasks = departmentTasks.length;
+  const totalCompleted = departmentTasks.filter((t: any) => t.status === "completed").length;
+  const totalOverdue = departmentTasks.filter((t: any) => t.status === "overdue").length;
   const avgCompletion = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
 
   const departments = [...new Set(profiles?.map((p: any) => p.department).filter(Boolean) || [])];
+
+  // Department-level aggregated metrics
+  const departmentMetrics = departments.map((dept: string) => {
+    const members = profiles?.filter((p: any) => p.department === dept) || [];
+    const memberNames = new Set(members.map((m: any) => m.full_name));
+    const memberIds = new Set(members.map((m: any) => m.id));
+    const deptTasks = tasks?.filter((t: any) => memberNames.has(t.assigned_to) || memberIds.has(t.assigned_to_user_id)) || [];
+    const completed = deptTasks.filter((t: any) => t.status === "completed").length;
+    const overdue = deptTasks.filter((t: any) => t.status === "overdue").length;
+    const inProgress = deptTasks.filter((t: any) => t.status === "in-progress").length;
+    const total = deptTasks.length;
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return {
+      name: dept,
+      members,
+      memberCount: members.length,
+      totalTasks: total,
+      completed,
+      inProgress,
+      overdue,
+      completionRate,
+    };
+  }).sort((a, b) => b.totalTasks - a.totalTasks);
 
   return (
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
@@ -145,61 +181,180 @@ const StaffUtilization = () => {
         </Card>
       </div>
 
-      {/* User Performance Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Award className="h-5 w-5" /> Individual Performance
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Tabbed Views: Individual Performance + Department Overview */}
+      <Tabs defaultValue="individual" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="individual" className="gap-2"><Award className="h-4 w-4" /> Individual Performance</TabsTrigger>
+          <TabsTrigger value="departments" className="gap-2"><Building2 className="h-4 w-4" /> Department Overview</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="individual">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5" /> Individual Performance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Team Member</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead className="text-center">Total Tasks</TableHead>
+                    <TableHead className="text-center">Completed</TableHead>
+                    <TableHead className="text-center">In Progress</TableHead>
+                    <TableHead className="text-center">Overdue</TableHead>
+                    <TableHead>Completion Rate</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {userMetrics.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No team members found. Users will appear after signing up.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    userMetrics.map((user: any) => (
+                      <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedUser(user)}>
+                        <TableCell className="font-medium">{user.full_name}</TableCell>
+                        <TableCell>{user.department || "—"}</TableCell>
+                        <TableCell className="text-center">{user.totalTasks}</TableCell>
+                        <TableCell className="text-center text-green-600">{user.completed}</TableCell>
+                        <TableCell className="text-center text-blue-600">{user.inProgress}</TableCell>
+                        <TableCell className="text-center">
+                          {user.overdue > 0 ? (
+                            <Badge variant="destructive">{user.overdue}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={user.completionRate} className="h-2 flex-1" />
+                            <span className="text-sm font-medium w-10 text-right">{user.completionRate}%</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="departments">
+          {departmentMetrics.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center text-muted-foreground">
+                <Building2 className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <p>No departments found. Assign departments to team members first.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {departmentMetrics.map((dept) => (
+                <Card key={dept.name} className="border-l-4 hover:shadow-lg transition-shadow" style={{ borderLeftColor: '#C9A66B' }}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-[#C9A66B]" />
+                        {dept.name}
+                      </CardTitle>
+                      <Badge variant="secondary" className="text-xs">{dept.memberCount} member{dept.memberCount !== 1 ? 's' : ''}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Department Metrics Row */}
+                    <div className="grid grid-cols-4 gap-3 text-center">
+                      <div className="bg-muted/30 rounded-lg p-2">
+                        <p className="text-xs text-muted-foreground">Tasks</p>
+                        <p className="text-lg font-bold">{dept.totalTasks}</p>
+                      </div>
+                      <div className="bg-green-50 dark:bg-green-900/10 rounded-lg p-2">
+                        <p className="text-xs text-green-600">Done</p>
+                        <p className="text-lg font-bold text-green-600">{dept.completed}</p>
+                      </div>
+                      <div className="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-2">
+                        <p className="text-xs text-blue-600">Active</p>
+                        <p className="text-lg font-bold text-blue-600">{dept.inProgress}</p>
+                      </div>
+                      <div className="bg-red-50 dark:bg-red-900/10 rounded-lg p-2">
+                        <p className="text-xs text-red-500">Overdue</p>
+                        <p className="text-lg font-bold text-red-500">{dept.overdue}</p>
+                      </div>
+                    </div>
+
+                    {/* Completion Bar */}
+                    <div className="flex items-center gap-3">
+                      <Progress value={dept.completionRate} className="h-2.5 flex-1" />
+                      <span className="text-sm font-semibold w-12 text-right">{dept.completionRate}%</span>
+                    </div>
+
+                    {/* Member List */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Team Members</p>
+                      <div className="space-y-1.5">
+                        {dept.members.map((member: any) => {
+                          const mTasks = tasks?.filter((t: any) => t.assigned_to === member.full_name || t.assigned_to_user_id === member.id) || [];
+                          const mCompleted = mTasks.filter((t: any) => t.status === "completed").length;
+                          const mRate = mTasks.length > 0 ? Math.round((mCompleted / mTasks.length) * 100) : 0;
+                          return (
+                            <div key={member.id} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-muted/40 cursor-pointer transition-colors" onClick={() => {
+                              const found = userMetrics.find(u => u.id === member.id);
+                              if (found) setSelectedUser(found);
+                            }}>
+                              <div className="flex items-center gap-2">
+                                <div className="h-7 w-7 rounded-full bg-[#C9A66B]/20 flex items-center justify-center text-[10px] font-bold text-[#C9A66B] shrink-0">
+                                  {member.full_name?.substring(0, 2).toUpperCase()}
+                                </div>
+                                <span className="text-sm font-medium">{member.full_name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">{mTasks.length} tasks · {mRate}%</span>
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Task Drilldown: {selectedUser?.full_name}</DialogTitle>
+          </DialogHeader>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Team Member</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead className="text-center">Total Tasks</TableHead>
-                <TableHead className="text-center">Completed</TableHead>
-                <TableHead className="text-center">In Progress</TableHead>
-                <TableHead className="text-center">Overdue</TableHead>
-                <TableHead>Completion Rate</TableHead>
-              </TableRow>
+               <TableRow><TableHead>Task</TableHead><TableHead>Status</TableHead><TableHead>Due Date</TableHead></TableRow>
             </TableHeader>
             <TableBody>
-              {userMetrics.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No team members found. Users will appear after signing up.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                userMetrics.map((user: any) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.full_name}</TableCell>
-                    <TableCell>{user.department || "—"}</TableCell>
-                    <TableCell className="text-center">{user.totalTasks}</TableCell>
-                    <TableCell className="text-center text-green-600">{user.completed}</TableCell>
-                    <TableCell className="text-center text-blue-600">{user.inProgress}</TableCell>
-                    <TableCell className="text-center">
-                      {user.overdue > 0 ? (
-                        <Badge variant="destructive">{user.overdue}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </TableCell>
+               {selectedUser?.userTasks?.map((task: any) => (
+                 <TableRow key={task.id}>
+                    <TableCell className="font-medium">{task.title}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={user.completionRate} className="h-2 flex-1" />
-                        <span className="text-sm font-medium w-10 text-right">{user.completionRate}%</span>
-                      </div>
+                      <Badge variant={task.status === "completed" ? "default" : task.status === "overdue" ? "destructive" : "secondary"} className="capitalize">
+                        {task.status.replace('-', ' ')}
+                      </Badge>
                     </TableCell>
-                  </TableRow>
-                ))
-              )}
+                    <TableCell>{task.due_date ? format(new Date(task.due_date), "MMM d, yyyy") : 'N/A'}</TableCell>
+                 </TableRow>
+               ))}
+               {!selectedUser?.userTasks?.length && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-4">No tasks assigned.</TableCell></TableRow>}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
