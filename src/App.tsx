@@ -21,6 +21,7 @@ import SocialMediaHub from "./pages/SocialMediaHub";
 import UserManagement from "./pages/UserManagement";
 import StaffUtilization from "./pages/StaffUtilization";
 import Attendance from "./pages/Attendance";
+import UserProfile from "./pages/UserProfile";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const AppRoutes = () => (
             <Route path="/users" element={<UserManagement />} />
             <Route path="/utilization" element={<StaffUtilization />} />
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/profile" element={<UserProfile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>

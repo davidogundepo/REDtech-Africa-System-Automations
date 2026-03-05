@@ -110,9 +110,17 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
         {/* Current User Info */}
         {profile && (
-          <div className="flex items-center gap-2 px-1">
-            <div className="h-8 w-8 rounded-full bg-[#bc7e57]/20 flex items-center justify-center text-xs font-bold" style={{ color: '#bc7e57' }}>
-              {profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+          <div 
+            className="flex items-center gap-2 px-1 cursor-pointer rounded-lg hover:bg-muted/50 transition-colors p-2 -m-1"
+            onClick={() => navigate("/profile")}
+            title="View your profile"
+          >
+            <div className="h-8 w-8 rounded-full bg-[#bc7e57]/20 flex items-center justify-center text-xs font-bold overflow-hidden" style={{ color: '#bc7e57' }}>
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{profile.full_name}</p>

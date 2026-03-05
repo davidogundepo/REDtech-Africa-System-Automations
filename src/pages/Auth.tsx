@@ -90,6 +90,7 @@ const Auth = () => {
     const { error } = await signUp(signupEmail, signupPassword, signupName);
     if (error) {
       toast.error(error);
+      setLoading(false);
     } else {
       // Send Welcome Email
       sendNotificationEmail({
@@ -102,11 +103,19 @@ const Auth = () => {
         `
       });
 
-      toast.success("Account created! You can now log in.");
-      setTab("login");
-      setLoginEmail(signupEmail);
+      // Auto-login immediately after signup
+      const { error: loginError } = await signIn(signupEmail, signupPassword);
+      if (loginError) {
+        // Fallback: if auto-login fails (e.g. email confirmation required), guide user
+        toast.success("Account created! Please check your email to confirm, then log in.");
+        setTab("login");
+        setLoginEmail(signupEmail);
+        setLoading(false);
+      } else {
+        toast.success(`Welcome to REDtech, ${signupName}! 🚀`);
+        navigate("/");
+      }
     }
-    setLoading(false);
   };
 
   const handleResetPassword = async (e?: React.FormEvent) => {
