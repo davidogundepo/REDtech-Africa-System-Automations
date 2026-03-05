@@ -10,8 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Shield, Users, UserPlus, Search, Mail, Building2, Edit } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
+import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus } from "lucide-react";
 import { toast } from "sonner";
+import { sendNotificationEmail } from "@/lib/email";
+import { format, subDays } from "date-fns";
 
 const roleBadgeColors: Record<string, string> = {
   super_admin: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
@@ -37,6 +42,9 @@ const UserManagement = () => {
   const [editRole, setEditRole] = useState<UserRole>("team_member");
   const [editDepartment, setEditDepartment] = useState("");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<any>(null);
+  const [removeReason, setRemoveReason] = useState("");
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["profiles"],
@@ -83,6 +91,44 @@ const UserManagement = () => {
     });
   };
 
+  const handleDeactivate = async () => {
+    if (!userToRemove || !removeReason) {
+      toast.error("Please select a valid reason or provide details.");
+      return;
+    }
+
+    // Step 1: Deactivate in database
+    updateUserMutation.mutate(
+      {
+        id: userToRemove.id,
+        role: userToRemove.role,
+        department: userToRemove.department,
+        is_active: false,
+      },
+      {
+        onSuccess: () => {
+          // Step 2: Send Email Notification to the user
+          sendNotificationEmail({
+            to: userToRemove.email,
+            subject: "Platform Access Revoked - REDtech System Automations",
+            html: `
+              <h2>Access Revoked</h2>
+              <p>Hello ${userToRemove.full_name},</p>
+              <p>Your access to the REDtech internal platform has been revoked by a Super Admin.</p>
+              <p><strong>Reason provided:</strong> ${removeReason}</p>
+              <p>If you believe this is an error, please contact the Operations department.</p>
+            `,
+          });
+
+          setRemoveDialogOpen(false);
+          setUserToRemove(null);
+          setRemoveReason("");
+          toast.success("User removed and notification sent.");
+        },
+      }
+    );
+  };
+
   const filteredUsers = users?.filter((u: any) =>
     u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -109,7 +155,39 @@ const UserManagement = () => {
           <h1 className="text-3xl font-bold" style={{ color: '#C9A66B' }}>User Management</h1>
           <p className="text-muted-foreground mt-2">Manage team members, roles, and department assignments</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          {/* Notifications Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" className="relative">
+                <Bell className="h-4 w-4" />
+                {users?.filter((u: any) => new Date(u.created_at) > subDays(new Date(), 7)).length > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <h4 className="font-semibold mb-2 flex items-center gap-2 border-b pb-2">
+                <UserPlus className="h-4 w-4" /> Recent Signups
+              </h4>
+              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                {users?.filter((u: any) => new Date(u.created_at) > subDays(new Date(), 7)).map((user: any) => (
+                  <div key={user.id} className="flex flex-col gap-1">
+                    <p className="text-sm font-medium">{user.full_name}</p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                    <p className="text-xs text-muted-foreground/70">Joined: {format(new Date(user.created_at), "PPp")}</p>
+                  </div>
+                ))}
+                {users?.filter((u: any) => new Date(u.created_at) > subDays(new Date(), 7)).length === 0 && (
+                  <p className="text-sm text-muted-foreground py-2 text-center">No new signups in the last 7 days.</p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -176,9 +254,30 @@ const UserManagement = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(user)}>
-                        <Edit className="h-4 w-4 mr-1" /> Edit
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(user)} className="cursor-pointer gap-2">
+                            <Edit className="h-4 w-4" /> Edit Profile
+                          </DropdownMenuItem>
+                          {user.is_active && user.id !== currentProfile?.id && (
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setUserToRemove(user);
+                                setRemoveReason("");
+                                setRemoveDialogOpen(true);
+                              }}
+                              className="cursor-pointer gap-2 text-red-600 focus:text-red-600"
+                            >
+                              <UserMinus className="h-4 w-4" /> Deactivate / Remove
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -229,6 +328,55 @@ const UserManagement = () => {
               disabled={updateUserMutation.isPending}
             >
               {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove/Deactivate Dialog */}
+      <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <UserMinus className="h-5 w-5" /> Deactivate User Access
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-red-50 text-red-800 p-3 rounded-md text-sm dark:bg-red-900/20 dark:text-red-300">
+              You are about to revoke platform access for <strong>{userToRemove?.full_name}</strong>. Their data will remain for historical audit logs, but they will no longer be able to log in.
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Reason for Deactivation</Label>
+              <Select value={removeReason} onValueChange={setRemoveReason}>
+                <SelectTrigger><SelectValue placeholder="Select a reason..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Left the company">Left the company</SelectItem>
+                  <SelectItem value="Temporary suspension">Temporary suspension</SelectItem>
+                  <SelectItem value="Role transition">Role transition / No longer requires access</SelectItem>
+                  <SelectItem value="Security policy violation">Security policy violation</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {removeReason === "Other" && (
+              <div className="space-y-2">
+                <Label>Additional Details (will be sent in email)</Label>
+                <Textarea 
+                  placeholder="Please specify..."
+                  onChange={(e) => setRemoveReason("Other: " + e.target.value)}
+                />
+              </div>
+            )}
+
+            <Button
+              onClick={handleDeactivate}
+              variant="destructive"
+              className="w-full mt-4"
+              disabled={updateUserMutation.isPending || !removeReason}
+            >
+              {updateUserMutation.isPending ? "Processing..." : "Confirm & Send Notification"}
             </Button>
           </div>
         </DialogContent>
