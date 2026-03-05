@@ -89,12 +89,19 @@ const Auth = () => {
     setLoading(true);
     const { error } = await signUp(signupEmail, signupPassword, signupName);
     if (error) {
-      // Smart detection: if user already exists, guide them to login
+      // Smart detection: if user already exists, try to auto-login them
       const isExisting = error.toLowerCase().includes("already") || error.toLowerCase().includes("registered") || error.toLowerCase().includes("exists");
       if (isExisting) {
-        toast.info("Welcome back! 👋 This email is already registered. Switching you to the login page.", { duration: 5000 });
-        setTab("login");
-        setLoginEmail(signupEmail);
+        // They already typed their password — just log them in
+        const { error: loginError } = await signIn(signupEmail, signupPassword);
+        if (loginError) {
+          toast.info("Welcome back! 👋 This email is already registered. Please use the correct password to sign in.", { duration: 5000 });
+          setTab("login");
+          setLoginEmail(signupEmail);
+        } else {
+          toast.success("Welcome back! 👋");
+          navigate("/", { replace: true });
+        }
       } else {
         toast.error(error);
       }
