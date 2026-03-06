@@ -38,40 +38,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch profile from profiles table
-  const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
-    
-    if (error) {
-      console.error("Error fetching profile:", error);
+  // Fetch profile from profiles table (never blocks auth flow)
+  const fetchProfile = async (userId: string): Promise<Profile | null> => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+      
+      if (error) {
+        console.error("Error fetching profile:", error);
+        return null;
+      }
+      return data as Profile;
+    } catch (err) {
+      console.error("Profile fetch exception:", err);
       return null;
     }
-    return data as unknown as Profile;
   };
 
   useEffect(() => {
+    let mounted = true;
+
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      if (!mounted) return;
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        fetchProfile(s.user.id).then(setProfile);
+        const p = await fetchProfile(s.user.id);
+        if (mounted) setProfile(p);
       }
-      setLoading(false);
+      if (mounted) setLoading(false);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, s) => {
+      (_event, s) => {
+        if (!mounted) return;
         setSession(s);
         setUser(s?.user ?? null);
+        
         if (s?.user) {
-          const p = await fetchProfile(s.user.id);
-          setProfile(p);
+          // Fire-and-forget: don't block loading on profile fetch
+          fetchProfile(s.user.id).then(p => {
+            if (mounted) setProfile(p);
+          });
         } else {
           setProfile(null);
         }
@@ -79,7 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

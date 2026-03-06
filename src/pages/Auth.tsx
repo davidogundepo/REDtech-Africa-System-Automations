@@ -229,7 +229,7 @@ const Auth = () => {
 
               <TabsContent value="login" className="mt-0">
                 <CardTitle className="text-lg mt-4">Welcome Back</CardTitle>
-                <CardDescription>Sign in with your REDtech email</CardDescription>
+                <CardDescription>Sign in with your RAC staff email</CardDescription>
               </TabsContent>
               <TabsContent value="signup" className="mt-0">
                 <CardTitle className="text-lg mt-4">Create Account</CardTitle>
