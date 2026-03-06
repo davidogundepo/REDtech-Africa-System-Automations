@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import {
@@ -22,7 +23,11 @@ const UserProfile = () => {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [avatarExpanded, setAvatarExpanded] = useState(false);
   const [editName, setEditName] = useState(profile?.full_name || "");
+  const [editDepartment, setEditDepartment] = useState(profile?.department || "");
+
+  const departments = ["Finance", "Operations", "Delivery Ops", "Resourcing", "HR", "Business Dev", "Marketing", "Executive", "Engineering", "Design"];
 
   // Fetch the user's tasks
   const { data: tasks } = useQuery({
@@ -103,7 +108,7 @@ const UserProfile = () => {
   // Update name
   const updateNameMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await (supabase as any).from("profiles").update({ full_name: editName }).eq("id", profile?.id);
+      const { error } = await (supabase as any).from("profiles").update({ full_name: editName, department: editDepartment || null }).eq("id", profile?.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -131,11 +136,18 @@ const UserProfile = () => {
       }, 0) / completedWithDates.length)
     : 0;
 
-  // Performance Score (0-100)
-  const completionScore = completionRate; // 0-100
-  const overdueDeduction = totalTasks > 0 ? Math.round((overdueTasks / totalTasks) * 30) : 0; // penalty up to 30
-  const speedBonus = avgDaysToComplete > 0 && avgDaysToComplete <= 3 ? 10 : avgDaysToComplete <= 7 ? 5 : 0;
-  const performanceScore = Math.min(100, Math.max(0, completionScore - overdueDeduction + speedBonus));
+  // Attendance & leave stats (needed for performance scoring)
+  const leaveDays = leaveRequests?.filter((l: any) => l.status === "approved").length || 0;
+  const daysPresent = attendance?.filter((a: any) => a.status === "present").length || 0;
+  const daysLate = attendance?.filter((a: any) => a.status === "late").length || 0;
+
+  // Performance Score — starts at 100, deductions for issues
+  // New users with no tasks = 100/100 (clean slate)
+  const overdueDeduction = overdueTasks * 3;          // −3 per overdue task
+  const pendingDeduction = pendingTasks * 1;            // −1 per pending task (accountability)
+  const lateDeduction = daysLate * 2;                   // −2 per late arrival in last 30 days
+  const totalDeductions = overdueDeduction + pendingDeduction + lateDeduction;
+  const performanceScore = Math.min(100, Math.max(0, 100 - totalDeductions));
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-600";
@@ -153,9 +165,6 @@ const UserProfile = () => {
   };
 
   const scoreBadge = getScoreBadge(performanceScore);
-  const leaveDays = leaveRequests?.filter((l: any) => l.status === "approved").length || 0;
-  const daysPresent = attendance?.filter((a: any) => a.status === "present").length || 0;
-  const daysLate = attendance?.filter((a: any) => a.status === "late").length || 0;
 
   const roleLabels: Record<string, string> = {
     super_admin: "Super Admin",
@@ -170,28 +179,48 @@ const UserProfile = () => {
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       {/* Profile Header */}
       <Card className="mb-8 overflow-hidden">
-        <div className="h-24 bg-gradient-to-r from-[#bc7e57] via-[#bc7e57]/80 to-[#1a1a2e]" />
-        <CardContent className="relative pt-0 pb-6">
-          <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-12">
-            {/* Avatar */}
+        <div className="h-2" style={{ backgroundColor: '#bc7e57' }} />
+        <CardContent className="pt-6 pb-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+            {/* Avatar — square with rounded corners, click to expand */}
             <div className="relative group">
-              <div className="h-24 w-24 rounded-full border-4 border-background bg-[#bc7e57]/20 flex items-center justify-center overflow-hidden shadow-lg">
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Profile" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-2xl font-bold text-[#bc7e57]">
-                    {profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
-                  </span>
-                )}
-              </div>
+              <button onClick={() => setAvatarExpanded(true)} className="cursor-pointer">
+                <div className="h-20 w-20 rounded-2xl border-2 border-border bg-[#bc7e57]/10 flex items-center justify-center overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  {profile.avatar_url ? (
+                    <img src={profile.avatar_url} alt="Profile" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-xl font-bold text-[#bc7e57]">
+                      {profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                    </span>
+                  )}
+                </div>
+              </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-lg bg-card border border-border shadow-sm flex items-center justify-center cursor-pointer hover:bg-[#bc7e57]/10 transition-colors"
               >
-                <Camera className="h-6 w-6 text-white" />
+                <Camera className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             </div>
+
+            {/* Avatar Expand Dialog */}
+            <Dialog open={avatarExpanded} onOpenChange={setAvatarExpanded}>
+              <DialogContent className="max-w-sm p-4">
+                <div className="rounded-xl overflow-hidden bg-muted">
+                  {profile.avatar_url ? (
+                    <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-auto aspect-square object-cover" />
+                  ) : (
+                    <div className="w-full aspect-square flex items-center justify-center bg-[#bc7e57]/10">
+                      <span className="text-6xl font-bold text-[#bc7e57]">
+                        {profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-center text-sm font-medium mt-2">{profile.full_name}</p>
+              </DialogContent>
+            </Dialog>
 
             {/* Info */}
             <div className="flex-1">
@@ -217,12 +246,21 @@ const UserProfile = () => {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Edit Profile</DialogTitle>
-                  <DialogDescription>Update your display name.</DialogDescription>
+                  <DialogDescription>Update your name and department.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div>
                     <Label>Full Name</Label>
                     <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Department</Label>
+                    <Select value={editDepartment} onValueChange={setEditDepartment}>
+                      <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                      <SelectContent>
+                        {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Button className="w-full" style={{ backgroundColor: '#bc7e57' }} onClick={() => updateNameMutation.mutate()}>
                     Save Changes
@@ -249,7 +287,7 @@ const UserProfile = () => {
             </div>
             <Progress value={performanceScore} className="h-3 mb-2" />
             <p className="text-xs text-muted-foreground">
-              Based on completion rate, overdue penalties, and speed bonus
+              Based on task accountability, attendance, and punctuality — starts at 100
             </p>
           </CardContent>
         </Card>
@@ -337,26 +375,31 @@ const UserProfile = () => {
             <TableBody>
               <TableRow>
                 <TableCell className="font-medium flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" /> Completion Rate
+                  <Star className="h-4 w-4 text-green-500" /> Starting Score
                 </TableCell>
-                <TableCell className="text-muted-foreground">{completedTasks} of {totalTasks} tasks completed</TableCell>
-                <TableCell className="text-right font-semibold text-green-600">+{completionScore}</TableCell>
+                <TableCell className="text-muted-foreground">New members start at 100</TableCell>
+                <TableCell className="text-right font-semibold text-green-600">100</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-red-500" /> Overdue Penalty
                 </TableCell>
-                <TableCell className="text-muted-foreground">{overdueTasks} overdue task{overdueTasks !== 1 ? "s" : ""}</TableCell>
+                <TableCell className="text-muted-foreground">{overdueTasks} overdue task{overdueTasks !== 1 ? "s" : ""} × 3</TableCell>
                 <TableCell className="text-right font-semibold text-red-500">-{overdueDeduction}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-yellow-500" /> Speed Bonus
+                  <Clock className="h-4 w-4 text-orange-500" /> Pending Tasks
                 </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {avgDaysToComplete > 0 ? `Avg ${avgDaysToComplete} days per task` : "No completed tasks with dates"}
+                <TableCell className="text-muted-foreground">{pendingTasks} pending task{pendingTasks !== 1 ? "s" : ""} × 1</TableCell>
+                <TableCell className="text-right font-semibold text-orange-500">-{pendingDeduction}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-500" /> Late Arrivals (30d)
                 </TableCell>
-                <TableCell className="text-right font-semibold text-yellow-600">+{speedBonus}</TableCell>
+                <TableCell className="text-muted-foreground">{daysLate} late arrival{daysLate !== 1 ? "s" : ""} × 2</TableCell>
+                <TableCell className="text-right font-semibold text-yellow-600">-{lateDeduction}</TableCell>
               </TableRow>
               <TableRow className="border-t-2">
                 <TableCell className="font-bold flex items-center gap-2">

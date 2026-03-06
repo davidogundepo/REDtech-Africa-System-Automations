@@ -42,7 +42,7 @@ const businessModules = [
 ];
 
 const adminModules = [
-  { title: "Staff Utilization", icon: UserCog, path: "/utilization" },
+  { title: "Staff Utilisation", icon: UserCog, path: "/utilisation" },
   { title: "User Management", icon: Shield, path: "/users" },
 ];
 

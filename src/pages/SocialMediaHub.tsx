@@ -561,7 +561,7 @@ const SocialMediaHub = () => {
                 <span className="font-semibold text-sm">LinkedIn</span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                <strong>Community Management API:</strong> Free read access to organization posts, comments, and reactions. 
+                <strong>Community Management API:</strong> Free read access to organisation posts, comments, and reactions. 
                 Requires LinkedIn Developer App + Company Page admin approval. Ideal for tracking REDtech's company page analytics.
               </p>
               <Badge variant="secondary" className="text-xs">Free with approval</Badge>

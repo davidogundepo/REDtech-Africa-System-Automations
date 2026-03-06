@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { Shield, BarChart3, Users, TrendingUp, AlertTriangle, Award, Building2, ChevronRight } from "lucide-react";
 
-const StaffUtilization = () => {
+const StaffUtilisation = () => {
   const { isSuperAdmin, isAdmin } = useAuth();
   const [selectedDept, setSelectedDept] = useState("all");
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -27,7 +27,7 @@ const StaffUtilization = () => {
     },
   });
 
-  // Fetch all tasks for utilization metrics
+  // Fetch all tasks for utilisation metrics
   const { data: tasks } = useQuery({
     queryKey: ["all-tasks"],
     queryFn: async () => {
@@ -44,7 +44,7 @@ const StaffUtilization = () => {
           <CardContent className="pt-8 pb-8">
             <Shield className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-xl font-bold mb-2">Access Restricted</h2>
-            <p className="text-muted-foreground">Only Admins and Super Admins can view utilization data.</p>
+            <p className="text-muted-foreground">Only Admins and Super Admins can view utilisation data.</p>
           </CardContent>
         </Card>
       </div>
@@ -62,7 +62,7 @@ const StaffUtilization = () => {
     profileNames.has(t.assigned_to) || profileIds.has(t.assigned_to_user_id)
   ) || [];
 
-  // Calculate utilization per user
+  // Calculate utilisation per user
   const userMetrics = filteredProfiles?.map((profile: any) => {
     const userTasks = departmentTasks.filter((t: any) => t.assigned_to === profile.full_name || t.assigned_to_user_id === profile.id);
     const completed = userTasks.filter((t: any) => t.status === "completed").length;
@@ -117,7 +117,7 @@ const StaffUtilization = () => {
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Staff Utilization</h1>
+          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Staff Utilisation</h1>
           <p className="text-muted-foreground mt-2">Monitor team performance and workload distribution</p>
         </div>
         <Select value={selectedDept} onValueChange={setSelectedDept}>
@@ -359,4 +359,4 @@ const StaffUtilization = () => {
   );
 };
 
-export default StaffUtilization;
+export default StaffUtilisation;
