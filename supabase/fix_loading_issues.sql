@@ -1,17 +1,40 @@
 -- ========================================================
--- RAC Automations — Fix Script (Run in Supabase SQL Editor)
--- Fixes: deal_status constraint, notifications table,
---        attendance insert policy, and ensures open access
+-- RAC Automations — FIXED SQL Script (v2)
+-- Run this in Supabase SQL Editor → Click Run
 -- ========================================================
 
--- 1. Fix deal_status CHECK constraint on clients table
--- The schema had (prospect,active,closed-won,closed-lost) but
--- the code uses (lead,contacted,proposal,negotiation,won,lost)
+-- =============================================
+-- FIX 1: Profiles RLS — INFINITE RECURSION FIX
+-- The old "Super admins" policy queries profiles
+-- FROM a profiles policy = infinite loop = 500 error
+-- =============================================
+DROP POLICY IF EXISTS "Super admins can manage all profiles" ON profiles;
+DROP POLICY IF EXISTS "Users can view all profiles" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+
+-- Simple, non-recursive policies
+CREATE POLICY "Anyone can read profiles" ON profiles FOR SELECT USING (true);
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+CREATE POLICY "Anyone can insert profiles" ON profiles FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can delete profiles" ON profiles FOR DELETE USING (auth.uid() = id);
+
+-- =============================================
+-- FIX 2: deal_status — update old values FIRST
+-- then apply the new CHECK constraint
+-- =============================================
+UPDATE clients SET deal_status = 'lead' WHERE deal_status = 'prospect';
+UPDATE clients SET deal_status = 'won' WHERE deal_status = 'closed-won';
+UPDATE clients SET deal_status = 'lost' WHERE deal_status = 'closed-lost';
+UPDATE clients SET deal_status = 'contacted' WHERE deal_status = 'active';
+UPDATE clients SET deal_status = 'lead' WHERE deal_status IS NULL;
+
 ALTER TABLE clients DROP CONSTRAINT IF EXISTS clients_deal_status_check;
 ALTER TABLE clients ADD CONSTRAINT clients_deal_status_check 
-  CHECK (deal_status IS NULL OR deal_status IN ('lead','contacted','proposal','negotiation','won','lost'));
+  CHECK (deal_status IN ('lead','contacted','proposal','negotiation','won','lost'));
 
--- 2. Create notifications table if it doesn't exist
+-- =============================================
+-- FIX 3: Create notifications table
+-- =============================================
 CREATE TABLE IF NOT EXISTS notifications (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -25,10 +48,11 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on notifications" ON notifications;
-CREATE POLICY "Allow all on notifications" ON notifications FOR ALL USING (true);
+CREATE POLICY "Allow all on notifications" ON notifications FOR ALL USING (true) WITH CHECK (true);
 
--- 3. Ensure all core tables have open INSERT/UPDATE/DELETE policies with CHECK (true)
--- (FOR ALL USING (true) covers SELECT but INSERT needs WITH CHECK)
+-- =============================================
+-- FIX 4: Add WITH CHECK(true) to ALL table policies
+-- =============================================
 DROP POLICY IF EXISTS "Allow public all operations on transactions" ON transactions;
 CREATE POLICY "Allow public all operations on transactions" ON transactions FOR ALL USING (true) WITH CHECK (true);
 
@@ -65,11 +89,9 @@ CREATE POLICY "Allow all on budgets" ON budgets FOR ALL USING (true) WITH CHECK 
 DROP POLICY IF EXISTS "Allow all on task_updates" ON task_updates;
 CREATE POLICY "Allow all on task_updates" ON task_updates FOR ALL USING (true) WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Allow all on notifications" ON notifications;
-CREATE POLICY "Allow all on notifications" ON notifications FOR ALL USING (true) WITH CHECK (true);
-
--- 4. Create default welcome notifications for the current user
--- (This inserts notifications for ALL active users who don't have any yet)
+-- =============================================
+-- FIX 5: Welcome notifications for all users
+-- =============================================
 INSERT INTO notifications (user_id, title, message, type, link)
 SELECT p.id, 'Check Your Performance Score 🏆', 
   'See how you rank among your teammates! Your score is calculated from task completion, speed, and attendance.', 
@@ -94,8 +116,4 @@ FROM profiles p
 WHERE p.is_active = true
 AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.user_id = p.id AND n.title LIKE '%Welcome to RAC%');
 
--- 5. Fix the attendance unique constraint if it's preventing inserts
--- (the user may have already clocked in today with the old account)
--- No action needed — the UNIQUE(user_id, date) is fine since it's a new user_id
-
-SELECT 'All fixes applied successfully!' AS result;
+SELECT 'ALL FIXES APPLIED SUCCESSFULLY!' AS result;
