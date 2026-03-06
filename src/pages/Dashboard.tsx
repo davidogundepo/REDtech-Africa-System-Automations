@@ -4,6 +4,7 @@ import {
   ArrowRight, Clock, AlertCircle
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -102,17 +103,22 @@ const modules: ModuleCard[] = [
 ];
 
 const Dashboard = () => {
+  const { profile } = useAuth();
   const liveModules = modules.filter((m) => m.status === "live");
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const firstName = profile?.full_name?.split(" ")[0] || "";
 
   return (
     <div className="flex-1 min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-6">
           <h1 className="text-2xl font-bold" style={{ color: '#bc7e57' }}>
-            System Automations
+            {greeting}{firstName ? `, ${firstName}` : ""} 👋
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            REDtech Africa Consulting — Automating excellence across every department
+            REDtech Africa — System Automations Dashboard
           </p>
         </div>
       </header>

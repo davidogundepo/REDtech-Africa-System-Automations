@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth-context";
 import companyLogo from "@/assets/company-logo.png";
 import { Loader2, LogIn, UserPlus, Mail, Lock, User, KeyRound } from "lucide-react";
 import { sendNotificationEmail } from "@/lib/email";
+import { supabase } from "@/integrations/supabase/client";
 
 const Auth = () => {
   const [loginEmail, setLoginEmail] = useState("");
@@ -66,7 +67,10 @@ const Auth = () => {
     if (error) {
       toast.error(error);
     } else {
-      toast.success("Welcome back!");
+      // Fetch user's first name for a personalized greeting
+      const { data: prof } = await (supabase as any).from("profiles").select("full_name").eq("email", loginEmail).maybeSingle();
+      const firstName = prof?.full_name?.split(" ")[0] || "";
+      toast.success(`Welcome back${firstName ? `, ${firstName}` : ""}! 👋`);
       navigate("/", { replace: true });
     }
     setLoading(false);
@@ -95,11 +99,11 @@ const Auth = () => {
         // They already typed their password — just log them in
         const { error: loginError } = await signIn(signupEmail, signupPassword);
         if (loginError) {
-          toast.info("Welcome back! 👋 This email is already registered. Please use the correct password to sign in.", { duration: 5000 });
+          toast.info(`Hey ${signupName.split(" ")[0]}! 👋 This email is already registered. Please use the correct password to sign in.`, { duration: 5000 });
           setTab("login");
           setLoginEmail(signupEmail);
         } else {
-          toast.success("Welcome back! 👋");
+          toast.success(`Welcome back, ${signupName.split(" ")[0]}! 👋`);
           navigate("/", { replace: true });
         }
       } else {

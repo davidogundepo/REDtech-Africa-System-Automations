@@ -61,7 +61,7 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     await signOut();
-    toast.success("Signed out");
+    toast.success(`See you later${profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}! 👋`);
     navigate("/auth");
   };
 
