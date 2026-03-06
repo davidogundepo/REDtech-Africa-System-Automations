@@ -75,6 +75,23 @@ const OperationsDashboard = () => {
     }
   });
 
+  // Fetch profiles and tasks for team efficiency
+  const { data: profiles } = useQuery({
+    queryKey: ['profiles-ops'],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from('profiles').select('id, full_name, department').eq('is_active', true);
+      return data || [];
+    }
+  });
+
+  const { data: allTasks } = useQuery({
+    queryKey: ['tasks-ops'],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from('tasks').select('id, status, assigned_to, assigned_to_user_id');
+      return data || [];
+    }
+  });
+
   // Mutations
   const addMetricMutation = useMutation({
     mutationFn: async (metricData: any) => {
@@ -123,13 +140,26 @@ const OperationsDashboard = () => {
     return acc;
   }, {} as Record<string, any>)) : [];
 
-  const efficiencyData = [
-    { group: "A", efficiency: 85 },
-    { group: "B", efficiency: 92 },
-    { group: "C", efficiency: 78 },
-    { group: "D", efficiency: 88 },
-    { group: "E", efficiency: 95 },
-  ];
+  // Distinct colours for team efficiency bars
+  const teamColours = ['#bc7e57', '#6b8e6b', '#5b7fa5', '#c9956b', '#8b6b9e', '#5b9e9e', '#c97b7b', '#7b7bc9', '#9e8b5b', '#5b9e7b'];
+
+  // Real team member efficiency data from profiles + tasks
+  const efficiencyData = (profiles || []).map((p: any, i: number) => {
+    const userTasks = (allTasks || []).filter((t: any) => t.assigned_to === p.full_name || t.assigned_to_user_id === p.id);
+    const completed = userTasks.filter((t: any) => t.status === 'completed').length;
+    const total = userTasks.length;
+    const efficiency = total > 0 ? Math.round((completed / total) * 100) : 100; // new members = 100%
+    const firstName = p.full_name?.split(' ')[0] || 'Unknown';
+    return {
+      group: firstName,
+      efficiency,
+      colour: teamColours[i % teamColours.length],
+      fullName: p.full_name,
+      department: p.department || 'Unassigned',
+      totalTasks: total,
+      completed,
+    };
+  }).sort((a: any, b: any) => b.efficiency - a.efficiency);
 
   const totalDeliveries = metrics?.reduce((sum, m) => sum + (m.deliveries || 0), 0) || 0;
   const totalIssues = metrics?.reduce((sum, m) => sum + (m.issues || 0), 0) || 0;
@@ -255,14 +285,14 @@ const OperationsDashboard = () => {
                     <Bar dataKey="efficiency" fill={barFill} radius={[0, 4, 4, 0]} barSize={20}>
                       {
                         efficiencyData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={entry.efficiency > 90 ? '#bc7e57' : barFill} />
+                          <Cell key={`cell-${index}`} fill={entry.colour} />
                         ))
                       }
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
                 <div className="mt-4 text-center text-sm text-muted-foreground">
-                  Groups with <span className="font-semibold text-[#bc7e57]">gold</span> bars exceed the 90% SLA target.
+                  Efficiency based on task completion rate. <span className="font-semibold text-[#bc7e57]">Gold</span> = top performer.
                 </div>
               </>
             ) : (
