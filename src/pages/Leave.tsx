@@ -37,6 +37,7 @@ const leaveTypes = [
   { value: "vacation", label: "Vacation" },
   { value: "bereavement", label: "Bereavement" },
   { value: "business", label: "Business Trip" },
+  { value: "other", label: "Other" },
 ];
 
 const statusColors: Record<string, string> = {
@@ -46,7 +47,7 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
 };
 
-const emptyForm = { leave_type: "annual", start_date: "", end_date: "", reason: "" };
+const emptyForm = { leave_type: "annual", start_date: "", end_date: "", reason: "", custom_type: "" };
 
 const Leave = () => {
   const { profile, isAdmin, isSuperAdmin, canEdit } = useAuth();
@@ -66,7 +67,7 @@ const Leave = () => {
 
   const fetchBalances = async () => {
     if (!profile) return;
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("leave_balances")
       .select("*")
       .eq("user_id", profile.id)
@@ -128,7 +129,7 @@ const Leave = () => {
   };
 
   const handleApproval = async (id: string, status: "approved" | "rejected") => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("leave_requests")
       .update({ status, approved_by: profile?.full_name || "Admin" })
       .eq("id", id);
@@ -140,7 +141,7 @@ const Leave = () => {
       if (request) {
         const days = getDaysCount(request.start_date, request.end_date);
         // Try to update existing balance, or create one if missing
-        const { data: existingBalance } = await supabase
+        const { data: existingBalance } = await (supabase as any)
           .from("leave_balances")
           .select("*")
           .eq("user_id", request.user_id)
@@ -177,7 +178,7 @@ const Leave = () => {
     const request = requests.find(r => r.id === id);
     if (!request) return;
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("leave_requests")
       .update({ status: "cancelled" })
       .eq("id", id);
@@ -187,7 +188,7 @@ const Leave = () => {
     // If was approved, restore balance
     if (request.status === "approved") {
       const days = getDaysCount(request.start_date, request.end_date);
-      const { data: balance } = await supabase
+      const { data: balance } = await (supabase as any)
         .from("leave_balances")
         .select("*")
         .eq("user_id", request.user_id)
@@ -254,7 +255,7 @@ const Leave = () => {
                   <div><Label>Start Date *</Label><Input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} /></div>
                   <div><Label>End Date *</Label><Input type="date" required value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} /></div>
                 </div>
-                <div><Label>Reason</Label><Textarea value={formData.reason} onChange={(e) => setFormData({ ...formData, reason: e.target.value })} placeholder="Reason for leave..." rows={3} /></div>
+                <div><Label>Reason {formData.leave_type === 'other' ? '(Please specify leave type and reason) *' : ''}</Label><Textarea value={formData.reason} onChange={(e) => setFormData({ ...formData, reason: e.target.value })} placeholder={formData.leave_type === 'other' ? 'Please specify the type of leave and your reason...' : 'Reason for leave...'} rows={3} required={formData.leave_type === 'other'} /></div>
                 <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }}>
                   Submit Request
                 </Button>

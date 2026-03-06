@@ -96,6 +96,7 @@ const Clients = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showMyClients, setShowMyClients] = useState(false);
+  const [pipelineTab, setPipelineTab] = useState("all");
 
   const fetchClients = async () => {
     const { data, error } = await (supabase as any).from("clients").select("*").order("created_at", { ascending: false });
@@ -216,13 +217,24 @@ const Clients = () => {
 
   const filtered = clients
     .filter(c => !showMyClients || c.assigned_to === profile?.id)
+    .filter(c => pipelineTab === "all" || c.deal_status === pipelineTab)
     .filter(c => 
       [c.name, c.company, c.email, c.industry].some(f => f?.toLowerCase().includes(search.toLowerCase()))
     );
 
+  const stageCounts: Record<string, number> = {
+    all: clients.length,
+    lead: clients.filter(c => c.deal_status === 'lead').length,
+    contacted: clients.filter(c => c.deal_status === 'contacted').length,
+    proposal: clients.filter(c => c.deal_status === 'proposal').length,
+    negotiation: clients.filter(c => c.deal_status === 'negotiation').length,
+    won: clients.filter(c => c.deal_status === 'won').length,
+    lost: clients.filter(c => c.deal_status === 'lost').length,
+  };
+
   const pipelineValue = {
     total: clients.length,
-    won: clients.filter(c => c.deal_status === 'won').length,
+    won: stageCounts.won,
     active: clients.filter(c => !['won', 'lost'].includes(c.deal_status)).length,
   };
 
@@ -360,6 +372,56 @@ const Clients = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Deal Journey Funnel */}
+      <Card className="mb-6 border-[#bc7e57]/10">
+        <CardContent className="py-6 px-4">
+          <p className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">Deal Journey</p>
+          <div className="flex items-center justify-between overflow-x-auto">
+            {dealStatuses.filter(s => s.value !== 'lost').map((stage, i, arr) => {
+              const count = stageCounts[stage.value] || 0;
+              const isActive = pipelineTab === stage.value;
+              return (
+                <div key={stage.value} className="flex items-center flex-1 min-w-0">
+                  <button 
+                    onClick={() => setPipelineTab(pipelineTab === stage.value ? "all" : stage.value)}
+                    className={`flex flex-col items-center gap-1.5 px-2 py-2 rounded-lg transition-all cursor-pointer flex-shrink-0 ${isActive ? 'bg-[#bc7e57]/10' : 'hover:bg-muted/50'}`}
+                  >
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${count > 0 ? 'bg-[#bc7e57]/15 text-[#bc7e57]' : 'bg-muted text-muted-foreground'} ${isActive ? 'ring-2 ring-[#bc7e57] scale-110' : ''}`}>
+                      {count}
+                    </div>
+                    <span className={`text-[10px] font-medium whitespace-nowrap ${isActive ? 'text-[#bc7e57]' : 'text-muted-foreground'}`}>
+                      {stage.label.replace(' (New)', '').replace('Closed ', '')}
+                    </span>
+                  </button>
+                  {i < arr.length - 1 && (
+                    <div className={`flex-1 h-0.5 mx-1 ${count > 0 ? 'bg-[#bc7e57]/30' : 'bg-border'}`} />
+                  )}
+                </div>
+              );
+            })}
+            {/* Lost (separate) */}
+            <div className="flex items-center ml-4 pl-4 border-l border-dashed border-border">
+              <button
+                onClick={() => setPipelineTab(pipelineTab === "lost" ? "all" : "lost")}
+                className={`flex flex-col items-center gap-1.5 px-2 py-2 rounded-lg transition-all cursor-pointer ${pipelineTab === "lost" ? 'bg-red-50 dark:bg-red-950/30' : 'hover:bg-muted/50'}`}
+              >
+                <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold ${stageCounts.lost > 0 ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-muted text-muted-foreground'} ${pipelineTab === "lost" ? 'ring-2 ring-red-400 scale-110' : ''}`}>
+                  {stageCounts.lost}
+                </div>
+                <span className={`text-[10px] font-medium ${pipelineTab === "lost" ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>Lost</span>
+              </button>
+            </div>
+          </div>
+          {pipelineTab !== "all" && (
+            <div className="mt-3 flex items-center justify-center">
+              <Button variant="ghost" size="sm" className="text-xs h-6 text-muted-foreground" onClick={() => setPipelineTab("all")}>
+                Clear filter — show all {clients.length} contacts
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">

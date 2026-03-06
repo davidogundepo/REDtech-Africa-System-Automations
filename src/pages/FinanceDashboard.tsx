@@ -7,7 +7,7 @@ import { format, parseISO, subDays } from "date-fns";
 import { useTheme } from "@/components/ThemeProvider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
-import { ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, Activity, Calendar as CalendarIcon, Wallet, Plus, Download, Trash2, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Banknote, CreditCard, Activity, Calendar as CalendarIcon, Wallet, Plus, Download, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -136,7 +136,7 @@ const FinanceDashboard = () => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-use;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `REDtech_Finance_Export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.setAttribute("download", `RAC_Finance_Export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -379,14 +379,14 @@ const FinanceDashboard = () => {
             </div>
           )}
 
-          <Button variant="outline" className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 disabled:opacity-50" onClick={handleExportCSV} disabled={!transactions?.length}>
+          <Button variant="outline" className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 text-[#bc7e57] disabled:opacity-50" onClick={handleExportCSV} disabled={!transactions?.length}>
             <Download className="h-4 w-4 mr-2" /> Export CSV
           </Button>
           
           {canEdit && (
             <Dialog open={isReqDialogOpen} onOpenChange={setIsReqDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="border-blue-500/50 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Button variant="outline" className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 text-[#bc7e57]">
                   <CreditCard className="h-4 w-4 mr-2" /> Request Payment
                 </Button>
               </DialogTrigger>
@@ -400,7 +400,7 @@ const FinanceDashboard = () => {
                   <div><Label>Amount (NGN) *</Label><Input type="number" required min="0" step="0.01" value={newReq.amount} onChange={(e) => setNewReq({...newReq, amount: e.target.value})} /></div>
                   <div><Label>Category *</Label><Input required value={newReq.category} onChange={(e) => setNewReq({...newReq, category: e.target.value})} placeholder="e.g., Software, Travel, Office Supplies" /></div>
                   <div><Label>Description</Label><Input value={newReq.description} onChange={(e) => setNewReq({...newReq, description: e.target.value})} placeholder="Detailed reason for request" /></div>
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={addRequestMutation.isPending}>Submit Request</Button>
+                  <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }} disabled={addRequestMutation.isPending}>Submit Request</Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -446,7 +446,7 @@ const FinanceDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard title="Total Revenue" value={formatCurrency(totalRevenue)} change="+12.5% vs last month" isPositive={true} icon={Wallet} />
         <StatCard title="Total Expenses" value={formatCurrency(totalExpenses)} change="-2.4% vs last month" isPositive={true} icon={CreditCard} />
-        <StatCard title="Net Profit" value={formatCurrency(netProfit)} change="+14.2% vs last month" isPositive={totalRevenue >= totalExpenses} icon={DollarSign} />
+        <StatCard title="Net Profit" value={formatCurrency(netProfit)} change="+14.2% vs last month" isPositive={totalRevenue >= totalExpenses} icon={Banknote} />
         <StatCard title="Profit Margin" value={`${profitMargin}%`} change="+1.2% vs last month" isPositive={parseFloat(profitMargin) > 20} icon={Activity} />
       </div>
 
