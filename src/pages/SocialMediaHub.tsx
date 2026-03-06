@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Linkedin, Twitter, Instagram, Facebook, Plus, Clock, CheckCircle2, Megaphone, Trash2, Heart, MessageSquare, Share2, Upload, Download, Calendar, Film, LayoutGrid, BookImage, Newspaper, Zap } from "lucide-react";
+import { Linkedin, Twitter, Instagram, Facebook, Plus, Clock, CheckCircle2, Megaphone, Trash2, Heart, MessageSquare, Share2, Upload, Download, Calendar, Film, LayoutGrid, BookImage, Newspaper, Zap, ImageIcon } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
@@ -83,7 +83,11 @@ const SocialMediaHub = () => {
     status: "draft", 
     scheduled_date: new Date().toISOString().slice(0, 16),
     post_type: "post",
+    image_url: "",
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [inspirationType, setInspirationTypeFilter] = useState("all");
 
   const platformLimits: Record<string, number> = {
@@ -115,11 +119,45 @@ const SocialMediaHub = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social_posts'] });
       setIsDialogOpen(false);
-      setNewPost({ platform: "linkedin", content: "", status: "draft", scheduled_date: new Date().toISOString().slice(0, 16) });
+      setNewPost({ platform: "linkedin", content: "", status: "draft", scheduled_date: new Date().toISOString().slice(0, 16), post_type: "post", image_url: "" });
+      setImageFile(null);
+      setImagePreview(null);
       toast.success(`Post saved, ${profile?.full_name?.split(" ")[0]}! 📝`);
     },
     onError: (error) => toast.error("Failed to save post: " + error.message)
   });
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const uploadImageAndSubmit = async () => {
+    if (!newPost.content) return toast.error("Post content is required");
+    let image_url = newPost.image_url;
+    if (imageFile) {
+      setUploadingImage(true);
+      const ext = imageFile.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await (supabase as any).storage.from('post-images').upload(fileName, imageFile);
+      if (uploadError) {
+        setUploadingImage(false);
+        toast.error('Image upload failed: ' + uploadError.message);
+        return;
+      }
+      const { data: urlData } = (supabase as any).storage.from('post-images').getPublicUrl(fileName);
+      image_url = urlData.publicUrl;
+      setUploadingImage(false);
+    }
+    addPostMutation.mutate({
+      ...newPost,
+      image_url: image_url || null,
+      scheduled_date: new Date(newPost.scheduled_date).toISOString(),
+      created_by: profile?.full_name || 'Unknown',
+    });
+  };
 
   const batchAddPostsMutation = useMutation({
     mutationFn: async (postsArray: any[]) => {
@@ -159,16 +197,7 @@ const SocialMediaHub = () => {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPost.content) return toast.error("Post content is required");
-    
-    addPostMutation.mutate({
-      ...newPost,
-      scheduled_date: new Date(newPost.scheduled_date).toISOString(),
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      created_by: profile?.full_name || "System Admin"
-    });
+    uploadImageAndSubmit();
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,6 +380,24 @@ const SocialMediaHub = () => {
                         <SelectItem value="story">📖 Story</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Attach Image (optional)</Label>
+                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-[#bc7e57]/40 rounded-lg p-4 cursor-pointer hover:bg-[#bc7e57]/5 transition-colors">
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="Preview" className="max-h-36 rounded-md object-cover" />
+                      ) : (
+                        <div className="text-center text-muted-foreground">
+                          <ImageIcon className="h-8 w-8 mx-auto mb-1 opacity-50" />
+                          <p className="text-xs">Click to attach an image</p>
+                          <p className="text-xs opacity-60">JPG, PNG, GIF, WebP</p>
+                        </div>
+                      )}
+                    </label>
+                    {imagePreview && (
+                      <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => { setImageFile(null); setImagePreview(null); }}>✕ Remove image</button>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Date & Time</Label>

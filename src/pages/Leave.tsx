@@ -63,6 +63,9 @@ const Leave = () => {
   const [balances, setBalances] = useState<any[]>([]);
   const [teamProfiles, setTeamProfiles] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('my-leave');
+  const [creditDaysDialog, setCreditDaysDialog] = useState(false);
+  const [creditTarget, setCreditTarget] = useState<any>(null);
+  const [creditDays, setCreditDays] = useState("1");
 
   const fetchRequests = async () => {
     const { data, error } = await (supabase as any).from("leave_requests").select("*").order("created_at", { ascending: false });
@@ -165,6 +168,48 @@ const Leave = () => {
     fetchRequests();
   };
 
+  // Grant extra leave days (super-admin)
+  const handleCreditDays = async () => {
+    if (!creditTarget || !creditDays || parseInt(creditDays) < 1) {
+      toast.error("Please select a team member and enter valid days.");
+      return;
+    }
+    const days = parseInt(creditDays);
+    const year = new Date().getFullYear();
+    const { data: existing } = await (supabase as any)
+      .from('leave_balances')
+      .select('*')
+      .eq('user_id', creditTarget.id)
+      .eq('leave_type', 'annual')
+      .eq('year', year)
+      .maybeSingle();
+
+    if (existing) {
+      await (supabase as any).from('leave_balances')
+        .update({ bonus_days: (existing.bonus_days || 0) + days })
+        .eq('id', existing.id);
+    } else {
+      await (supabase as any).from('leave_balances').insert({
+        user_id: creditTarget.id, leave_type: 'annual', year, used_days: 0, bonus_days: days
+      });
+    }
+
+    // In-app notification to recipient
+    await (supabase as any).from('notifications').insert({
+      user_id: creditTarget.id,
+      title: 'Leave Days Credited 🎁',
+      message: `${days} extra leave day${days > 1 ? 's have' : ' has'} been credited to your annual leave balance by management.`,
+      type: 'success',
+      link: '/leave'
+    });
+
+    toast.success(`${days} day${days > 1 ? 's' : ''} credited to ${creditTarget.full_name}'s leave balance!`);
+    setCreditDaysDialog(false);
+    setCreditTarget(null);
+    setCreditDays('1');
+    fetchBalances();
+  };
+
   const handleApproval = async (id: string, status: "approved" | "rejected") => {
     const { error } = await (supabase as any)
       .from("leave_requests")
@@ -204,6 +249,36 @@ const Leave = () => {
         type: status === "approved" ? "success" : "alert",
         link: "/leave"
       }).then();
+    }
+
+    // Send reminder email to the employee when approved
+    if (status === "approved") {
+      const approvedReq = requests.find(r => r.id === id);
+      if (approvedReq) {
+        const startDate = new Date(approvedReq.start_date);
+        const daysUntilLeave = Math.ceil((startDate.getTime() - Date.now()) / (1000 * 3600 * 24));
+        const reminderNote = daysUntilLeave <= 3
+          ? `⚠️ Your leave starts in ${daysUntilLeave} day${daysUntilLeave !== 1 ? 's' : ''}!`
+          : `Your leave starts on ${approvedReq.start_date}. A reminder will be sent 3 days before.`;
+
+        sendNotificationEmail({
+          to: 'management@redtechafrica.com',
+          subject: `Leave Approved: ${approvedReq.employee_id} — ${approvedReq.start_date}`,
+          html: brandedEmailTemplate({
+            recipientName: approvedReq.employee_id,
+            heading: 'Your Leave Request Has Been Approved ✅',
+            body: `
+              <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+                <tr><td style="padding:8px 12px; background:#f8f6f3;"><strong>Leave Type</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${approvedReq.leave_type}</td></tr>
+                <tr><td style="padding:8px 12px;"><strong>Period</strong></td><td style="padding:8px 12px;">${approvedReq.start_date} → ${approvedReq.end_date}</td></tr>
+                <tr><td style="padding:8px 12px; background:#f8f6f3;"><strong>Reminder</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${reminderNote}</td></tr>
+              </table>
+            `,
+            ctaText: 'View My Leave',
+            ctaUrl: 'https://ractools.vercel.app/leave',
+          })
+        });
+      }
     }
 
     toast.success(`Request ${status}`);
@@ -269,6 +344,38 @@ const Leave = () => {
             >
               <Filter className="h-4 w-4 mr-1" /> {showMyLeave ? "My Leave" : "All Leave"}
             </Button>
+          )}
+          {/* Credit Extra Days — Super Admin only */}
+          {isSuperAdmin && (
+            <Dialog open={creditDaysDialog} onOpenChange={setCreditDaysDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-[#bc7e57]/50 text-[#bc7e57] hover:bg-[#bc7e57]/10">
+                  <CalendarDays className="h-4 w-4 mr-1" /> Credit Days
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Credit Extra Leave Days</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Team Member</Label>
+                    <Select onValueChange={(v) => setCreditTarget(teamProfiles.find((p: any) => p.id === v))}>
+                      <SelectTrigger><SelectValue placeholder="Select team member" /></SelectTrigger>
+                      <SelectContent>
+                        {teamProfiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Extra Days to Credit</Label>
+                    <Input type="number" min="1" max="30" value={creditDays} onChange={e => setCreditDays(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">Added on top of the standard 14-day annual allowance.</p>
+                  </div>
+                  <Button onClick={handleCreditDays} className="w-full" style={{ backgroundColor: '#bc7e57' }}>
+                    Credit Days to {creditTarget?.full_name || 'Member'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>

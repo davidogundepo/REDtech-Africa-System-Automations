@@ -767,6 +767,83 @@ const FinanceDashboard = () => {
             </Card>
           </TabsContent>
         )}
+
+        {/* Recycle Bin Tab — soft-deleted transactions, 30-day window */}
+        {(isAdmin || isSuperAdmin) && (
+          <TabsContent value="recycle">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-muted-foreground" /> Recycle Bin
+                </CardTitle>
+                <CardDescription>Transactions deleted in the last 30 days. Restore or permanently delete them.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {deletedTransactions && deletedTransactions.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Deleted On</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {deletedTransactions.map((tx: any) => (
+                        <TableRow key={tx.id} className="opacity-70">
+                          <TableCell className="font-mono text-xs text-muted-foreground">{format(new Date(tx.deleted_at), 'dd MMM yyyy, HH:mm')}</TableCell>
+                          <TableCell>{tx.description || '—'}</TableCell>
+                          <TableCell><Badge variant="outline">{tx.category}</Badge></TableCell>
+                          <TableCell className={`text-right font-medium ${tx.type === 'revenue' ? 'text-green-600' : 'text-red-600'}`}>
+                            {tx.type === 'revenue' ? '+' : '-'}{formatCurrency(tx.amount)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-green-500/50 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                onClick={() => restoreTxMutation.mutate(tx.id)}
+                                disabled={restoreTxMutation.isPending}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Restore
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
+                                    <XCircle className="h-3.5 w-3.5 mr-1" /> Delete Forever
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Permanently Delete Transaction?</AlertDialogTitle>
+                                    <AlertDialogDescription>This action cannot be undone. The transaction will be permanently removed from all records.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteTxMutation.mutate({ id: tx.id, hardDelete: true })} className="bg-destructive hover:bg-destructive/90">Delete Forever</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-green-500/50" />
+                    <p className="font-medium">Recycle bin is clear</p>
+                    <p className="text-sm">Deleted transactions appear here for 30 days before permanent removal.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
