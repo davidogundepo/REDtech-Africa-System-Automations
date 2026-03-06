@@ -60,7 +60,7 @@ export const WaybillForm = ({ waybillData, setWaybillData }: WaybillFormProps) =
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="accentColor">Accent Color</Label>
+              <Label htmlFor="accentColor">Accent Colour</Label>
               <div className="flex gap-2">
                 <input
                   type="color"
@@ -231,7 +231,7 @@ export const WaybillForm = ({ waybillData, setWaybillData }: WaybillFormProps) =
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="deliveryOrganization">Organization (Optional)</Label>
+            <Label htmlFor="deliveryOrganization">Organisation (Optional)</Label>
             <Input
               id="deliveryOrganization"
               value={waybillData.deliveryOrganization || ""}
