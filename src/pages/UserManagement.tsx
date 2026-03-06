@@ -51,6 +51,7 @@ const UserManagement = () => {
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [broadcastType, setBroadcastType] = useState("info");
   const [broadcastTarget, setBroadcastTarget] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["profiles"],
@@ -171,10 +172,13 @@ const UserManagement = () => {
     onError: (err: any) => toast.error("Broadcast failed: " + err.message)
   });
 
-  const filteredUsers = users?.filter((u: any) =>
-    u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const filteredUsers = users?.filter((u: any) => {
+    const matchesSearch = !searchQuery || [
+      u.full_name, u.email, u.department, u.role
+    ].some(f => f?.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesRole = roleFilter === "all" || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  }) || [];
 
   if (!isSuperAdmin) {
     return (
@@ -299,14 +303,28 @@ const UserManagement = () => {
             </DialogContent>
           </Dialog>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-64"
-            />
+          <div className="flex items-center gap-2">
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="All Roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="super_admin">Super Admin</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="team_member">Team Member</SelectItem>
+                <SelectItem value="viewer">Viewer</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, email, role, dept..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-64"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -344,6 +362,7 @@ const UserManagement = () => {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Department</TableHead>
+                  <TableHead className="text-center">Score</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -359,6 +378,20 @@ const UserManagement = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>{user.department || "—"}</TableCell>
+                    <TableCell className="text-center">
+                      {(() => {
+                        const score = user.performance_score ?? 100;
+                        const colour = score >= 80 ? 'text-green-600' : score >= 60 ? 'text-amber-500' : 'text-red-500';
+                        return (
+                          <div className="flex flex-col items-center gap-1 min-w-[70px]">
+                            <span className={`text-sm font-bold ${colour}`}>{score}/100</span>
+                            <div className="w-full bg-muted rounded-full h-1.5">
+                              <div className="h-1.5 rounded-full" style={{ width: `${score}%`, backgroundColor: score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#ef4444' }} />
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={user.is_active ? "default" : "destructive"}>
                         {user.is_active ? "Active" : "Inactive"}
