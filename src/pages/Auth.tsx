@@ -120,7 +120,7 @@ const Auth = () => {
           recipientName: signupName,
           heading: "Welcome to the Team! 🎉",
           body: `
-            <p>Your account on the <strong>REDtech System Automations</strong> platform has been successfully created.</p>
+            <p>Your account on the <strong>RAC Automations Dashboard</strong> platform has been successfully created.</p>
             <p>Here's what you can do now:</p>
             <ul style="padding-left:20px; color:#555;">
               <li>📋 Track and manage your <strong>assigned tasks</strong></li>

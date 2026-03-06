@@ -96,7 +96,7 @@ export function AppSidebar() {
           <img src={companyLogo} alt="REDtech Africa" className="h-8 w-auto" />
           <div>
             <h2 className="font-bold text-sm" style={{ color: '#bc7e57' }}>REDtech Africa</h2>
-            <p className="text-xs text-muted-foreground">RAC System Automations</p>
+            <p className="text-xs text-muted-foreground">RAC Automations Dashboard</p>
           </div>
         </div>
       </SidebarHeader>

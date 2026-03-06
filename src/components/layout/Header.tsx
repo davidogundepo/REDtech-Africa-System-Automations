@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, Check, Info, ShieldAlert, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
+import { Bell, Check, Info, ShieldAlert, CheckCircle2, AlertTriangle, ArrowRight, BellRing, Sparkles } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 
 export function Header() {
   const { profile } = useAuth();
@@ -22,27 +21,27 @@ export function Header() {
     queryKey: ["notifications", profile?.id],
     queryFn: async () => {
       if (!profile) return [];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("notifications")
         .select("*")
         .eq("user_id", profile.id)
         .order("created_at", { ascending: false })
         .limit(20);
       
-      if (error) throw error;
+      if (error) { console.error("Notifications error:", error); return []; }
       return data || [];
     },
     enabled: !!profile,
-    refetchInterval: 15000, // Poll every 15 seconds
+    refetchInterval: 30000,
   });
 
-  const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
+  const unreadCount = notifications?.filter((n: any) => !n.is_read).length || 0;
 
   // Mark all as read mutation
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
       if (!profile) return;
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("notifications")
         .update({ is_read: true })
         .eq("user_id", profile.id)
@@ -57,7 +56,7 @@ export function Header() {
   // Mark single as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("notifications")
         .update({ is_read: true })
         .eq("id", id);
@@ -81,9 +80,9 @@ export function Header() {
   const getIcon = (type: string) => {
     switch (type) {
       case 'success': return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case 'warning': return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
-      case 'alert': return <ShieldAlert className="h-5 w-5 text-red-500" />;
-      default: return <Info className="h-5 w-5 text-blue-500" />;
+      case 'warning': return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+      case 'error': return <ShieldAlert className="h-5 w-5 text-red-500" />;
+      default: return <Info className="h-5 w-5" style={{ color: '#bc7e57' }} />;
     }
   };
 
@@ -91,26 +90,38 @@ export function Header() {
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
       <div className="flex items-center gap-2 md:hidden">
         <SidebarTrigger />
-        <span className="font-semibold text-sm" style={{ color: '#bc7e57' }}>RAC System Automations</span>
+        <span className="font-semibold text-sm" style={{ color: '#bc7e57' }}>RAC Automations</span>
       </div>
       <div className="hidden md:flex flex-1" />
       
       <div className="flex items-center gap-4">
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full hover:bg-muted/50 transition-colors">
-              <Bell className="h-5 w-5 text-muted-foreground transition-all hover:text-foreground" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={`relative h-10 w-10 rounded-full transition-all duration-200 ${isOpen ? 'bg-[#bc7e57]/10 ring-2 ring-[#bc7e57]/20' : 'hover:bg-muted/50'}`}
+            >
+              <Bell className={`h-5 w-5 transition-colors ${isOpen ? 'text-[#bc7e57]' : 'text-muted-foreground hover:text-foreground'}`} />
               {unreadCount > 0 && (
-                <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-background"></span>
+                <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#bc7e57]/40"></span>
+                  <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#bc7e57] text-[10px] font-bold text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
                 </span>
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[380px] p-0 mr-4 shadow-xl border-border/50" align="end">
+          <PopoverContent className="w-[400px] p-0 mr-4 shadow-xl border-border/50 rounded-xl" align="end">
             <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
-              <h4 className="font-semibold">Notifications</h4>
+              <div className="flex items-center gap-2">
+                <BellRing className="h-4 w-4" style={{ color: '#bc7e57' }} />
+                <h4 className="font-semibold text-sm">Notifications</h4>
+                {unreadCount > 0 && (
+                  <Badge className="text-[10px] px-1.5 py-0 h-4 bg-[#bc7e57]">{unreadCount} new</Badge>
+                )}
+              </div>
               {unreadCount > 0 && (
                 <Button 
                   variant="ghost" 
@@ -119,7 +130,7 @@ export function Header() {
                     e.stopPropagation();
                     markAllReadMutation.mutate();
                   }}
-                  className="text-xs h-8 text-muted-foreground hover:text-primary gap-1"
+                  className="text-xs h-7 px-2 text-muted-foreground hover:text-[#bc7e57] gap-1"
                 >
                   <Check className="h-3 w-3" /> Mark all read
                 </Button>
@@ -127,25 +138,32 @@ export function Header() {
             </div>
             
             <div className="max-h-[70vh] overflow-y-auto">
-              {notifications?.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground flex flex-col items-center gap-2">
-                  <Bell className="h-8 w-8 opacity-20" />
-                  <p className="text-sm">You're all caught up!</p>
+              {(!notifications || notifications.length === 0) ? (
+                <div className="py-12 px-6 text-center flex flex-col items-center gap-3">
+                  <div className="h-16 w-16 rounded-2xl bg-[#bc7e57]/5 flex items-center justify-center">
+                    <Sparkles className="h-8 w-8" style={{ color: '#bc7e57', opacity: 0.4 }} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-medium text-sm">All clear, {profile?.full_name?.split(' ')[0] || 'champ'}! 🎉</p>
+                    <p className="text-xs text-muted-foreground max-w-[220px] leading-relaxed">
+                      Your notifications from tasks, leave approvals, and team updates will show up here.
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col">
-                  {notifications?.map((n) => (
+                  {notifications.map((n: any) => (
                     <div 
                       key={n.id}
                       onClick={() => handleNotificationClick(n)}
-                      className={"flex items-start gap-3 p-4 border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer " + (!n.is_read ? "bg-primary/5" : "")}
+                      className={`flex items-start gap-3 p-4 border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer ${!n.is_read ? 'bg-[#bc7e57]/[0.03]' : ''}`}
                     >
-                      <div className="mt-1 flex-shrink-0">
+                      <div className="mt-0.5 flex-shrink-0">
                         {getIcon(n.type)}
                       </div>
                       <div className="flex-1 space-y-1 overflow-hidden">
                         <div className="flex items-center justify-between gap-2">
-                          <p className={"text-sm font-medium leading-none truncate " + (!n.is_read ? "text-foreground" : "text-muted-foreground")}>
+                          <p className={`text-sm font-medium leading-none truncate ${!n.is_read ? 'text-foreground' : 'text-muted-foreground'}`}>
                             {n.title}
                           </p>
                           <span className="text-[10px] text-muted-foreground whitespace-nowrap">
@@ -156,7 +174,7 @@ export function Header() {
                           {n.message}
                         </p>
                         {n.link && (
-                          <div className="flex items-center text-xs font-medium text-primary mt-2 gap-1">
+                          <div className="flex items-center text-xs font-medium mt-1.5 gap-1" style={{ color: '#bc7e57' }}>
                             View details <ArrowRight className="h-3 w-3" />
                           </div>
                         )}
@@ -173,8 +191,6 @@ export function Header() {
             </div>
           </PopoverContent>
         </Popover>
-
-        {/* Profile Avatar / Mini Info can go here later if needed */}
       </div>
     </header>
   );

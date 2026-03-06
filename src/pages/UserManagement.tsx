@@ -116,12 +116,12 @@ const UserManagement = () => {
           // Step 2: Send Email Notification to the user
           sendNotificationEmail({
             to: userToRemove.email,
-            subject: "Platform Access Update - REDtech System Automations",
+            subject: "Platform Access Update - RAC Automations Dashboard",
             html: brandedEmailTemplate({
               recipientName: userToRemove.full_name,
               heading: "Platform Access Update",
               body: `
-                <p>Your access to the <strong>REDtech System Automations</strong> platform has been updated by an administrator.</p>
+                <p>Your access to the <strong>RAC Automations Dashboard</strong> platform has been updated by an administrator.</p>
                 <div style="background:#fef2f2; border-left:4px solid #dc2626; padding:12px 16px; border-radius:0 8px 8px 0; margin:16px 0;">
                   <p style="margin:0; color:#991b1b;"><strong>Reason:</strong> ${removeReason}</p>
                 </div>

@@ -35,7 +35,7 @@ export const brandedEmailTemplate = ({
           <tr>
             <td style="background: linear-gradient(135deg, #bc7e57 0%, #1a1a2e 100%); padding:36px 40px; text-align:center;">
               <h1 style="margin:0; color:#ffffff; font-size:22px; font-weight:700; letter-spacing:0.5px;">
-                ⚙️ RAC System Automations
+                ⚙️ RAC Automations
               </h1>
               <p style="margin:6px 0 0; color:rgba(255,255,255,0.75); font-size:13px; letter-spacing:0.3px;">
                 REDtech Africa Consulting

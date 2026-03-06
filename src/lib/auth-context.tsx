@@ -28,6 +28,7 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   isAdmin: boolean;
   canEdit: boolean;
+  isViewer: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -143,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isSuperAdmin = profile?.role === "super_admin";
   const isAdmin = profile?.role === "admin" || isSuperAdmin;
+  const isViewer = profile?.role === "viewer";
   const canEdit = isAdmin || profile?.role === "team_member";
 
   return (
@@ -160,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSuperAdmin,
         isAdmin,
         canEdit,
+        isViewer,
       }}
     >
       {children}

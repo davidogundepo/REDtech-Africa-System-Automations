@@ -26,7 +26,7 @@ const Attendance = () => {
     queryKey: ["my-attendance", today],
     queryFn: async () => {
       if (!profile) return null;
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("attendance_records")
         .select("*")
         .eq("user_id", profile.id)
@@ -42,7 +42,7 @@ const Attendance = () => {
   const { data: allRecords } = useQuery({
     queryKey: ["attendance-all", selectedDate],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("attendance_records")
         .select("*, profiles:user_id(full_name, email, department)")
         .eq("date", selectedDate)
@@ -66,7 +66,7 @@ const Attendance = () => {
   const { data: activeLeaves } = useQuery({
     queryKey: ["active-leaves", selectedDate],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("leave_requests")
         .select("user_id, leave_type")
         .eq("status", "approved")
@@ -82,7 +82,7 @@ const Attendance = () => {
     queryKey: ["monthly-attendance", selectedDate.substring(0, 7)],
     queryFn: async () => {
       const monthPrefix = selectedDate.substring(0, 7);
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("attendance_records")
         .select("*")
         .like("date", `${monthPrefix}%`);
@@ -141,7 +141,7 @@ const Attendance = () => {
       if (!profile || !myRecord) throw new Error("No clock-in record found");
       const now = new Date().toISOString();
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("attendance_records")
         .update({ clock_out: now })
         .eq("id", myRecord.id);
@@ -214,7 +214,7 @@ const Attendance = () => {
                 <Button
                   onClick={() => setNotesDialog(true)}
                   className="gap-2"
-                  style={{ backgroundColor: '#22c55e' }}
+                  style={{ backgroundColor: '#bc7e57' }}
                   disabled={clockInMutation.isPending}
                 >
                   <LogIn className="h-4 w-4" />
@@ -231,8 +231,8 @@ const Attendance = () => {
                   {clockOutMutation.isPending ? "Clocking Out..." : "Clock Out"}
                 </Button>
               ) : (
-                <Badge variant="secondary" className="py-2 px-4 text-sm">
-                  ✅ Day Complete
+                <Badge className="py-2 px-4 text-sm bg-[#bc7e57]/10 text-[#bc7e57] border-[#bc7e57]/20 hover:bg-[#bc7e57]/15">
+                  ✅ Day Complete — Great work!
                 </Badge>
               )}
             </div>
@@ -362,7 +362,7 @@ const Attendance = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <p className="text-sm text-muted-foreground mb-2">Add a note (optional)</p>
+              <p className="text-sm text-muted-foreground mb-2">Add a note (optional) — let your team know where you're working from! 🏠</p>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -373,7 +373,7 @@ const Attendance = () => {
             <Button
               onClick={() => clockInMutation.mutate()}
               className="w-full gap-2"
-              style={{ backgroundColor: '#22c55e' }}
+              style={{ backgroundColor: '#bc7e57' }}
               disabled={clockInMutation.isPending}
             >
               <LogIn className="h-4 w-4" />
