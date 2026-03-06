@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 const UserProfile = () => {
-  const { profile, user } = useAuth();
+  const { profile, user, isViewer } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -369,6 +369,30 @@ const UserProfile = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Viewer Upgrade Section */}
+      {isViewer && (
+        <Card className="mb-8 border-dashed border-[#bc7e57]/30 bg-[#bc7e57]/[0.02]">
+          <CardContent className="py-8 px-6 flex flex-col items-center text-center gap-4">
+            <div className="h-14 w-14 rounded-2xl bg-[#bc7e57]/10 flex items-center justify-center">
+              <Shield className="h-7 w-7" style={{ color: '#bc7e57', opacity: 0.5 }} />
+            </div>
+            <div className="space-y-1.5 max-w-lg">
+              <h3 className="text-base font-semibold">Want to do more, {profile.full_name.split(" ")[0]}?</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                As a Viewer, you can browse all modules but cannot create or edit content. 
+                You can graduate to <strong>Team Member</strong> or <strong>Admin</strong> — just reach out to your team lead!
+              </p>
+            </div>
+            <a href="mailto:ayomide@redtechafrica.com?subject=Role%20Upgrade%20Request&body=Hi%20Ayomide!%20I%27d%20like%20to%20request%20a%20role%20upgrade%20on%20the%20RAC%20Automations%20Dashboard." className="no-underline">
+              <Button className="gap-2" style={{ backgroundColor: '#bc7e57' }}>
+                <Mail className="h-4 w-4" />
+                Request Upgrade from Ayomide
+              </Button>
+            </a>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Tasks */}
       <Card>

@@ -6,6 +6,8 @@ import { InvoicePreview } from "./InvoicePreview";
 import { Button } from "@/components/ui/button";
 import { FileDown, Loader2, Eye, Edit } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 
 const getInitialInvoiceData = (): InvoiceData => {
   const today = new Date();
@@ -54,6 +56,7 @@ const getInitialInvoiceData = (): InvoiceData => {
 };
 
 export const InvoiceGenerator = () => {
+  const { profile } = useAuth();
   const [invoiceData, setInvoiceData] = useState<InvoiceData>(getInitialInvoiceData);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
@@ -68,7 +71,20 @@ export const InvoiceGenerator = () => {
     },
     onAfterPrint: () => {
       setIsGenerating(false);
-      toast.success("Invoice generated successfully!");
+      // Save invoice data to transactions table
+      const total = invoiceData.lineItems.reduce((sum, item) => sum + item.quantity * item.amount, 0);
+      const description = `Invoice ${invoiceData.invoiceNumber} — ${invoiceData.clientCompany || invoiceData.clientName} (${invoiceData.lineItems.map(i => i.description).filter(Boolean).join(", ")})`;
+      (supabase as any).from("transactions").insert({
+        amount: total,
+        type: "income",
+        category: "Invoice",
+        date: invoiceData.invoiceDate,
+        description: description.slice(0, 500),
+        created_by: profile?.id || null,
+      }).then(({ error }: any) => {
+        if (error) console.error("Failed to save invoice to transactions:", error);
+      });
+      toast.success(`Invoice generated & saved! ${invoiceData.clientCompany || invoiceData.clientName} — ₦${total.toLocaleString()}`);
     },
     pageStyle: `
       @page {

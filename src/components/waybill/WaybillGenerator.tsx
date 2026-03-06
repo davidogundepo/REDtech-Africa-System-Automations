@@ -6,6 +6,8 @@ import { WaybillPreview } from "./WaybillPreview";
 import { Button } from "@/components/ui/button";
 import { FileDown, Loader2, Eye, Edit } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 
 const getInitialWaybillData = (): WaybillData => {
   const today = new Date();
@@ -47,6 +49,7 @@ const getInitialWaybillData = (): WaybillData => {
 };
 
 export const WaybillGenerator = () => {
+  const { profile } = useAuth();
   const [waybillData, setWaybillData] = useState<WaybillData>(getInitialWaybillData);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
@@ -61,7 +64,20 @@ export const WaybillGenerator = () => {
     },
     onAfterPrint: () => {
       setIsGenerating(false);
-      toast.success("Waybill generated successfully!");
+      // Save waybill data to transactions table
+      const itemCount = waybillData.items.reduce((sum, item) => sum + item.quantity, 0);
+      const description = `Waybill WB${waybillData.waybillNumber} — ${waybillData.deliveredTo} (${itemCount} item${itemCount !== 1 ? 's' : ''}: ${waybillData.items.map(i => i.description).filter(Boolean).join(', ')})`;
+      (supabase as any).from("transactions").insert({
+        amount: 0,
+        type: "expense",
+        category: "Waybill / Delivery",
+        date: waybillData.waybillDate,
+        description: description.slice(0, 500),
+        created_by: profile?.id || null,
+      }).then(({ error }: any) => {
+        if (error) console.error("Failed to save waybill to transactions:", error);
+      });
+      toast.success(`Waybill generated & saved! Delivery to ${waybillData.deliveredTo} — ${itemCount} item${itemCount !== 1 ? 's' : ''}`);
     },
     pageStyle: `
       @page {
