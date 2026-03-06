@@ -1,5 +1,5 @@
 import { ViewerBanner } from "@/components/ViewerBanner";
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Linkedin, Twitter, Instagram, Facebook, Plus, Clock, CheckCircle2, Megaphone, Trash2, Heart, MessageSquare, Share2, Upload, Download, Calendar } from "lucide-react";
+import { Linkedin, Twitter, Instagram, Facebook, Plus, Clock, CheckCircle2, Megaphone, Trash2, Heart, MessageSquare, Share2, Upload, Download, Calendar, Film, LayoutGrid, BookImage, Newspaper, Zap } from "lucide-react";
+import { useTheme } from "@/components/ThemeProvider";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
 
@@ -39,15 +40,36 @@ const parseCSV = (text: string) => {
   return result;
 };
 
-const PlatformIcon = ({ platform }: { platform: string }) => {
+const PlatformIcon = ({ platform, size = "h-5 w-5" }: { platform: string; size?: string }) => {
+  const { theme } = useTheme();
+  const colour = theme === "dark" ? "text-white" : "text-gray-800";
   switch (platform.toLowerCase()) {
-    case "linkedin": return <Linkedin className="h-5 w-5 text-blue-600" />;
-    case "twitter": return <Twitter className="h-5 w-5 text-sky-500" />;
-    case "instagram": return <Instagram className="h-5 w-5 text-pink-600" />;
-    case "facebook": return <Facebook className="h-5 w-5 text-blue-800" />;
-    default: return <Megaphone className="h-5 w-5 text-muted-foreground" />;
+    case "linkedin": return <Linkedin className={`${size} ${colour}`} />;
+    case "twitter": return <Twitter className={`${size} ${colour}`} />;
+    case "instagram": return <Instagram className={`${size} ${colour}`} />;
+    case "facebook": return <Facebook className={`${size} ${colour}`} />;
+    default: return <Megaphone className={`${size} ${colour}`} />;
   }
 };
+
+const postTypeConfig: Record<string, { icon: React.ReactNode; colour: string; label: string }> = {
+  post:     { icon: <Newspaper className="h-3.5 w-3.5" />,   colour: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300", label: "Post" },
+  reel:     { icon: <Film className="h-3.5 w-3.5" />,       colour: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300", label: "Reel" },
+  carousel: { icon: <LayoutGrid className="h-3.5 w-3.5" />, colour: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300", label: "Carousel" },
+  story:    { icon: <BookImage className="h-3.5 w-3.5" />,  colour: "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300", label: "Story" },
+};
+
+const INSPIRATION_POSTS = [
+  { type: "reel", platform: "instagram", caption: "🚀 Behind-the-scenes: How we make logistics seamless for our clients. Drop a 🔥 if you relate!", likes: 1842, comments: 94, shares: 203, reach: "14.2k" },
+  { type: "carousel", platform: "linkedin", caption: "5 ways RAC reduces your delivery costs by 30% 👇 [Swipe through for details]", likes: 523, comments: 61, shares: 88, reach: "8.7k" },
+  { type: "story", platform: "instagram", caption: "🎉 We just hit 500 successful deliveries this quarter! Tap to see our team celebrate.", likes: 342, comments: 19, shares: 0, reach: "5.1k" },
+  { type: "post", platform: "linkedin", caption: "We believe that operational excellence is not a cost — it's an investment. Here's how we prove it daily.", likes: 287, comments: 43, shares: 52, reach: "6.3k" },
+  { type: "reel", platform: "instagram", caption: "Waybill processed in under 60 seconds ⏱️ Our team shows you how. Save this for later!", likes: 2341, comments: 127, shares: 415, reach: "22.8k" },
+  { type: "carousel", platform: "instagram", caption: "Client success story: How we helped a client scale from 20 → 200 daily orders. Swipe ➡️", likes: 891, comments: 73, shares: 134, reach: "11.4k" },
+  { type: "post", platform: "twitter", caption: "Efficiency is the new currency. At RAC, we don't just move packages — we move businesses forward. 📦", likes: 412, comments: 38, shares: 97, reach: "9.1k" },
+  { type: "story", platform: "facebook", caption: "📢 New service launch THIS WEEK! Stay tuned — our followers get early access. Share to spread the word.", likes: 178, comments: 23, shares: 41, reach: "3.8k" },
+];
+
 
 const SocialMediaHub = () => {
   const { profile, canEdit } = useAuth();
@@ -59,8 +81,10 @@ const SocialMediaHub = () => {
     platform: "linkedin", 
     content: "", 
     status: "draft", 
-    scheduled_date: new Date().toISOString().slice(0, 16) 
+    scheduled_date: new Date().toISOString().slice(0, 16),
+    post_type: "post",
   });
+  const [inspirationType, setInspirationTypeFilter] = useState("all");
 
   const platformLimits: Record<string, number> = {
     linkedin: 3000,
@@ -317,6 +341,18 @@ const SocialMediaHub = () => {
                     )}
                   </div>
                   <div className="space-y-2">
+                    <Label>Post Type</Label>
+                    <Select value={newPost.post_type} onValueChange={(v) => setNewPost({...newPost, post_type: v})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="post">📄 Post</SelectItem>
+                        <SelectItem value="reel">🎬 Reel</SelectItem>
+                        <SelectItem value="carousel">🖼️ Carousel</SelectItem>
+                        <SelectItem value="story">📖 Story</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label>Date & Time</Label>
                     <Input 
                       type="datetime-local" 
@@ -387,8 +423,58 @@ const SocialMediaHub = () => {
         </Card>
       </div>
 
+
+      {/* Inspiration Gallery */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2"><Zap className="h-5 w-5" style={{ color: '#bc7e57' }} /> Inspiration Gallery</h2>
+            <p className="text-sm text-muted-foreground">High-performing post templates — click to use as a starting point</p>
+          </div>
+          <div className="flex gap-1">
+            {["all", "reel", "carousel", "story", "post"].map(t => (
+              <Button key={t} size="sm" variant={inspirationType === t ? "default" : "outline"}
+                style={inspirationType === t ? { backgroundColor: '#bc7e57', color: 'white' } : {}}
+                className="capitalize text-xs h-7" onClick={() => setInspirationTypeFilter(t)}>{t}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {INSPIRATION_POSTS.filter(p => inspirationType === 'all' || p.type === inspirationType).map((p, i) => {
+            const tc = postTypeConfig[p.type];
+            return (
+              <Card key={i} className="group hover:shadow-lg transition-all duration-200 border-border/50 cursor-pointer"
+                onClick={() => setNewPost({...newPost, platform: p.platform, content: p.caption, post_type: p.type})}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-muted">
+                        <PlatformIcon platform={p.platform} size="h-4 w-4" />
+                      </div>
+                      <span className="text-xs text-muted-foreground capitalize">{p.platform}</span>
+                    </div>
+                    <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${tc.colour}`}>
+                      {tc.icon} {tc.label}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground/90 line-clamp-3 leading-relaxed mb-3">{p.caption}</p>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground border-t pt-2">
+                    <span className="flex items-center gap-0.5"><Heart className="h-3 w-3 text-pink-400" /> {p.likes.toLocaleString()}</span>
+                    <span className="flex items-center gap-0.5"><MessageSquare className="h-3 w-3 text-blue-400" /> {p.comments}</span>
+                    <span className="flex items-center gap-0.5"><Share2 className="h-3 w-3 text-green-400" /> {p.shares}</span>
+                    <span className="ml-auto font-medium" style={{ color: '#bc7e57' }}>{p.reach} reach</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Click to use this template ↗</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
-        Need to bulk import? <Button variant="link" className="p-0 h-auto text-blue-500" onClick={downloadTemplate}>Download Calendar Template CSV</Button>
+        Need to bulk import? <Button variant="link" className="p-0 h-auto" style={{ color: '#bc7e57' }} onClick={downloadTemplate}>Download Calendar Template CSV</Button>
       </div>
 
       <Card className="shadow-sm border-[#bc7e57]/20 flex-1">
@@ -420,7 +506,7 @@ const SocialMediaHub = () => {
             <div className="divide-y divide-border/50">
               {filteredPosts.map((post) => (
                 <div key={post.id} className="p-6 hover:bg-muted/30 transition-colors flex flex-col md:flex-row gap-6 group">
-                  <div className="flex-shrink-0 flex items-start justify-center pt-1 md:pt-0">
+                <div className="flex-shrink-0 flex items-start justify-center pt-1 md:pt-0">
                     <div className="p-3 bg-muted rounded-full border border-border">
                       <PlatformIcon platform={post.platform} />
                     </div>
@@ -452,6 +538,11 @@ const SocialMediaHub = () => {
                           {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
                         </Badge>
                         <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">By {post.created_by}</span>
+                        {post.post_type && postTypeConfig[post.post_type] && (
+                          <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${postTypeConfig[post.post_type].colour}`}>
+                            {postTypeConfig[post.post_type].icon} {postTypeConfig[post.post_type].label}
+                          </span>
+                        )}
                        </div>
                        
                        {canEdit && (
@@ -601,7 +692,7 @@ const SocialMediaHub = () => {
   );
 };
 
-// Simple Lucide icons missing from imports to satisfy compiler
+// Simple Lucide icons missing from imports
 const Target = (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
 const TrendingUp = (props: any) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
 

@@ -11,6 +11,38 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { Shield, BarChart3, Users, TrendingUp, AlertTriangle, Award, Building2, ChevronRight } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
+
+const MOCK_MEMBERS = [
+  { id: 'm1', full_name: 'Ayomide Okafor', email: 'ayomide@racaconnect.com', department: 'Operations', role: 'super_admin', is_active: true },
+  { id: 'm2', full_name: 'David Ogundepo', email: 'david@racaconnect.com', department: 'Business Dev', role: 'admin', is_active: true },
+  { id: 'm3', full_name: 'Chioma Nwosu', email: 'chioma@racaconnect.com', department: 'Finance', role: 'team_member', is_active: true },
+  { id: 'm4', full_name: 'Emeka Adeyemi', email: 'emeka@racaconnect.com', department: 'Delivery Ops', role: 'team_member', is_active: true },
+  { id: 'm5', full_name: 'Fatima Musa', email: 'fatima@racaconnect.com', department: 'HR', role: 'team_member', is_active: true },
+  { id: 'm6', full_name: 'Oluwaseun Bello', email: 'seun@racaconnect.com', department: 'Marketing', role: 'team_member', is_active: true },
+  { id: 'm7', full_name: 'Kemi Adesanya', email: 'kemi@racaconnect.com', department: 'Resourcing', role: 'team_member', is_active: true },
+  { id: 'm8', full_name: 'Tunde Fashola', email: 'tunde@racaconnect.com', department: 'Executive', role: 'admin', is_active: true },
+];
+const MOCK_TASKS = [
+  { id: 't1', assigned_to: 'Ayomide Okafor', assigned_to_user_id: 'm1', status: 'completed', priority: 'high', department: 'Operations' },
+  { id: 't2', assigned_to: 'Ayomide Okafor', assigned_to_user_id: 'm1', status: 'completed', priority: 'medium', department: 'Operations' },
+  { id: 't3', assigned_to: 'Ayomide Okafor', assigned_to_user_id: 'm1', status: 'in-progress', priority: 'high', department: 'Operations' },
+  { id: 't4', assigned_to: 'David Ogundepo', assigned_to_user_id: 'm2', status: 'completed', priority: 'high', department: 'Business Dev' },
+  { id: 't5', assigned_to: 'David Ogundepo', assigned_to_user_id: 'm2', status: 'pending', priority: 'medium', department: 'Business Dev' },
+  { id: 't6', assigned_to: 'Chioma Nwosu', assigned_to_user_id: 'm3', status: 'completed', priority: 'medium', department: 'Finance' },
+  { id: 't7', assigned_to: 'Chioma Nwosu', assigned_to_user_id: 'm3', status: 'completed', priority: 'low', department: 'Finance' },
+  { id: 't8', assigned_to: 'Chioma Nwosu', assigned_to_user_id: 'm3', status: 'overdue', priority: 'high', department: 'Finance' },
+  { id: 't9', assigned_to: 'Emeka Adeyemi', assigned_to_user_id: 'm4', status: 'completed', priority: 'high', department: 'Delivery Ops' },
+  { id: 't10', assigned_to: 'Emeka Adeyemi', assigned_to_user_id: 'm4', status: 'completed', priority: 'high', department: 'Delivery Ops' },
+  { id: 't11', assigned_to: 'Emeka Adeyemi', assigned_to_user_id: 'm4', status: 'in-progress', priority: 'medium', department: 'Delivery Ops' },
+  { id: 't12', assigned_to: 'Fatima Musa', assigned_to_user_id: 'm5', status: 'completed', priority: 'medium', department: 'HR' },
+  { id: 't13', assigned_to: 'Fatima Musa', assigned_to_user_id: 'm5', status: 'pending', priority: 'low', department: 'HR' },
+  { id: 't14', assigned_to: 'Oluwaseun Bello', assigned_to_user_id: 'm6', status: 'completed', priority: 'medium', department: 'Marketing' },
+  { id: 't15', assigned_to: 'Oluwaseun Bello', assigned_to_user_id: 'm6', status: 'overdue', priority: 'high', department: 'Marketing' },
+  { id: 't16', assigned_to: 'Kemi Adesanya', assigned_to_user_id: 'm7', status: 'completed', priority: 'medium', department: 'Resourcing' },
+  { id: 't17', assigned_to: 'Tunde Fashola', assigned_to_user_id: 'm8', status: 'completed', priority: 'high', department: 'Executive' },
+  { id: 't18', assigned_to: 'Tunde Fashola', assigned_to_user_id: 'm8', status: 'in-progress', priority: 'medium', department: 'Executive' },
+];
 
 const StaffUtilisation = () => {
   const { isSuperAdmin, isAdmin } = useAuth();
@@ -18,7 +50,7 @@ const StaffUtilisation = () => {
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   // Fetch all profiles
-  const { data: profiles } = useQuery({
+  const { data: profilesRaw } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("profiles").select("*").eq("is_active", true);
@@ -28,7 +60,7 @@ const StaffUtilisation = () => {
   });
 
   // Fetch all tasks for utilisation metrics
-  const { data: tasks } = useQuery({
+  const { data: tasksRaw } = useQuery({
     queryKey: ["all-tasks"],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("tasks").select("*");
@@ -36,6 +68,11 @@ const StaffUtilisation = () => {
       return data || [];
     },
   });
+
+  // Use mock data when Supabase is empty (fewer than 3 real members)
+  const profiles = (profilesRaw?.length ?? 0) >= 3 ? profilesRaw : MOCK_MEMBERS;
+  const tasks = (tasksRaw?.length ?? 0) >= 3 ? tasksRaw : MOCK_TASKS;
+  const usingMockData = (profilesRaw?.length ?? 0) < 3;
 
   if (!isSuperAdmin && !isAdmin) {
     return (
@@ -118,7 +155,10 @@ const StaffUtilisation = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Staff Utilisation</h1>
-          <p className="text-muted-foreground mt-2">Monitor team performance and workload distribution</p>
+          <div className="flex items-center gap-2">
+            <p className="text-muted-foreground mt-1">Monitor team performance and workload distribution</p>
+            {usingMockData && <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">Demo Data</Badge>}
+          </div>
         </div>
         <Select value={selectedDept} onValueChange={setSelectedDept}>
           <SelectTrigger className="w-48">
@@ -133,7 +173,35 @@ const StaffUtilisation = () => {
         </Select>
       </div>
 
+      {/* Dept Efficiency Chart */}
+      {departmentMetrics.length >= 2 && (
+        <Card className="mb-8 border-[#bc7e57]/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BarChart3 className="h-5 w-5" style={{ color: '#bc7e57' }} /> Department Efficiency — Task Completion Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-52">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={departmentMetrics.map((d: any) => ({ name: d.name, rate: d.completionRate, tasks: d.totalTasks }))} layout="vertical" margin={{ left: 16, right: 32 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(130,130,130,0.15)" />
+                <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
+                <Tooltip formatter={(val: number) => [`${val}%`, 'Completion']} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                <Bar dataKey="rate" name="Completion" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                  {departmentMetrics.map((_: any, i: number) => {
+                    const hues = ['#bc7e57','#d4956e','#a06845','#c88f6a','#b37352','#9b5f3e','#e0a880','#8a5230'];
+                    return <Cell key={i} fill={hues[i % hues.length]} />;
+                  })}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Overview Stats */}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <Card>
           <CardContent className="p-4">
