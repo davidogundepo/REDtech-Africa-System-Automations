@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSpreadsheet, FileImage, Link as LinkIcon, ExternalLink, Trash2, Clock } from "lucide-react";
+import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSpreadsheet, FileImage, Link as LinkIcon, ExternalLink, Trash2, Clock, Eye, X } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
 
@@ -46,6 +46,7 @@ const DocumentRepository = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isLinkOpen, setIsLinkOpen] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [newLink, setNewLink] = useState({ name: "", url: "", department: "all" });
@@ -314,7 +315,7 @@ const DocumentRepository = () => {
               </TableHeader>
               <TableBody>
                 {filteredDocs.map((file) => (
-                  <TableRow key={file.id} className="cursor-pointer hover:bg-muted/50" onClick={() => window.open(file.url, '_blank')}>
+                  <TableRow key={file.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setPreviewDoc(file)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <TypeIcon type={file.type} className="h-5 w-5 shrink-0" />
@@ -389,6 +390,47 @@ const DocumentRepository = () => {
           ))}
         </div>
       </div>
+
+      {/* File Preview Modal */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-2 border-b">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-base">
+                {previewDoc && <TypeIcon type={previewDoc.type} className="h-5 w-5" />}
+                {previewDoc?.name}
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => window.open(previewDoc?.url, '_blank')}>
+                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Open in New Tab
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto" style={{ height: 'calc(90vh - 80px)' }}>
+            {previewDoc?.type === 'pdf' || previewDoc?.url?.endsWith('.pdf') ? (
+              <iframe src={previewDoc?.url} className="w-full h-full border-0" title={previewDoc?.name} />
+            ) : previewDoc?.type === 'image' || /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(previewDoc?.url || '') ? (
+              <div className="flex items-center justify-center p-8 bg-muted/30 h-full">
+                <img src={previewDoc?.url} alt={previewDoc?.name} className="max-w-full max-h-full object-contain rounded-lg shadow-sm" />
+              </div>
+            ) : previewDoc?.type === 'link' ? (
+              <iframe src={previewDoc?.url} className="w-full h-full border-0" title={previewDoc?.name} />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full gap-4 p-12 text-center">
+                <TypeIcon type={previewDoc?.type || 'file'} className="h-16 w-16 text-muted-foreground/40" />
+                <div>
+                  <p className="text-lg font-medium mb-1">Preview not available</p>
+                  <p className="text-sm text-muted-foreground mb-4">This file type cannot be previewed in the browser.</p>
+                  <Button onClick={() => window.open(previewDoc?.url, '_blank')} style={{ backgroundColor: '#bc7e57' }}>
+                    <ExternalLink className="h-4 w-4 mr-2" /> Download / Open File
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
