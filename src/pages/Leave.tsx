@@ -11,10 +11,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, CalendarDays, Filter, X } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Plus, CalendarDays, Filter, X, Users, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
+
+const ANNUAL_LEAVE_DAYS = 14; // Standard annual leave allowance
 
 interface LeaveRequest {
   id: string;
@@ -57,6 +61,8 @@ const Leave = () => {
   const [formData, setFormData] = useState(emptyForm);
   const [showMyLeave, setShowMyLeave] = useState(true);
   const [balances, setBalances] = useState<any[]>([]);
+  const [teamProfiles, setTeamProfiles] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('my-leave');
 
   const fetchRequests = async () => {
     const { data, error } = await (supabase as any).from("leave_requests").select("*").order("created_at", { ascending: false });
@@ -75,7 +81,38 @@ const Leave = () => {
     setBalances(data || []);
   };
 
-  useEffect(() => { fetchRequests(); fetchBalances(); }, [profile]);
+  const fetchTeamProfiles = async () => {
+    if (!isSuperAdmin && !isAdmin) return;
+    const { data } = await (supabase as any).from('profiles').select('id, full_name, department').eq('is_active', true);
+    setTeamProfiles(data || []);
+  };
+
+  useEffect(() => { fetchRequests(); fetchBalances(); fetchTeamProfiles(); }, [profile]);
+
+  // Compute annual leave days used from approved requests this year
+  const currentYear = new Date().getFullYear();
+  const myApprovedRequests = requests.filter(r => 
+    (r.user_id === profile?.id || r.employee_id === profile?.full_name) &&
+    r.status === 'approved' &&
+    new Date(r.start_date).getFullYear() === currentYear
+  );
+  const totalDaysUsed = myApprovedRequests.reduce((sum, r) => sum + getDaysCount(r.start_date, r.end_date), 0);
+  const daysRemaining = Math.max(0, ANNUAL_LEAVE_DAYS - totalDaysUsed);
+  const usagePercent = Math.min(100, Math.round((totalDaysUsed / ANNUAL_LEAVE_DAYS) * 100));
+
+  // Team leave data for super admin
+  const teamLeaveData = teamProfiles.map(tp => {
+    const memberRequests = requests.filter(r => 
+      (r.user_id === tp.id || r.employee_id === tp.full_name) &&
+      r.status === 'approved' &&
+      new Date(r.start_date).getFullYear() === currentYear
+    );
+    const used = memberRequests.reduce((sum: number, r: LeaveRequest) => sum + getDaysCount(r.start_date, r.end_date), 0);
+    const pending = requests.filter(r => 
+      (r.user_id === tp.id || r.employee_id === tp.full_name) && r.status === 'pending'
+    ).length;
+    return { ...tp, daysUsed: used, daysRemaining: Math.max(0, ANNUAL_LEAVE_DAYS - used), pendingRequests: pending };
+  }).sort((a: any, b: any) => b.daysUsed - a.daysUsed);
 
   const getDaysCount = (start: string, end: string) => {
     const diff = new Date(end).getTime() - new Date(start).getTime();
@@ -265,91 +302,207 @@ const Leave = () => {
         </div>
       </div>
 
-      {/* Leave Balances */}
+      {/* Annual Leave Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <Card className="border-l-4" style={{ borderLeftColor: '#bc7e57' }}>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-muted-foreground">Annual Leave Balance</p>
+              <CalendarDays className="h-5 w-5" style={{ color: '#bc7e57' }} />
+            </div>
+            <div className="flex items-end gap-2 mb-2">
+              <span className="text-3xl font-bold" style={{ color: daysRemaining <= 3 ? '#ef4444' : '#bc7e57' }}>{daysRemaining}</span>
+              <span className="text-sm text-muted-foreground mb-1">of {ANNUAL_LEAVE_DAYS} days left</span>
+            </div>
+            <Progress value={100 - usagePercent} className="h-2 mb-1" />
+            <p className="text-xs text-muted-foreground">{totalDaysUsed} days used this year ({currentYear})</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Pending Requests</p>
+            <span className="text-3xl font-bold text-amber-500">{requests.filter(r => (r.user_id === profile?.id) && r.status === 'pending').length}</span>
+            <p className="text-xs text-muted-foreground mt-2">Awaiting approval</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Approved This Year</p>
+            <span className="text-3xl font-bold text-green-600">{myApprovedRequests.length}</span>
+            <p className="text-xs text-muted-foreground mt-2">{totalDaysUsed} total days</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Leave Balances (from leave_balances table) */}
       {balances.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {balances.map((b: any) => (
-            <Card key={b.id}>
-              <CardContent className="p-4 text-center">
-                <p className="text-sm text-muted-foreground capitalize">{leaveTypes.find(t => t.value === b.leave_type)?.label || b.leave_type}</p>
-                <p className="text-2xl font-bold" style={{ color: '#bc7e57' }}>{b.total_days - b.used_days}</p>
-                <p className="text-xs text-muted-foreground">of {b.total_days} days remaining</p>
-              </CardContent>
-            </Card>
-          ))}
+          {balances.map((b: any) => {
+            const remaining = b.total_days - b.used_days;
+            const pct = b.total_days > 0 ? Math.round((b.used_days / b.total_days) * 100) : 0;
+            return (
+              <Card key={b.id}>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground capitalize mb-2">{leaveTypes.find(t => t.value === b.leave_type)?.label || b.leave_type}</p>
+                  <p className="text-2xl font-bold" style={{ color: remaining <= 2 ? '#ef4444' : '#bc7e57' }}>{remaining}</p>
+                  <Progress value={100 - pct} className="h-1.5 mt-2 mb-1" />
+                  <p className="text-xs text-muted-foreground">{b.used_days} of {b.total_days} used</p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Requests Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5" /> Leave Requests
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-center py-8 text-muted-foreground">Loading...</p>
-          ) : filteredRequests.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">No leave requests found.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Period</TableHead>
-                  <TableHead className="text-center">Days</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRequests.map((req) => (
-                  <TableRow key={req.id}>
-                    <TableCell className="font-medium">{req.employee_id}</TableCell>
-                    <TableCell className="capitalize">
-                      {leaveTypes.find(t => t.value === req.leave_type)?.label || req.leave_type}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {new Date(req.start_date).toLocaleDateString()} — {new Date(req.end_date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-center">{getDaysCount(req.start_date, req.end_date)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-32 truncate">{req.reason || "—"}</TableCell>
-                    <TableCell>
-                      <Badge className={statusColors[req.status] || ""} variant="secondary">
-                        {req.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {req.status === "pending" && (isAdmin || isSuperAdmin) && (
-                        <div className="flex gap-1 justify-end">
-                          <Button size="sm" variant="outline" className="text-green-600 hover:text-green-700" onClick={() => handleApproval(req.id, "approved")}>
-                            Approve
-                          </Button>
-                          <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => handleApproval(req.id, "rejected")}>
-                            Reject
-                          </Button>
-                        </div>
-                      )}
-                      {(req.status === "pending" || req.status === "approved") && 
-                        (req.user_id === profile?.id || req.employee_id === profile?.full_name) && (
-                        <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => handleCancel(req.id)}>
-                          <X className="h-3 w-3 mr-1" /> Cancel
-                        </Button>
-                      )}
-                      {req.status === "cancelled" && (
-                        <span className="text-xs text-muted-foreground">Cancelled</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+      {/* Tabbed Views */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="my-leave" className="gap-2"><CalendarDays className="h-4 w-4" /> Leave Requests</TabsTrigger>
+          {(isSuperAdmin || isAdmin) && (
+            <TabsTrigger value="team-overview" className="gap-2"><Users className="h-4 w-4" /> Team Overview</TabsTrigger>
           )}
-        </CardContent>
-      </Card>
+        </TabsList>
+
+        <TabsContent value="my-leave">
+          {/* Requests Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5" /> Leave Requests
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p className="text-center py-8 text-muted-foreground">Loading...</p>
+              ) : filteredRequests.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">No leave requests found.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Period</TableHead>
+                      <TableHead className="text-center">Days</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRequests.map((req) => (
+                      <TableRow key={req.id}>
+                        <TableCell className="font-medium">{req.employee_id}</TableCell>
+                        <TableCell className="capitalize">
+                          {leaveTypes.find(t => t.value === req.leave_type)?.label || req.leave_type}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {new Date(req.start_date).toLocaleDateString()} — {new Date(req.end_date).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-center">{getDaysCount(req.start_date, req.end_date)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-32 truncate">{req.reason || "—"}</TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[req.status] || ""} variant="secondary">
+                            {req.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {req.status === "pending" && (isAdmin || isSuperAdmin) && (
+                            <div className="flex gap-1 justify-end">
+                              <Button size="sm" variant="outline" className="text-green-600 hover:text-green-700" onClick={() => handleApproval(req.id, "approved")}>
+                                Approve
+                              </Button>
+                              <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => handleApproval(req.id, "rejected")}>
+                                Reject
+                              </Button>
+                            </div>
+                          )}
+                          {(req.status === "pending" || req.status === "approved") && 
+                            (req.user_id === profile?.id || req.employee_id === profile?.full_name) && (
+                            <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => handleCancel(req.id)}>
+                              <X className="h-3 w-3 mr-1" /> Cancel
+                            </Button>
+                          )}
+                          {req.status === "cancelled" && (
+                            <span className="text-xs text-muted-foreground">Cancelled</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {(isSuperAdmin || isAdmin) && (
+          <TabsContent value="team-overview">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" /> Team Annual Leave ({currentYear})
+                  </CardTitle>
+                  <Badge variant="outline" className="text-xs">{ANNUAL_LEAVE_DAYS} days / year</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Team Member</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead className="text-center">Days Used</TableHead>
+                      <TableHead className="text-center">Remaining</TableHead>
+                      <TableHead className="text-center">Pending</TableHead>
+                      <TableHead>Usage</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {teamLeaveData.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No team members found.</TableCell></TableRow>
+                    ) : (
+                      teamLeaveData.map((member: any) => {
+                        const pct = Math.round((member.daysUsed / ANNUAL_LEAVE_DAYS) * 100);
+                        const isDanger = member.daysRemaining <= 3;
+                        return (
+                          <TableRow key={member.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="h-7 w-7 rounded-lg bg-[#bc7e57]/15 flex items-center justify-center text-[10px] font-bold text-[#bc7e57]">
+                                  {member.full_name?.substring(0, 2).toUpperCase()}
+                                </div>
+                                <span className="font-medium">{member.full_name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{member.department || '—'}</TableCell>
+                            <TableCell className="text-center font-semibold">{member.daysUsed}</TableCell>
+                            <TableCell className="text-center">
+                              <span className={`font-bold ${isDanger ? 'text-red-500' : 'text-green-600'}`}>{member.daysRemaining}</span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {member.pendingRequests > 0 ? (
+                                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{member.pendingRequests}</Badge>
+                              ) : '—'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2 min-w-[120px]">
+                                <Progress value={pct} className="h-2 flex-1" />
+                                <span className={`text-xs font-medium w-8 text-right ${isDanger ? 'text-red-500' : ''}`}>{pct}%</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 };

@@ -190,7 +190,7 @@ const DocumentRepository = () => {
           <div className="flex items-center gap-3">
             <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="border-blue-500/50 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Button variant="outline" className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 text-[#bc7e57]">
                   <LinkIcon className="h-4 w-4 mr-2" /> Add OneDrive Link
                 </Button>
               </DialogTrigger>
@@ -226,7 +226,7 @@ const DocumentRepository = () => {
                     </Select>
                     <p className="text-xs text-muted-foreground mt-1">If specified, only this department and Admins can view it.</p>
                   </div>
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 mt-2" disabled={addLinkMutation.isPending}>
+                  <Button type="submit" className="w-full mt-2 text-white" style={{ backgroundColor: '#bc7e57' }} disabled={addLinkMutation.isPending}>
                     {addLinkMutation.isPending ? "Adding..." : "Save Link"}
                   </Button>
                 </form>
