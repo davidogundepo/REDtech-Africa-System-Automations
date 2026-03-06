@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
@@ -93,7 +94,7 @@ const DocumentRepository = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       setIsUploadOpen(false);
-      toast.success("Document uploaded successfully");
+      toast.success(`Document uploaded, ${profile?.full_name?.split(" ")[0]}! Ready for the team 📄`);
     },
     onError: (error) => toast.error(error.message)
   });
@@ -115,7 +116,7 @@ const DocumentRepository = () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       setIsLinkOpen(false);
       setNewLink({ name: "", url: "", department: "all" });
-      toast.success("OneDrive link added");
+      toast.success(`Link added, ${profile?.full_name?.split(" ")[0]}! 🔗`);
     },
     onError: (error) => toast.error(error.message)
   });

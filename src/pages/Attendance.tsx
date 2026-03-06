@@ -129,7 +129,7 @@ const Attendance = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-attendance"] });
       queryClient.invalidateQueries({ queryKey: ["attendance-all"] });
-      toast.success("Clocked in successfully!");
+      toast.success(`Clocked in, ${profile?.full_name?.split(" ")[0]}! Have a productive day ☀️`);
       setNotesDialog(false);
       setNotes("");
     },
@@ -150,7 +150,7 @@ const Attendance = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-attendance"] });
       queryClient.invalidateQueries({ queryKey: ["attendance-all"] });
-      toast.success("Clocked out successfully!");
+      toast.success(`Clocked out! Great work today, ${profile?.full_name?.split(" ")[0]} 🎉`);
     },
     onError: (error) => toast.error(error.message),
   });

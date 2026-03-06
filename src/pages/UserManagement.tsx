@@ -74,7 +74,7 @@ const UserManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
       setEditDialogOpen(false);
-      toast.success("User updated successfully");
+      toast.success(`User updated, ${currentProfile?.full_name?.split(" ")[0]}! Changes saved ✅`);
     },
     onError: (error) => toast.error("Failed to update: " + error.message),
   });
@@ -157,7 +157,7 @@ const UserManagement = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Broadcast sent successfully!");
+      toast.success(`Broadcast sent, ${currentProfile?.full_name?.split(" ")[0]}! Your team has been notified 📢`);
       setBroadcastDialogOpen(false);
       setBroadcastTitle("");
       setBroadcastMessage("");

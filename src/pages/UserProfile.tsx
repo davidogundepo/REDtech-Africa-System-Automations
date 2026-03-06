@@ -95,7 +95,7 @@ const UserProfile = () => {
       return;
     }
 
-    toast.success("Profile photo updated!");
+    toast.success(`Looking good, ${profile.full_name.split(" ")[0]}! Photo updated 📸`);
     queryClient.invalidateQueries({ queryKey: ["profiles"] });
     window.location.reload(); // Refresh to show new avatar
   };
@@ -107,7 +107,7 @@ const UserProfile = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Name updated!");
+      toast.success(`Got it, ${editName.split(" ")[0]}! Name updated ✨`);
       setEditDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
     },

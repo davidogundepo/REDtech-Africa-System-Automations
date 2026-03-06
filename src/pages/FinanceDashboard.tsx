@@ -138,7 +138,7 @@ const FinanceDashboard = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Export downloaded");
+    toast.success(`Export ready, ${profile?.full_name?.split(" ")[0]}! Check your downloads 📥`);
   };
 
   // Import from CSV function
@@ -190,7 +190,7 @@ const FinanceDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['transactions', 'active'] });
       setIsTxDialogOpen(false);
       setNewTx({ amount: "", type: "revenue", category: "", date: format(new Date(), 'yyyy-MM-dd'), description: "" });
-      toast.success("Transaction added successfully");
+      toast.success(`Transaction added, ${profile?.full_name?.split(" ")[0]}! 📊`);
     },
     onError: (error) => toast.error("Failed to add transaction: " + error.message)
   });
@@ -232,7 +232,7 @@ const FinanceDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['payment_requests'] });
       setIsReqDialogOpen(false);
       setNewReq({ amount: "", category: "", description: "" });
-      toast.success("Payment request submitted");
+      toast.success(`Payment request submitted, ${profile?.full_name?.split(" ")[0]}! Admins will review shortly 📋`);
       
       // Notify admins
       sendNotificationEmail({

@@ -136,7 +136,7 @@ const Clients = () => {
     } else {
       const { error } = await supabase.from("clients").insert(payload);
       if (error) { toast.error("Failed to add client"); return; }
-      toast.success("Client added to Deal Book");
+      toast.success(`${formData.name} added to your Deal Book, ${profile?.full_name?.split(" ")[0]}! 🤝`);
 
       // Notify Assignee if different from creator
       if (formData.assigned_to && formData.assigned_to !== profile?.id) {
@@ -201,7 +201,7 @@ const Clients = () => {
   const updateLastContact = async (id: string) => {
     const { error } = await supabase.from("clients").update({ last_contact_date: new Date().toISOString() }).eq("id", id);
     if (error) { toast.error("Failed to log activity"); return; }
-    toast.success("Activity logged");
+    toast.success(`Activity logged for ${clients.find(c => c.id === id)?.name || "client"} ✓`);
     fetchClients();
   };
 

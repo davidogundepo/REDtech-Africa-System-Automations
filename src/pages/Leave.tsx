@@ -98,7 +98,7 @@ const Leave = () => {
     }]);
 
     if (error) { toast.error("Failed to submit request"); return; }
-    toast.success(`Leave request submitted (${days} days)`);
+    toast.success(`Leave request submitted, ${profile?.full_name?.split(" ")[0]}! (${days} days) We'll keep you posted 📩`);
 
     // Notify admins
     sendNotificationEmail({
@@ -195,7 +195,7 @@ const Leave = () => {
       }
     }
 
-    toast.success("Leave request cancelled");
+    toast.success(`Leave cancelled, ${profile?.full_name?.split(" ")[0]}. Balance restored!`);
     fetchRequests();
     fetchBalances();
   };
