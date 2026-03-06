@@ -22,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Send the email using the verified domain sender
     const data = await resend.emails.send({
-      from: 'REDtech Africa <notifications@momms.co.uk>', 
+      from: 'REDtech Africa Consulting <notifications@momms.co.uk>', 
       to: to, // Use the dynamic recipient
       cc: [...adminEmails, ...ccEmails], // Ensure the core team is copied
       subject: subject,

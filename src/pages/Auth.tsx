@@ -115,7 +115,7 @@ const Auth = () => {
       // Send Welcome Email
       sendNotificationEmail({
         to: signupEmail,
-        subject: "Welcome to REDtech System Automations",
+        subject: "Welcome to RAC Automations Dashboard",
         html: brandedEmailTemplate({
           recipientName: signupName,
           heading: "Welcome to the Team! 🎉",
@@ -146,7 +146,7 @@ const Auth = () => {
         setLoginEmail(signupEmail);
         setLoading(false);
       } else {
-        toast.success(`Welcome to REDtech, ${signupName}! 🚀`);
+        toast.success(`Welcome to RAC Automations Dashboard, ${signupName}! 🚀`);
         navigate("/");
       }
     }

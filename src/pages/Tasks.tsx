@@ -77,9 +77,9 @@ const Tasks = () => {
   const [newBlockerNote, setNewBlockerNote] = useState("");
 
   const fetchTasks = async () => {
-    const { data, error } = await supabase.from("tasks").select("*").order("created_at", { ascending: false });
+    const { data, error } = await (supabase as any).from("tasks").select("*").order("created_at", { ascending: false });
     if (error) { toast.error("Failed to load tasks"); return; }
-    setTasks(data || []);
+    setTasks((data || []) as Task[]);
     setLoading(false);
   };
 
