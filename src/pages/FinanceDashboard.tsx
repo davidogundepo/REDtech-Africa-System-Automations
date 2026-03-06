@@ -133,7 +133,7 @@ const FinanceDashboard = () => {
       ].join(","))
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-use;' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.setAttribute("download", `RAC_Finance_Export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
