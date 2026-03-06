@@ -17,6 +17,7 @@ import {
 import { Plus, Search, CheckSquare, Clock, AlertTriangle, Circle, User, MessageSquare, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
+import { brandedEmailTemplate } from "@/lib/email-template";
 import { format } from "date-fns";
 
 interface Task {
@@ -137,15 +138,21 @@ const Tasks = () => {
         sendNotificationEmail({
           to: assignedProfile.email,
           subject: `New Task Assigned: ${formData.title}`,
-          html: `
-            <h2>You've been assigned a new task</h2>
-            <p><strong>Task:</strong> ${formData.title}</p>
-            <p><strong>Priority:</strong> ${formData.priority.toUpperCase()}</p>
-            <p><strong>Department:</strong> ${formData.department || 'General'}</p>
-            <p><strong>Due Date:</strong> ${formData.due_date || 'No deadline'}</p>
-            <br/>
-            <p>Log in to the <a href="https://redtech-system.vercel.app">REDtech Dashboard</a> to view details.</p>
-          `
+          html: brandedEmailTemplate({
+            recipientName: assignedProfile.full_name,
+            heading: "You've Been Assigned a New Task 📋",
+            body: `
+              <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+                <tr><td style="padding:8px 12px; background:#f8f6f3; border-radius:6px 6px 0 0;"><strong>Task</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${formData.title}</td></tr>
+                <tr><td style="padding:8px 12px;"><strong>Priority</strong></td><td style="padding:8px 12px;"><span style="color:${formData.priority === 'high' ? '#dc2626' : formData.priority === 'medium' ? '#f59e0b' : '#22c55e'}; font-weight:600;">${formData.priority.toUpperCase()}</span></td></tr>
+                <tr><td style="padding:8px 12px; background:#f8f6f3;"><strong>Department</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${formData.department || 'General'}</td></tr>
+                <tr><td style="padding:8px 12px; border-radius:0 0 6px 6px;"><strong>Due Date</strong></td><td style="padding:8px 12px;">${formData.due_date || 'No deadline'}</td></tr>
+              </table>
+              <p>Log in to view the full details and get started.</p>
+            `,
+            ctaText: "View Task",
+            ctaUrl: "https://ractools.vercel.app/tasks",
+          })
         });
       }
     }

@@ -25,6 +25,7 @@ import {
 import { Plus, Search, Users, Mail, Phone, Building2, Trash2, Edit, User, Calendar, Activity, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
+import { brandedEmailTemplate } from "@/lib/email-template";
 import { format } from "date-fns";
 
 interface Client {
@@ -143,15 +144,22 @@ const Clients = () => {
         const assignedProfile = profiles.find(p => p.id === formData.assigned_to);
         if (assignedProfile) {
           sendNotificationEmail({
-            to: "management@redtechafrica.com", // System default for now since we don't have their email in Profile type here easily without a join
+            to: "management@redtechafrica.com",
             subject: `New Lead Assigned to You: ${formData.name}`,
-            html: `
-              <h2>A new lead has been assigned to you</h2>
-              <p><strong>Name:</strong> ${formData.name} (${formData.company || 'N/A'})</p>
-              <p><strong>Status:</strong> ${dealStatuses.find(s => s.value === formData.deal_status)?.label}</p>
-              <br/>
-              <p>Log in to the REDtech Dashboard to manage this pipeline.</p>
-            `
+            html: brandedEmailTemplate({
+              recipientName: assignedProfile.full_name,
+              heading: "A New Lead Has Been Assigned to You 🤝",
+              body: `
+                <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+                  <tr><td style="padding:8px 12px; background:#f8f6f3; border-radius:6px 6px 0 0;"><strong>Contact</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${formData.name}</td></tr>
+                  <tr><td style="padding:8px 12px;"><strong>Company</strong></td><td style="padding:8px 12px;">${formData.company || 'N/A'}</td></tr>
+                  <tr><td style="padding:8px 12px; background:#f8f6f3; border-radius:0 0 6px 6px;"><strong>Status</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${dealStatuses.find(s => s.value === formData.deal_status)?.label}</td></tr>
+                </table>
+                <p>Log in to the Deal Book to start engaging this lead.</p>
+              `,
+              ctaText: "Open Deal Book",
+              ctaUrl: "https://ractools.vercel.app/clients",
+            })
           });
         }
       }

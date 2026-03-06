@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth-context";
 import companyLogo from "@/assets/company-logo.png";
 import { Loader2, LogIn, UserPlus, Mail, Lock, User, KeyRound } from "lucide-react";
 import { sendNotificationEmail } from "@/lib/email";
+import { brandedEmailTemplate } from "@/lib/email-template";
 import { supabase } from "@/integrations/supabase/client";
 
 const Auth = () => {
@@ -115,11 +116,25 @@ const Auth = () => {
       sendNotificationEmail({
         to: signupEmail,
         subject: "Welcome to REDtech System Automations",
-        html: `
-          <h2>Welcome to REDtech, ${signupName}!</h2>
-          <p>Your account has been successfully created. You can now log into the System Automations portal to manage your tasks, requests, and operational dashboards.</p>
-          <p>Best regards,<br/>The REDtech Admin Team</p>
-        `
+        html: brandedEmailTemplate({
+          recipientName: signupName,
+          heading: "Welcome to the Team! 🎉",
+          body: `
+            <p>Your account on the <strong>REDtech System Automations</strong> platform has been successfully created.</p>
+            <p>Here's what you can do now:</p>
+            <ul style="padding-left:20px; color:#555;">
+              <li>📋 Track and manage your <strong>assigned tasks</strong></li>
+              <li>📅 Submit and monitor <strong>leave requests</strong></li>
+              <li>💰 Access the <strong>Finance Dashboard</strong></li>
+              <li>🤝 Manage the <strong>Client Deal Book</strong></li>
+              <li>📊 View your <strong>performance score</strong></li>
+            </ul>
+            <p>Your team is waiting for you inside. Let's build something great together!</p>
+          `,
+          ctaText: "Open Dashboard",
+          ctaUrl: "https://ractools.vercel.app",
+          footerNote: "If you didn't create this account, please ignore this email."
+        })
       });
 
       // Auto-login immediately after signup

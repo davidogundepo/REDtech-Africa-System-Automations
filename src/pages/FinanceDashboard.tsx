@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
+import { brandedEmailTemplate } from "@/lib/email-template";
 import Papa from "papaparse";
 
 // NGN Currency Formatter
@@ -238,11 +239,20 @@ const FinanceDashboard = () => {
       sendNotificationEmail({
         to: "management@redtechafrica.com",
         subject: `New Payment Request: ${formatCurrency(parseFloat(newReq.amount))}`,
-        html: `<p><strong>Requested By:</strong> ${profile?.full_name}</p>
-               <p><strong>Category:</strong> ${newReq.category}</p>
-               <p><strong>Amount:</strong> ${formatCurrency(parseFloat(newReq.amount))}</p>
-               <p><strong>Description:</strong> ${newReq.description}</p>
-               <p>Please log in to the dashboard to approve or reject.</p>`
+        html: brandedEmailTemplate({
+          heading: "New Payment Request 💰",
+          body: `
+            <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+              <tr><td style="padding:8px 12px; background:#f8f6f3; border-radius:6px 6px 0 0;"><strong>Requested By</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${profile?.full_name}</td></tr>
+              <tr><td style="padding:8px 12px;"><strong>Category</strong></td><td style="padding:8px 12px;">${newReq.category}</td></tr>
+              <tr><td style="padding:8px 12px; background:#f8f6f3;"><strong>Amount</strong></td><td style="padding:8px 12px; background:#f8f6f3; font-weight:700; color:#bc7e57;">${formatCurrency(parseFloat(newReq.amount))}</td></tr>
+              <tr><td style="padding:8px 12px; border-radius:0 0 6px 6px;"><strong>Description</strong></td><td style="padding:8px 12px;">${newReq.description}</td></tr>
+            </table>
+            <p>Please review and approve or reject this payment request.</p>
+          `,
+          ctaText: "Review Payment",
+          ctaUrl: "https://ractools.vercel.app/finance-dashboard",
+        })
       });
     },
     onError: (error) => toast.error("Failed to submit request: " + error.message)

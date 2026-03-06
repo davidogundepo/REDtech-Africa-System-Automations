@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, CalendarDays, Filter, X } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
+import { brandedEmailTemplate } from "@/lib/email-template";
 
 interface LeaveRequest {
   id: string;
@@ -104,15 +105,20 @@ const Leave = () => {
     sendNotificationEmail({
       to: "management@redtechafrica.com",
       subject: `Leave Request: ${profile?.full_name} — ${formData.leave_type}`,
-      html: `
-        <h2>New Leave Request</h2>
-        <p><strong>Employee:</strong> ${profile?.full_name}</p>
-        <p><strong>Type:</strong> ${leaveTypes.find(t => t.value === formData.leave_type)?.label}</p>
-        <p><strong>Period:</strong> ${formData.start_date} to ${formData.end_date} (${days} days)</p>
-        <p><strong>Reason:</strong> ${formData.reason || 'Not specified'}</p>
-        <br/>
-        <p>Log in to the <a href="https://redtech-system.vercel.app/leave">REDtech Dashboard</a> to approve or reject.</p>
-      `
+      html: brandedEmailTemplate({
+        heading: "New Leave Request Submitted 📅",
+        body: `
+          <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+            <tr><td style="padding:8px 12px; background:#f8f6f3; border-radius:6px 6px 0 0;"><strong>Employee</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${profile?.full_name}</td></tr>
+            <tr><td style="padding:8px 12px;"><strong>Leave Type</strong></td><td style="padding:8px 12px;">${leaveTypes.find(t => t.value === formData.leave_type)?.label}</td></tr>
+            <tr><td style="padding:8px 12px; background:#f8f6f3;"><strong>Period</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${formData.start_date} to ${formData.end_date} (${days} days)</td></tr>
+            <tr><td style="padding:8px 12px; border-radius:0 0 6px 6px;"><strong>Reason</strong></td><td style="padding:8px 12px;">${formData.reason || 'Not specified'}</td></tr>
+          </table>
+          <p>Please review and approve or reject this request.</p>
+        `,
+        ctaText: "Review Request",
+        ctaUrl: "https://ractools.vercel.app/leave",
+      })
     });
 
     setFormData(emptyForm);

@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
+import { brandedEmailTemplate } from "@/lib/email-template";
 import { format, subDays } from "date-fns";
 
 const roleBadgeColors: Record<string, string> = {
@@ -115,14 +116,19 @@ const UserManagement = () => {
           // Step 2: Send Email Notification to the user
           sendNotificationEmail({
             to: userToRemove.email,
-            subject: "Platform Access Revoked - REDtech System Automations",
-            html: `
-              <h2>Access Revoked</h2>
-              <p>Hello ${userToRemove.full_name},</p>
-              <p>Your access to the REDtech internal platform has been revoked by a Super Admin.</p>
-              <p><strong>Reason provided:</strong> ${removeReason}</p>
-              <p>If you believe this is an error, please contact the Operations department.</p>
-            `,
+            subject: "Platform Access Update - REDtech System Automations",
+            html: brandedEmailTemplate({
+              recipientName: userToRemove.full_name,
+              heading: "Platform Access Update",
+              body: `
+                <p>Your access to the <strong>REDtech System Automations</strong> platform has been updated by an administrator.</p>
+                <div style="background:#fef2f2; border-left:4px solid #dc2626; padding:12px 16px; border-radius:0 8px 8px 0; margin:16px 0;">
+                  <p style="margin:0; color:#991b1b;"><strong>Reason:</strong> ${removeReason}</p>
+                </div>
+                <p>If you believe this is in error, please reach out to the Operations department for assistance.</p>
+              `,
+              footerNote: "This action was performed by a Super Admin. Contact your team lead if you have questions."
+            }),
           });
 
           setRemoveDialogOpen(false);
