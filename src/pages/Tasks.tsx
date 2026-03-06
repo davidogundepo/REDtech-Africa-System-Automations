@@ -84,7 +84,7 @@ const Tasks = () => {
   };
 
   const fetchProfiles = async () => {
-    const { data } = await supabase.from("profiles").select("id, full_name, email, department").eq("is_active", true);
+    const { data } = await (supabase as any).from("profiles").select("id, full_name, email, department").eq("is_active", true);
     setProfiles(data || []);
   };
 
