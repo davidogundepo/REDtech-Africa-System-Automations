@@ -69,7 +69,7 @@ const OperationsDashboard = () => {
   const { data: metrics, isLoading } = useQuery({
     queryKey: ['ops_metrics'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('ops_metrics').select('*').order('date', { ascending: true });
+      const { data, error } = await (supabase as any).from('ops_metrics').select('*').order('date', { ascending: true });
       if (error) throw error;
       return data || [];
     }
@@ -78,7 +78,7 @@ const OperationsDashboard = () => {
   // Mutations
   const addMetricMutation = useMutation({
     mutationFn: async (metricData: any) => {
-      const { error } = await supabase.from('ops_metrics').insert([metricData]);
+      const { error } = await (supabase as any).from('ops_metrics').insert([metricData]);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -92,7 +92,7 @@ const OperationsDashboard = () => {
 
   const deleteMetricMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('ops_metrics').delete().eq('id', id);
+      const { error } = await (supabase as any).from('ops_metrics').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {

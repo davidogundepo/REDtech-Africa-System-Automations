@@ -75,7 +75,7 @@ const SocialMediaHub = () => {
   const { data: posts, isLoading } = useQuery({
     queryKey: ['social_posts'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('social_posts').select('*').order('scheduled_date', { ascending: false });
+      const { data, error } = await (supabase as any).from('social_posts').select('*').order('scheduled_date', { ascending: false });
       if (error) throw error;
       return data || [];
     }
@@ -84,7 +84,7 @@ const SocialMediaHub = () => {
   // Mutations
   const addPostMutation = useMutation({
     mutationFn: async (postData: any) => {
-      const { error } = await supabase.from('social_posts').insert([postData]);
+      const { error } = await (supabase as any).from('social_posts').insert([postData]);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -98,7 +98,7 @@ const SocialMediaHub = () => {
 
   const batchAddPostsMutation = useMutation({
     mutationFn: async (postsArray: any[]) => {
-      const { error } = await supabase.from('social_posts').insert(postsArray);
+      const { error } = await (supabase as any).from('social_posts').insert(postsArray);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -111,7 +111,7 @@ const SocialMediaHub = () => {
 
   const deletePostMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('social_posts').delete().eq('id', id);
+      const { error } = await (supabase as any).from('social_posts').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -122,7 +122,7 @@ const SocialMediaHub = () => {
 
   const updatePostStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
-      const { error } = await supabase.from('social_posts').update({ status }).eq('id', id);
+      const { error } = await (supabase as any).from('social_posts').update({ status }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: (_, variables) => {

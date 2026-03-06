@@ -21,7 +21,7 @@ const StaffUtilization = () => {
   const { data: profiles } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").eq("is_active", true);
+      const { data, error } = await (supabase as any).from("profiles").select("*").eq("is_active", true);
       if (error) throw error;
       return data || [];
     },
@@ -31,7 +31,7 @@ const StaffUtilization = () => {
   const { data: tasks } = useQuery({
     queryKey: ["all-tasks"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("tasks").select("*");
+      const { data, error } = await (supabase as any).from("tasks").select("*");
       if (error) throw error;
       return data || [];
     },

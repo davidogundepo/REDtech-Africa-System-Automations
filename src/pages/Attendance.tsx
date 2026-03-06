@@ -56,7 +56,7 @@ const Attendance = () => {
   const { data: allProfiles } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").eq("is_active", true);
+      const { data, error } = await (supabase as any).from("profiles").select("*").eq("is_active", true);
       if (error) throw error;
       return data || [];
     },
@@ -117,7 +117,7 @@ const Attendance = () => {
       const hour = new Date().getHours();
       const status = hour >= 9 ? "late" : "present"; // After 9 AM = late
       
-      const { error } = await supabase.from("attendance_records").insert([{
+      const { error } = await (supabase as any).from("attendance_records").insert([{
         user_id: profile.id,
         clock_in: now,
         date: today,

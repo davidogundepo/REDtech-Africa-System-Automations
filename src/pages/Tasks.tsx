@@ -107,7 +107,7 @@ const Tasks = () => {
     };
 
     if (editingId) {
-      const { error } = await supabase.from("tasks").update(payload).eq("id", editingId);
+      const { error } = await (supabase as any).from("tasks").update(payload).eq("id", editingId);
       if (error) { toast.error("Failed to update task"); return; }
       toast.success(`Task updated, ${profile?.full_name?.split(" ")[0]}!`);
     } else {
@@ -120,14 +120,14 @@ const Tasks = () => {
         }];
       }
 
-      const { error } = await supabase.from("tasks").insert(payload);
+      const { error } = await (supabase as any).from("tasks").insert(payload);
       if (error) { toast.error("Failed to create task"); return; }
       toast.success(`Task created! You're on it, ${profile?.full_name?.split(" ")[0]} 💪`);
 
       // Send email if assigned to someone
       if (assignedProfile) {
         // Fire an in-app global notification
-        supabase.from("notifications").insert({
+        (supabase as any).from("notifications").insert({
           user_id: assignedProfile.id,
           title: "New Task Assigned",
           message: formData.title,
@@ -164,11 +164,11 @@ const Tasks = () => {
   };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
-    const { error } = await supabase.from("tasks").update({ status: newStatus }).eq("id", id);
+    const { error } = await (supabase as any).from("tasks").update({ status: newStatus }).eq("id", id);
     if (error) { toast.error("Failed to update status"); return; }
     
     // Log the status change in task_updates
-    await supabase.from("task_updates").insert({
+    await (supabase as any).from("task_updates").insert({
       task_id: id,
       user_id: profile?.id,
       action: `Status changed to ${newStatus}`,
@@ -193,7 +193,7 @@ const Tasks = () => {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    const { error } = await (supabase as any).from("tasks").delete().eq("id", id);
     if (error) { toast.error("Failed to delete"); return; }
     toast.success("Task deleted");
     fetchTasks();

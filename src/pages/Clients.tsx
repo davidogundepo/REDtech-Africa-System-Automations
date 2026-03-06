@@ -97,8 +97,8 @@ const Clients = () => {
   const [showMyClients, setShowMyClients] = useState(false);
 
   const fetchClients = async () => {
-    const { data, error } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
-    if (error) { toast.error("Failed to load clients"); return; }
+    const { data, error } = await (supabase as any).from("clients").select("*").order("created_at", { ascending: false });
+    if (error) { console.error("clients error:", error); toast.error("Failed to load clients"); setLoading(false); return; }
     setClients(data || []);
     setLoading(false);
   };
@@ -131,11 +131,11 @@ const Clients = () => {
     };
 
     if (editingId) {
-      const { error } = await supabase.from("clients").update(payload).eq("id", editingId);
+      const { error } = await (supabase as any).from("clients").update(payload).eq("id", editingId);
       if (error) { toast.error("Failed to update client"); return; }
       toast.success("Client updated");
     } else {
-      const { error } = await supabase.from("clients").insert(payload);
+      const { error } = await (supabase as any).from("clients").insert(payload);
       if (error) { toast.error("Failed to add client"); return; }
       toast.success(`${formData.name} added to your Deal Book, ${profile?.full_name?.split(" ")[0]}! 🤝`);
 
@@ -176,7 +176,7 @@ const Clients = () => {
     if (newStatus !== 'lead') {
       payload.last_contact_date = new Date().toISOString();
     }
-    const { error } = await supabase.from("clients").update(payload).eq("id", id);
+    const { error } = await (supabase as any).from("clients").update(payload).eq("id", id);
     if (error) { toast.error("Failed to update status"); return; }
     toast.success("Deal status updated");
     fetchClients();
@@ -200,14 +200,14 @@ const Clients = () => {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("clients").delete().eq("id", id);
+    const { error } = await (supabase as any).from("clients").delete().eq("id", id);
     if (error) { toast.error("Failed to delete client"); return; }
     toast.success("Client removed");
     fetchClients();
   };
 
   const updateLastContact = async (id: string) => {
-    const { error } = await supabase.from("clients").update({ last_contact_date: new Date().toISOString() }).eq("id", id);
+    const { error } = await (supabase as any).from("clients").update({ last_contact_date: new Date().toISOString() }).eq("id", id);
     if (error) { toast.error("Failed to log activity"); return; }
     toast.success(`Activity logged for ${clients.find(c => c.id === id)?.name || "client"} ✓`);
     fetchClients();

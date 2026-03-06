@@ -57,7 +57,7 @@ const Leave = () => {
   const [balances, setBalances] = useState<any[]>([]);
 
   const fetchRequests = async () => {
-    const { data, error } = await supabase.from("leave_requests").select("*").order("created_at", { ascending: false });
+    const { data, error } = await (supabase as any).from("leave_requests").select("*").order("created_at", { ascending: false });
     if (error) { toast.error("Failed to load leave requests"); return; }
     setRequests(data || []);
     setLoading(false);
@@ -88,7 +88,7 @@ const Leave = () => {
 
     const days = getDaysCount(formData.start_date, formData.end_date);
 
-    const { error } = await supabase.from("leave_requests").insert([{
+    const { error } = await (supabase as any).from("leave_requests").insert([{
       employee_id: profile?.full_name || "Unknown",
       user_id: profile?.id || null,
       leave_type: formData.leave_type,
@@ -148,7 +148,7 @@ const Leave = () => {
           .maybeSingle();
 
         if (existingBalance) {
-          await supabase.from("leave_balances")
+          await (supabase as any).from("leave_balances")
             .update({ used_days: existingBalance.used_days + days })
             .eq("id", existingBalance.id);
         }
@@ -158,7 +158,7 @@ const Leave = () => {
     // Send in-app notification to the requesting user
     const currentReq = requests.find(r => r.id === id);
     if (currentReq && currentReq.user_id) {
-      supabase.from("notifications").insert({
+      (supabase as any).from("notifications").insert({
         user_id: currentReq.user_id,
         title: `Leave Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
         message: `Your ${currentReq.leave_type} leave request has been ${status}.`,
@@ -195,7 +195,7 @@ const Leave = () => {
         .maybeSingle();
 
       if (balance) {
-        await supabase.from("leave_balances")
+        await (supabase as any).from("leave_balances")
           .update({ used_days: Math.max(0, balance.used_days - days) })
           .eq("id", balance.id);
       }

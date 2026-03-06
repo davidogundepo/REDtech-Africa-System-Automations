@@ -56,7 +56,7 @@ const DocumentRepository = () => {
   const { data: documents, isLoading } = useQuery({
     queryKey: ['documents'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
+      const { data, error } = await (supabase as any).from('documents').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       
       let filteredDb = data || [];
@@ -85,7 +85,7 @@ const DocumentRepository = () => {
 
       const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(fileName);
 
-      const { error: dbError } = await supabase.from('documents').insert([{
+      const { error: dbError } = await (supabase as any).from('documents').insert([{
         ...dbData,
         url: publicUrlData.publicUrl
       }]);
@@ -101,7 +101,7 @@ const DocumentRepository = () => {
 
   const addLinkMutation = useMutation({
     mutationFn: async (linkData: { name: string, url: string, department: string | null, created_by: string, uploaded_by_id: string }) => {
-      const { error } = await supabase.from('documents').insert([{
+      const { error } = await (supabase as any).from('documents').insert([{
         name: linkData.name,
         type: 'link',
         size: 'External',
@@ -123,7 +123,7 @@ const DocumentRepository = () => {
 
   const deleteDocMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('documents').delete().eq('id', id);
+      const { error } = await (supabase as any).from('documents').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {

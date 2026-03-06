@@ -67,7 +67,7 @@ const FinanceDashboard = () => {
   const { data: transactions, isLoading: loadingTx } = useQuery({
     queryKey: ['transactions', 'active'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('transactions')
+      const { data, error } = await (supabase as any).from('transactions')
         .select('*')
         .is('deleted_at', null)
         .order('date', { ascending: false });
@@ -81,7 +81,7 @@ const FinanceDashboard = () => {
     queryKey: ['transactions', 'deleted'],
     queryFn: async () => {
       const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
-      const { data, error } = await supabase.from('transactions')
+      const { data, error } = await (supabase as any).from('transactions')
         .select('*')
         .not('deleted_at', 'is', null)
         .gte('deleted_at', thirtyDaysAgo)
@@ -96,7 +96,7 @@ const FinanceDashboard = () => {
   const { data: paymentRequests, isLoading: loadingReq } = useQuery({
     queryKey: ['payment_requests'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('payment_requests')
+      const { data, error } = await (supabase as any).from('payment_requests')
         .select('*, profiles!payment_requests_requested_by_fkey(full_name), approver:profiles!payment_requests_approved_by_fkey(full_name)')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -108,7 +108,7 @@ const FinanceDashboard = () => {
   const { data: budgets, isLoading: loadingBudgets } = useQuery({
     queryKey: ['budgets'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('budgets')
+      const { data, error } = await (supabase as any).from('budgets')
         .select('*')
         .order('year', { ascending: false })
         .order('quarter', { ascending: false })
@@ -166,7 +166,7 @@ const FinanceDashboard = () => {
           return;
         }
 
-        const { error } = await supabase.from('transactions').insert(parsedTxs);
+        const { error } = await (supabase as any).from('transactions').insert(parsedTxs);
         if (error) {
           toast.error("Failed to import CSV: " + error.message);
         } else {
@@ -184,7 +184,7 @@ const FinanceDashboard = () => {
   // Mutations: Transactions
   const addTxMutation = useMutation({
     mutationFn: async (txData: any) => {
-      const { error } = await supabase.from('transactions').insert([txData]);
+      const { error } = await (supabase as any).from('transactions').insert([txData]);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -199,10 +199,10 @@ const FinanceDashboard = () => {
   const deleteTxMutation = useMutation({
     mutationFn: async ({ id, hardDelete = false }: { id: string, hardDelete?: boolean }) => {
       if (hardDelete) {
-        const { error } = await supabase.from('transactions').delete().eq('id', id);
+        const { error } = await (supabase as any).from('transactions').delete().eq('id', id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('transactions').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+        const { error } = await (supabase as any).from('transactions').update({ deleted_at: new Date().toISOString() }).eq('id', id);
         if (error) throw error;
       }
     },
@@ -214,7 +214,7 @@ const FinanceDashboard = () => {
 
   const restoreTxMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('transactions').update({ deleted_at: null }).eq('id', id);
+      const { error } = await (supabase as any).from('transactions').update({ deleted_at: null }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -226,7 +226,7 @@ const FinanceDashboard = () => {
   // Mutations: Payment Requests
   const addRequestMutation = useMutation({
     mutationFn: async (reqData: any) => {
-      const { error } = await supabase.from('payment_requests').insert([reqData]);
+      const { error } = await (supabase as any).from('payment_requests').insert([reqData]);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -261,14 +261,14 @@ const FinanceDashboard = () => {
   const resolveRequestMutation = useMutation({
     mutationFn: async ({ id, status, requestData }: { id: string, status: 'approved'|'rejected', requestData: any }) => {
       // 1. Update request status
-      const { error: reqError } = await supabase.from('payment_requests')
+      const { error: reqError } = await (supabase as any).from('payment_requests')
         .update({ status, approved_by: profile?.id, resolved_at: new Date().toISOString() })
         .eq('id', id);
       if (reqError) throw reqError;
 
       // 2. If approved, auto-post the transaction
       if (status === 'approved') {
-        const { error: txError } = await supabase.from('transactions').insert([{
+        const { error: txError } = await (supabase as any).from('transactions').insert([{
           amount: requestData.amount,
           type: 'expense',
           category: requestData.category,
@@ -291,7 +291,7 @@ const FinanceDashboard = () => {
 
   const addBudgetMutation = useMutation({
     mutationFn: async (budgetData: any) => {
-      const { error } = await supabase.from('budgets').upsert([{
+      const { error } = await (supabase as any).from('budgets').upsert([{
         ...budgetData,
         actual_amount: 0 // Will be calculated dynamically or synced later
       }], { onConflict: 'quarter,year,category' });

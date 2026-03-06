@@ -159,7 +159,7 @@ const UserManagement = () => {
         link: "/user-management" // Optional generic link
       }));
 
-      const { error } = await supabase.from("notifications").insert(notifications);
+      const { error } = await (supabase as any).from("notifications").insert(notifications);
       if (error) throw error;
     },
     onSuccess: () => {
