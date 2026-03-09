@@ -144,7 +144,7 @@ export function Header() {
                     <Sparkles className="h-8 w-8" style={{ color: '#bc7e57', opacity: 0.4 }} />
                   </div>
                   <div className="space-y-1">
-                    <p className="font-medium text-sm">All clear, {profile?.full_name?.split(' ')[0] || 'champ'}! 🎉</p>
+                    <p className="font-medium text-sm">All clear, {(profile?.full_name || \"\").split(' ')[0] || 'champ'}! 🎉</p>
                     <p className="text-xs text-muted-foreground max-w-[220px] leading-relaxed">
                       Your notifications from tasks, leave approvals, and team updates will show up here.
                     </p>

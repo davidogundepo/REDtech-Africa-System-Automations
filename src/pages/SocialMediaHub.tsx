@@ -122,7 +122,7 @@ const SocialMediaHub = () => {
       setNewPost({ platform: "linkedin", content: "", status: "draft", scheduled_date: new Date().toISOString().slice(0, 16), post_type: "post", image_url: "" });
       setImageFile(null);
       setImagePreview(null);
-      toast.success(`Post saved, ${profile?.full_name?.split(" ")[0]}! 📝`);
+      toast.success(`Post saved, ${(profile?.full_name || \"\").split(" ")[0]}! 📝`);
     },
     onError: (error) => toast.error("Failed to save post: " + error.message)
   });
@@ -269,7 +269,7 @@ const SocialMediaHub = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`Calendar exported, ${profile?.full_name?.split(" ")[0]}! Check your downloads 📥`);
+    toast.success(`Calendar exported, ${(profile?.full_name || \"\").split(" ")[0]}! Check your downloads 📥`);
   };
 
   const downloadTemplate = () => {

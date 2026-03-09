@@ -141,7 +141,7 @@ const Leave = () => {
     }]);
 
     if (error) { toast.error("Failed to submit request"); return; }
-    toast.success(`Leave request submitted, ${profile?.full_name?.split(" ")[0]}! (${days} days) We'll keep you posted 📩`);
+    toast.success(`Leave request submitted, ${(profile?.full_name || \"\").split(" ")[0]}! (${days} days) We'll keep you posted 📩`);
 
     // Notify admins
     sendNotificationEmail({
@@ -315,7 +315,7 @@ const Leave = () => {
       }
     }
 
-    toast.success(`Leave cancelled, ${profile?.full_name?.split(" ")[0]}. Balance restored!`);
+    toast.success(`Leave cancelled, ${(profile?.full_name || \"\").split(" ")[0]}. Balance restored!`);
     fetchRequests();
     fetchBalances();
   };
@@ -578,7 +578,7 @@ const Leave = () => {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <div className="h-7 w-7 rounded-lg bg-[#bc7e57]/15 flex items-center justify-center text-[10px] font-bold text-[#bc7e57]">
-                                  {member.full_name?.substring(0, 2).toUpperCase()}
+                                  {(member.full_name || \"\").substring(0, 2).toUpperCase()}
                                 </div>
                                 <span className="font-medium">{member.full_name}</span>
                               </div>

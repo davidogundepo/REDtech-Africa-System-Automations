@@ -96,7 +96,7 @@ const DocumentRepository = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       setIsUploadOpen(false);
-      toast.success(`Document uploaded, ${profile?.full_name?.split(" ")[0]}! Ready for the team 📄`);
+      toast.success(`Document uploaded, ${(profile?.full_name || \"\").split(" ")[0]}! Ready for the team 📄`);
     },
     onError: (error) => toast.error(error.message)
   });
@@ -118,7 +118,7 @@ const DocumentRepository = () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       setIsLinkOpen(false);
       setNewLink({ name: "", url: "", department: "all" });
-      toast.success(`Link added, ${profile?.full_name?.split(" ")[0]}! 🔗`);
+      toast.success(`Link added, ${(profile?.full_name || \"\").split(" ")[0]}! 🔗`);
     },
     onError: (error) => toast.error(error.message)
   });
@@ -333,7 +333,7 @@ const DocumentRepository = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="h-6 w-6 rounded-full bg-[#bc7e57]/20 flex items-center justify-center text-[10px] font-bold text-[#bc7e57] shrink-0">
-                          {file.created_by?.substring(0,2).toUpperCase() || 'RA'}
+                          {(file.created_by || \"\").substring(0,2).toUpperCase() || 'RA'}
                         </div>
                         <span className="text-sm text-muted-foreground">{file.created_by || 'System'}</span>
                       </div>
