@@ -141,7 +141,7 @@ const Leave = () => {
     }]);
 
     if (error) { toast.error("Failed to submit request"); return; }
-    toast.success(`Leave request submitted, ${(profile?.full_name || \"\").split(" ")[0]}! (${days} days) We'll keep you posted 📩`);
+    toast.success(`Leave request submitted, ${(profile?.full_name || "").split(" ")[0]}! (${days} days) We'll keep you posted 📩`);
 
     // Notify admins
     sendNotificationEmail({
@@ -315,7 +315,7 @@ const Leave = () => {
       }
     }
 
-    toast.success(`Leave cancelled, ${(profile?.full_name || \"\").split(" ")[0]}. Balance restored!`);
+    toast.success(`Leave cancelled, ${(profile?.full_name || "").split(" ")[0]}. Balance restored!`);
     fetchRequests();
     fetchBalances();
   };
@@ -504,7 +504,7 @@ const Leave = () => {
                           {leaveTypes.find(t => t.value === req.leave_type)?.label || req.leave_type}
                         </TableCell>
                         <TableCell className="text-sm">
-                          {new Date(req.start_date).toLocaleDateString()} — {new Date(req.end_date).toLocaleDateString()}
+                          {req.start_date || 'N/A'} — {req.end_date || 'N/A'}
                         </TableCell>
                         <TableCell className="text-center">{getDaysCount(req.start_date, req.end_date)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground max-w-32 truncate">{req.reason || "—"}</TableCell>
@@ -578,7 +578,7 @@ const Leave = () => {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <div className="h-7 w-7 rounded-lg bg-[#bc7e57]/15 flex items-center justify-center text-[10px] font-bold text-[#bc7e57]">
-                                  {(member.full_name || \"\").substring(0, 2).toUpperCase()}
+                                  {(member.full_name || "").substring(0, 2).toUpperCase()}
                                 </div>
                                 <span className="font-medium">{member.full_name}</span>
                               </div>

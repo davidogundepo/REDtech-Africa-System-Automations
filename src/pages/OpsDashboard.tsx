@@ -149,7 +149,7 @@ const OperationsDashboard = () => {
     const completed = userTasks.filter((t: any) => t.status === 'completed').length;
     const total = userTasks.length;
     const efficiency = total > 0 ? Math.round((completed / total) * 100) : 100; // new members = 100%
-    const firstName = (p.full_name || \"\").split(' ')[0] || 'Unknown';
+    const firstName = (p.full_name || "").split(' ')[0] || 'Unknown';
     return {
       group: firstName,
       efficiency,

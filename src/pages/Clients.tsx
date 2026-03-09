@@ -139,7 +139,7 @@ const Clients = () => {
     } else {
       const { error } = await (supabase as any).from("clients").insert(payload);
       if (error) { toast.error("Failed to add client"); return; }
-      toast.success(`${formData.name} added to your Deal Book, ${(profile?.full_name || \"\").split(" ")[0]}! 🤝`);
+      toast.success(`${formData.name} added to your Deal Book, ${(profile?.full_name || "").split(" ")[0]}! 🤝`);
 
       // Notify Assignee if different from creator
       if (formData.assigned_to && formData.assigned_to !== profile?.id) {

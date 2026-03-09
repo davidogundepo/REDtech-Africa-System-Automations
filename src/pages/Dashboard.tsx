@@ -130,7 +130,7 @@ const Dashboard = () => {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const firstName = (profile?.full_name || \"\").split(" ")[0] || "";
+  const firstName = (profile?.full_name || "").split(" ")[0] || "";
   const todayTip = tips[new Date().getDate() % tips.length];
   const roleBadge = profile?.role === "super_admin" ? "Super Admin" : profile?.role === "admin" ? "Admin" : profile?.role || "Team Member";
 

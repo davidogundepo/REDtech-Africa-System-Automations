@@ -110,7 +110,7 @@ const Tasks = () => {
     if (editingId) {
       const { error } = await (supabase as any).from("tasks").update(payload).eq("id", editingId);
       if (error) { toast.error("Failed to update task"); return; }
-      toast.success(`Task updated, ${(profile?.full_name || \"\").split(" ")[0]}!`);
+      toast.success(`Task updated, ${(profile?.full_name || "").split(" ")[0]}!`);
     } else {
       // Add initial blocker note if provided
       if (formData.blocker_note) {
@@ -123,7 +123,7 @@ const Tasks = () => {
 
       const { error } = await (supabase as any).from("tasks").insert(payload);
       if (error) { toast.error("Failed to create task"); return; }
-      toast.success(`Task created! You're on it, ${(profile?.full_name || \"\").split(" ")[0]} 💪`);
+      toast.success(`Task created! You're on it, ${(profile?.full_name || "").split(" ")[0]} 💪`);
 
       // Send email if assigned to someone
       if (assignedProfile) {
@@ -217,7 +217,7 @@ const Tasks = () => {
     
     if (error) { toast.error("Failed to add note"); return; }
     
-    toast.success(`Note added, ${(profile?.full_name || \"\").split(" ")[0]}! Great documentation 📝`);
+    toast.success(`Note added, ${(profile?.full_name || "").split(" ")[0]}! Great documentation 📝`);
     setNewBlockerNote("");
     setBlockerDialogTask(null);
     fetchTasks();

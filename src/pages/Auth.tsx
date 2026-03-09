@@ -70,7 +70,7 @@ const Auth = () => {
     } else {
       // Fetch user's first name for a personalized greeting
       const { data: prof } = await (supabase as any).from("profiles").select("full_name").eq("email", loginEmail).maybeSingle();
-      const firstName = (prof?.full_name || \"\").split(" ")[0] || "";
+      const firstName = (prof?.full_name || "").split(" ")[0] || "";
       toast.success(`Welcome back${firstName ? `, ${firstName}` : ""}! 👋`);
       navigate("/", { replace: true });
     }

@@ -338,7 +338,7 @@ const StaffUtilisation = () => {
                             }}>
                               <div className="flex items-center gap-2">
                                 <div className="h-7 w-7 rounded-full bg-[#bc7e57]/20 flex items-center justify-center text-[10px] font-bold text-[#bc7e57] shrink-0">
-                                  {(member.full_name || \"\").substring(0, 2).toUpperCase()}
+                                  {(member.full_name || "").substring(0, 2).toUpperCase()}
                                 </div>
                                 <span className="text-sm font-medium">{member.full_name}</span>
                               </div>
