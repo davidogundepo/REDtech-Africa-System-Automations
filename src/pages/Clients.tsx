@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Search, Users, Mail, Phone, Building2, Trash2, Edit, User, Calendar, Activity, Briefcase } from "lucide-react";
 import { toast } from "sonner";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { format } from "date-fns";
@@ -433,9 +434,15 @@ const Clients = () => {
         </CardHeader>
         <CardContent>
           {loading ? (
-             <p className="text-center py-8 text-muted-foreground">Loading pipeline...</p>
+             <div className="flex items-center justify-center py-12 text-muted-foreground gap-2"><span className="animate-spin rounded-full h-5 w-5 border-2 border-[#bc7e57] border-t-transparent"/><span>Loading pipeline...</span></div>
           ) : filtered.length === 0 ? (
-             <p className="text-center py-8 text-muted-foreground">No accounts found.</p>
+             <EmptyState
+               illustration="clients"
+               heading="Your deal book is empty"
+               subtext="Add your first client or lead to start tracking the pipeline. Every deal starts with a handshake."
+               ctaText="Add First Client"
+               onCta={() => setDialogOpen(true)}
+             />
           ) : (
             <Table>
               <TableHeader>

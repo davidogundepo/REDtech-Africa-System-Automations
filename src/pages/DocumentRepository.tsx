@@ -297,11 +297,13 @@ const DocumentRepository = () => {
           {isLoading ? (
             <div className="py-16 text-center text-muted-foreground">Loading documents...</div>
           ) : filteredDocs.length === 0 ? (
-            <div className="py-16 text-center flex flex-col items-center">
-              <FolderOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
-              <h3 className="text-lg font-medium">No files found</h3>
-              <p className="text-muted-foreground mt-2">Upload a file or link a OneDrive document to get started.</p>
-            </div>
+            <EmptyState
+              illustration="documents"
+              heading="No documents yet"
+              subtext="Upload files or link OneDrive documents to centralise your team's knowledge base."
+              ctaText="Upload First Document"
+              onCta={() => setIsUploadOpen(true)}
+            />
           ) : (
             <Table>
               <TableHeader>

@@ -18,6 +18,7 @@ import { Linkedin, Twitter, Instagram, Facebook, Plus, Clock, CheckCircle2, Mega
 import { useTheme } from "@/components/ThemeProvider";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 // Simple CSV parser for browsers
 const parseCSV = (text: string) => {
@@ -547,7 +548,13 @@ const SocialMediaHub = () => {
             <div className="py-16 text-center text-muted-foreground">Loading posts...</div>
           ) : filteredPosts.length === 0 ? (
             <div className="py-16 text-center text-muted-foreground">
-               No posts found in this category.
+               <EmptyState
+                illustration="social"
+                heading="No posts in this category"
+                subtext="Create your first post to start scheduling and publishing content across your platforms."
+                ctaText="Create Post"
+                onCta={() => setIsDialogOpen(true)}
+              />
             </div>
           ) : (
             <div className="divide-y divide-border/50">

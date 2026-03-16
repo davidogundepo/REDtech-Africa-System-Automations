@@ -21,11 +21,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { 
-  CheckCircle2, Clock, Truck, AlertCircle, 
-  Activity, ArrowUpRight, ArrowDownRight,
-  Plus, Trash2
-} from "lucide-react";
+import { CheckCircle2, Clock, Truck, AlertCircle, Activity, ArrowUpRight, ArrowDownRight, Plus, Trash2 } from "lucide-react";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Cell } from "recharts";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -310,7 +307,7 @@ const OperationsDashboard = () => {
           </CardHeader>
           <CardContent className="p-0 overflow-y-auto flex-1">
              {metrics?.length === 0 ? (
-                 <p className="text-center py-8 text-muted-foreground">No metric records found.</p>
+                <EmptyState illustration="ops" heading="No delivery records yet" subtext="Log your first delivery or operational metric to start tracking team performance and issue resolution rates."/>
              ) : (
                 <div className="divide-y divide-border">
                   {metrics?.slice().reverse().map((m) => (

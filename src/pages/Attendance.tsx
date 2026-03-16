@@ -16,6 +16,7 @@ import { Clock, LogIn, LogOut, CalendarDays, Timer, Users, AlertTriangle, CheckC
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 const Attendance = () => {
   const { profile, isAdmin, isSuperAdmin } = useAuth();
@@ -431,9 +432,7 @@ const Attendance = () => {
                     })}
                     {(!allProfiles || allProfiles.length === 0) && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          No profiles found to display attendance.
-                        </TableCell>
+                        <TableCell colSpan={6} className="p-0"><EmptyState illustration="attendance" heading="No attendance records" subtext="Team attendance records will appear here once members have clocked in. Check back after 9 AM."/></TableCell>
                       </TableRow>
                     )}
                   </TableBody>

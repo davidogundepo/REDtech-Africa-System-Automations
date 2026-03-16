@@ -18,6 +18,7 @@ import {
 import { Plus, Search, CheckSquare, Clock, AlertTriangle, Circle, User, MessageSquare, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { format } from "date-fns";
 
@@ -345,7 +346,13 @@ const Tasks = () => {
           {loading ? (
             <p className="text-center text-muted-foreground py-8">Loading...</p>
           ) : filtered.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No tasks found. Create your first task above.</p>
+            <EmptyState
+              illustration="tasks"
+              heading="No tasks here yet"
+              subtext="Create your first task to start tracking work across your team. Assign it, set a priority, and get moving."
+              ctaText="Create First Task"
+              onCta={() => setDialogOpen(true)}
+            />
           ) : (
             filtered.map((task) => {
               const StatusIcon = statusIcons[task.status] || Circle;

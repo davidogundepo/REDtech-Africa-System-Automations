@@ -17,6 +17,7 @@ import { Plus, CalendarDays, Filter, X, Users, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 const ANNUAL_LEAVE_DAYS = 14; // Standard annual leave allowance
 
@@ -480,9 +481,15 @@ const Leave = () => {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <p className="text-center py-8 text-muted-foreground">Loading...</p>
+                <div className="flex items-center justify-center py-12 text-muted-foreground gap-2"><span className="animate-spin rounded-full h-5 w-5 border-2 border-[#bc7e57] border-t-transparent"/><span>Loading requests...</span></div>
               ) : filteredRequests.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">No leave requests found.</p>
+                <EmptyState
+                  illustration="leave"
+                  heading="No leave requests yet"
+                  subtext={showMyLeave ? "You haven't submitted any leave requests. Use the button above to request time off." : "No leave requests have been submitted yet."}
+                  ctaText={showMyLeave ? "Request Leave" : undefined}
+                  onCta={showMyLeave ? () => setDialogOpen(true) : undefined}
+                />
               ) : (
                 <Table>
                   <TableHeader>
@@ -568,7 +575,7 @@ const Leave = () => {
                   </TableHeader>
                   <TableBody>
                     {teamLeaveData.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No team members found.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} className="p-0"><EmptyState illustration="staff" heading="No team members found" subtext="Team members will appear here once they've signed up and been assigned profiles."/></TableCell></TableRow>
                     ) : (
                       teamLeaveData.map((member: any) => {
                         const pct = Math.round((member.daysUsed / ANNUAL_LEAVE_DAYS) * 100);

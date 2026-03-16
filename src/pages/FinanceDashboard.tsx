@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import Papa from "papaparse";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 // NGN Currency Formatter
 const formatCurrency = (amount: number) => {
@@ -516,7 +517,7 @@ const FinanceDashboard = () => {
             <CardHeader><CardTitle>Recent Transactions</CardTitle></CardHeader>
             <CardContent>
               {loadingTx ? (
-                <p className="text-center py-8 text-muted-foreground">Loading ledger...</p>
+                <div className="flex items-center justify-center py-12 text-muted-foreground gap-2"><span className="animate-spin rounded-full h-5 w-5 border-2 border-[#bc7e57] border-t-transparent"/><span>Loading ledger...</span></div>
               ) : (
                 <Table>
                   <TableHeader>
@@ -563,7 +564,7 @@ const FinanceDashboard = () => {
                       </TableRow>
                     ))}
                     {(!transactions || transactions.length === 0) && (
-                      <TableRow><TableCell colSpan={6} className="text-center py-8">No transactions found.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} className="p-0"><EmptyState illustration="finance" heading="Ledger is clear" subtext="Add your first transaction to start tracking income and expenses. Every naira counts."/></TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -631,7 +632,7 @@ const FinanceDashboard = () => {
                     </TableRow>
                   ))}
                   {(!paymentRequests || paymentRequests.length === 0) && (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8">No payment requests.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="p-0"><EmptyState illustration="payments" heading="No payment requests" subtext="Payment requests submitted by the team will appear here for your review and approval."/></TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -670,7 +671,7 @@ const FinanceDashboard = () => {
                       </TableRow>
                     ))}
                     {(!deletedTransactions || deletedTransactions.length === 0) && (
-                      <TableRow><TableCell colSpan={4} className="text-center py-8">Recycle bin is empty.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={4} className="p-0"><EmptyState illustration="recycle" heading="Recycle bin is empty" subtext="Soft-deleted transactions from the last 30 days will appear here, ready to restore or permanently delete."/></TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -739,7 +740,7 @@ const FinanceDashboard = () => {
               </CardHeader>
               <CardContent>
                 {loadingBudgets ? (
-                  <p className="text-center py-8 text-muted-foreground">Loading budgets...</p>
+                  <div className="flex items-center justify-center py-12 text-muted-foreground gap-2"><span className="animate-spin rounded-full h-5 w-5 border-2 border-[#bc7e57] border-t-transparent"/><span>Loading budgets...</span></div>
                 ) : (
                   <Table>
                     <TableHeader>
@@ -758,7 +759,7 @@ const FinanceDashboard = () => {
                         </TableRow>
                       ))}
                       {(!budgets || budgets.length === 0) && (
-                        <TableRow><TableCell colSpan={3} className="text-center py-8">No budgets set yet.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={3} className="p-0"><EmptyState illustration="budgets" heading="No budgets set" subtext="Set quarterly budgets by category to track your planned vs. actual spend."/></TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>

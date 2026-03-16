@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { Shield, BarChart3, Users, TrendingUp, AlertTriangle, Award, Building2, ChevronRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 
 const StaffUtilisation = () => {
@@ -241,8 +242,8 @@ const StaffUtilisation = () => {
                 <TableBody>
                   {userMetrics.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No team members found. Users will appear after signing up.
+                      <TableCell colSpan={7} className="p-0">
+                        <EmptyState illustration="staff" heading="No team members found" subtext="Users will appear here once they have signed up and been assigned to the system. Invite your team to get started."/>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -280,7 +281,7 @@ const StaffUtilisation = () => {
             <Card>
               <CardContent className="p-12 text-center text-muted-foreground">
                 <Building2 className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                <p>No departments found. Assign departments to team members first.</p>
+                <EmptyState illustration="staff" heading="No departments found" subtext="Assign departments to your team members first, then return here to see departmental breakdowns."/>
               </CardContent>
             </Card>
           ) : (
