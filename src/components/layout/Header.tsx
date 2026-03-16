@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -6,15 +6,30 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, Check, Info, ShieldAlert, CheckCircle2, AlertTriangle, ArrowRight, BellRing, Sparkles } from "lucide-react";
+import { Bell, Check, Info, ShieldAlert, CheckCircle2, AlertTriangle, ArrowRight, BellRing, Sparkles, Search, Command } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useNavigate } from "react-router-dom";
+import { CommandPalette } from "@/components/shared/CommandPalette";
 
 export function Header() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+
+  // Global Cmd+K / Ctrl+K shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandOpen(prev => !prev);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
 
   // Fetch notifications
   const { data: notifications } = useQuery({
@@ -87,12 +102,27 @@ export function Header() {
   };
 
   return (
+    <>
+    {commandOpen && <CommandPalette onClose={() => setCommandOpen(false)} />}
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
       <div className="flex items-center gap-2 md:hidden">
         <SidebarTrigger />
         <span className="font-semibold text-sm" style={{ color: '#bc7e57' }}>RAC Automations</span>
       </div>
-      <div className="hidden md:flex flex-1" />
+
+      {/* Command palette trigger — desktop only */}
+      <div className="hidden md:flex flex-1 max-w-md">
+        <button
+          onClick={() => setCommandOpen(true)}
+          className="flex items-center gap-2 w-full max-w-xs px-3 py-2 rounded-lg border border-border/50 bg-muted/40 hover:bg-muted/70 transition-colors text-sm text-muted-foreground group"
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span className="flex-1 text-left text-xs">Search pages, features...</span>
+          <span className="flex items-center gap-0.5 text-[10px] bg-background border border-border rounded px-1.5 py-0.5 group-hover:border-[#bc7e57]/40 transition-colors">
+            <Command className="h-2.5 w-2.5" />K
+          </span>
+        </button>
+      </div>
       
       <div className="flex items-center gap-4">
         <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -193,5 +223,6 @@ export function Header() {
         </Popover>
       </div>
     </header>
+    </>
   );
 }

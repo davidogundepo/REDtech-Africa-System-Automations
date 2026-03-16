@@ -147,6 +147,10 @@ export function AppSidebar() {
           {" "}&{" "}
           <a href="https://www.linkedin.com/in/olu-sowunmi/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Dolamu</a>
         </p>
+        <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/50 mt-1">
+          <kbd className="px-1.5 py-0.5 rounded border border-border/50 bg-muted/40 text-[10px]">⌘K</kbd>
+          <span>to search</span>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
