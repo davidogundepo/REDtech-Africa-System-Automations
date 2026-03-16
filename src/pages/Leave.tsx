@@ -95,7 +95,15 @@ const Leave = () => {
 
   // Compute annual leave days used from approved requests this year
   const currentYear = new Date().getFullYear();
-  const myApprovedRequests = requests.filter(r => 
+
+  // Must be defined BEFORE it is used in the derived computations below
+  const getDaysCount = (start: string, end: string) => {
+    if (!start || !end) return 0;
+    const diff = new Date(end).getTime() - new Date(start).getTime();
+    return Math.max(1, Math.ceil(diff / (1000 * 3600 * 24)) + 1);
+  };
+
+  const myApprovedRequests = requests.filter(r =>
     (r.user_id === profile?.id || r.employee_id === profile?.full_name) &&
     r.status === 'approved' &&
     new Date(r.start_date).getFullYear() === currentYear
@@ -106,22 +114,17 @@ const Leave = () => {
 
   // Team leave data for super admin
   const teamLeaveData = teamProfiles.map(tp => {
-    const memberRequests = requests.filter(r => 
+    const memberRequests = requests.filter(r =>
       (r.user_id === tp.id || r.employee_id === tp.full_name) &&
       r.status === 'approved' &&
       new Date(r.start_date).getFullYear() === currentYear
     );
     const used = memberRequests.reduce((sum: number, r: LeaveRequest) => sum + getDaysCount(r.start_date, r.end_date), 0);
-    const pending = requests.filter(r => 
+    const pending = requests.filter(r =>
       (r.user_id === tp.id || r.employee_id === tp.full_name) && r.status === 'pending'
     ).length;
     return { ...tp, daysUsed: used, daysRemaining: Math.max(0, ANNUAL_LEAVE_DAYS - used), pendingRequests: pending };
   }).sort((a: any, b: any) => b.daysUsed - a.daysUsed);
-
-  const getDaysCount = (start: string, end: string) => {
-    const diff = new Date(end).getTime() - new Date(start).getTime();
-    return Math.max(1, Math.ceil(diff / (1000 * 3600 * 24)) + 1);
-  };
 
   const handleSubmit = async () => {
     if (!formData.start_date || !formData.end_date) {

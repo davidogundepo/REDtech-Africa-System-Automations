@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -10,15 +10,54 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
-import { Shield, BarChart3, Users, TrendingUp, AlertTriangle, Award, Building2, ChevronRight } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
+import { Shield, BarChart3, Users, TrendingUp, AlertTriangle, Award, Building2, ChevronRight, Star, Zap, TrendingDown, RefreshCw } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, LineChart, Line, ReferenceLine } from "recharts";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { runPerformanceEngine } from "@/lib/performance-engine";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 
 const StaffUtilisation = () => {
-  const { isSuperAdmin, isAdmin } = useAuth();
+  const { isSuperAdmin, isAdmin, profile: currentProfile } = useAuth();
   const [selectedDept, setSelectedDept] = useState("all");
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [engineRunning, setEngineRunning] = useState(false);
+  const [engineResult, setEngineResult] = useState<any>(null);
+
+  // Auto-run the performance engine when super admin loads the page
+  useEffect(() => {
+    if (!isSuperAdmin || !currentProfile) return;
+    const today = new Date().toISOString().split('T')[0];
+    const lastRun = localStorage.getItem('rac_perf_engine_last_run');
+    if (lastRun === today) return; // Only run once per day
+    setEngineRunning(true);
+    runPerformanceEngine(currentProfile.id).then(result => {
+      setEngineResult(result);
+      setEngineRunning(false);
+      localStorage.setItem('rac_perf_engine_last_run', today);
+      if (result.deductions.length > 0) {
+        toast.warning(`Performance engine: ${result.deductions.length} team member(s) had score deductions today.`, { duration: 6000 });
+      } else if (result.processed > 0) {
+        toast.success(`Performance engine: All ${result.processed} members clocked in on time. 🌟`, { duration: 4000 });
+      }
+    }).catch(() => setEngineRunning(false));
+  }, [isSuperAdmin, currentProfile]);
+
+  const handleManualEngine = async () => {
+    if (!currentProfile) return;
+    setEngineRunning(true);
+    // Clear last run so it re-runs
+    localStorage.removeItem('rac_perf_engine_last_run');
+    try {
+      const result = await runPerformanceEngine(currentProfile.id);
+      setEngineResult(result);
+      toast.success(`Engine run complete. ${result.deductions.length} deduction(s), ${result.topPerformers.length} top performer(s). Refresh to see updates.`);
+    } catch {
+      toast.error('Engine run failed.');
+    }
+    setEngineRunning(false);
+  };
 
   // Fetch all profiles
   const { data: profiles } = useQuery({
@@ -217,6 +256,7 @@ const StaffUtilisation = () => {
         <TabsList>
           <TabsTrigger value="individual" className="gap-2"><Award className="h-4 w-4" /> Individual Performance</TabsTrigger>
           <TabsTrigger value="departments" className="gap-2"><Building2 className="h-4 w-4" /> Department Overview</TabsTrigger>
+          {isSuperAdmin && <TabsTrigger value="analytics" className="gap-2"><Star className="h-4 w-4" /> Score Analytics</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="individual">
@@ -358,6 +398,159 @@ const StaffUtilisation = () => {
             </div>
           )}
         </TabsContent>
+
+        {/* ===== PERFORMANCE SCORE ANALYTICS TAB ===== */}
+        {isSuperAdmin && (
+          <TabsContent value="analytics" className="space-y-6">
+            {/* Engine Control Banner */}
+            <Card className="border-[#bc7e57]/30 bg-[#bc7e57]/5">
+              <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-[#bc7e57]/15 flex items-center justify-center">
+                    <Zap className="h-5 w-5" style={{ color: '#bc7e57' }}/>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Performance Automation Engine</p>
+                    <p className="text-xs text-muted-foreground">Auto-runs daily. Deducts −2 pts per missed clock-in. Respects individual work schedules and approved leave.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {engineResult && (
+                    <div className="text-xs text-muted-foreground text-right">
+                      <p>Last run: {new Date().toLocaleDateString()}</p>
+                      <p>{engineResult.deductions.length} deduction(s) · {engineResult.topPerformers.length} top performer(s)</p>
+                    </div>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleManualEngine}
+                    disabled={engineRunning}
+                    className="gap-2 border-[#bc7e57]/30 hover:border-[#bc7e57] hover:text-[#bc7e57]"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${engineRunning ? 'animate-spin' : ''}`}/>
+                    {engineRunning ? 'Running...' : 'Run Engine Now'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Needs Attention */}
+            {(() => {
+              const atRisk = (profiles || []).filter((p: any) => (p.performance_score ?? 100) < 70);
+              if (atRisk.length === 0) return null;
+              return (
+                <Card className="border-red-200 dark:border-red-900/40">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base text-red-600 dark:text-red-400">
+                      <TrendingDown className="h-4 w-4"/> Needs Attention ({atRisk.length})
+                    </CardTitle>
+                    <CardDescription>These team members have a performance score below 70. Consider a 1:1 check-in.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {atRisk.map((p: any) => {
+                        const score = p.performance_score ?? 100;
+                        return (
+                          <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl border border-red-200/60 dark:border-red-900/30 bg-red-50/40 dark:bg-red-950/10">
+                            <div className="h-9 w-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-xs font-bold text-red-600">
+                              {(p.full_name || '').substring(0, 2).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{p.full_name}</p>
+                              <p className="text-xs text-muted-foreground">{p.department || 'No dept'}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xl font-bold text-red-500">{score}</span>
+                              <span className="text-xs text-muted-foreground">/100</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
+            {/* Leaderboard */}
+            <Card>{(()=>{
+              const ranked = [...(profiles||[])].sort((a:any,b:any)=>(b.performance_score??100)-(a.performance_score??100));
+              const getScoreColor = (s:number)=> s>=90?'text-green-600 dark:text-green-400':s>=70?'text-[#bc7e57]':s>=50?'text-amber-600':'text-red-600';
+              const getScoreBg = (s:number)=> s>=90?'bg-green-100 dark:bg-green-900/30':s>=70?'bg-[#bc7e57]/10':s>=50?'bg-amber-100 dark:bg-amber-900/30':'bg-red-100 dark:bg-red-900/30';
+              const badges = ['🥇','🥈','🥉'];
+              return (
+                <>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Award className="h-4 w-4" style={{color:'#bc7e57'}}/> Performance Leaderboard
+                    </CardTitle>
+                    <CardDescription>Ranked by performance score. Updated automatically every working day.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="divide-y divide-border/50">
+                      {ranked.map((p:any, idx:number)=>{
+                        const score = p.performance_score??100;
+                        const history = p.score_history||[];
+                        const trend = history.length>=2 ? history[history.length-1]?.score - history[history.length-2]?.score : 0;
+                        return (
+                          <div key={p.id} className={`flex items-center gap-4 px-5 py-3.5 ${idx<3?'bg-muted/20':''}`}>
+                            <span className="text-lg w-7 text-center font-bold">{badges[idx]||<span className="text-sm text-muted-foreground font-normal">#{idx+1}</span>}</span>
+                            <div className="h-9 w-9 rounded-full bg-[#bc7e57]/15 flex items-center justify-center text-xs font-bold" style={{color:'#bc7e57'}}>
+                              {(p.full_name||'').substring(0,2).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold truncate">{p.full_name}</p>
+                              <p className="text-xs text-muted-foreground">{p.department||'—'} · {p.work_mode||'office'}</p>
+                            </div>
+                            {history.length>0 && (
+                              <div className="hidden md:block w-24 h-8">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={history.slice(-14).map((h:any)=>({v:h.score}))}>
+                                    <Line type="monotone" dataKey="v" stroke="#bc7e57" strokeWidth={1.5} dot={false}/>
+                                    <ReferenceLine y={100} stroke="#e8ddd5" strokeDasharray="2 2"/>
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              </div>
+                            )}
+                            {trend !== 0 && (
+                              <span className={`text-xs font-medium ${trend>0?'text-green-500':'text-red-500'}`}>{trend>0?'↑':'↓'}{Math.abs(trend)}</span>
+                            )}
+                            <div className={`text-center min-w-[60px] py-1 px-2.5 rounded-lg ${getScoreBg(score)}`}>
+                              <span className={`text-xl font-bold ${getScoreColor(score)}`}>{score}</span>
+                              <span className="text-xs text-muted-foreground">/100</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {ranked.length===0&&<div className="py-12 text-center text-sm text-muted-foreground">No team members found.</div>}
+                    </div>
+                  </CardContent>
+                </>
+              );
+            })()}
+            </Card>
+
+            {/* Top Performers Banner */}
+            {isSuperAdmin && (profiles||[]).some((p:any)=>(p.performance_score??100)>=90) && (
+              <Card className="border-green-200 dark:border-green-900/40 bg-green-50/30 dark:bg-green-950/10">
+                <CardContent className="p-4">
+                  <p className="font-semibold text-sm text-green-700 dark:text-green-400 flex items-center gap-2 mb-3">
+                    <Star className="h-4 w-4"/> Top Performers (90+)
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(profiles||[]).filter((p:any)=>(p.performance_score??100)>=90).map((p:any)=>(
+                      <div key={p.id} className="flex items-center gap-2 bg-white dark:bg-green-950/20 rounded-full px-3 py-1.5 border border-green-200 dark:border-green-900/30">
+                        <span className="text-xs font-medium">{p.full_name}</span>
+                        <span className="text-xs font-bold text-green-600">{p.performance_score??100}/100</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>

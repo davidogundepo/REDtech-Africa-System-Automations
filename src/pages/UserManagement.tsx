@@ -66,10 +66,13 @@ const UserManagement = () => {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: async ({ id, role, department, is_active }: { id: string; role: UserRole; department: string; is_active: boolean }) => {
+    mutationFn: async ({ id, role, department, is_active, work_days, work_mode }: { id: string; role: UserRole; department: string; is_active: boolean; work_days?: Record<string, boolean>; work_mode?: string }) => {
+      const updates: Record<string, any> = { role, department, is_active };
+      if (work_days !== undefined) updates.work_days = work_days;
+      if (work_mode !== undefined) updates.work_mode = work_mode;
       const { error } = await supabase
         .from("profiles")
-        .update({ role, department, is_active })
+        .update(updates)
         .eq("id", id);
       if (error) throw error;
     },
@@ -81,10 +84,16 @@ const UserManagement = () => {
     onError: (error) => toast.error("Failed to update: " + error.message),
   });
 
+  const DEFAULT_WORK_DAYS = { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false };
+  const [editWorkDays, setEditWorkDays] = useState<Record<string, boolean>>(DEFAULT_WORK_DAYS);
+  const [editWorkMode, setEditWorkMode] = useState("office");
+
   const handleEdit = (user: any) => {
     setEditingUser(user);
     setEditRole(user.role);
     setEditDepartment(user.department || "");
+    setEditWorkDays(user.work_days || DEFAULT_WORK_DAYS);
+    setEditWorkMode(user.work_mode || "office");
     setEditDialogOpen(true);
   };
 
@@ -95,6 +104,8 @@ const UserManagement = () => {
       role: editRole,
       department: editDepartment,
       is_active: editingUser.is_active,
+      work_days: editWorkDays,
+      work_mode: editWorkMode,
     });
   };
 
@@ -464,6 +475,46 @@ const UserManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            </div>
+            {/* Work Schedule Config */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2 text-sm font-medium">
+                ⏰ Work Schedule
+                <span className="text-xs font-normal text-muted-foreground">(affects performance score)</span>
+              </Label>
+              <div className="flex gap-1.5 flex-wrap">
+                {(['mon','tue','wed','thu','fri','sat','sun'] as const).map(day => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => setEditWorkDays(prev => ({ ...prev, [day]: !prev[day] }))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                      editWorkDays[day]
+                        ? 'bg-[#bc7e57] text-white border-[#bc7e57]'
+                        : 'bg-muted text-muted-foreground border-border hover:border-[#bc7e57]/50'
+                    }`}
+                  >
+                    {day.charAt(0).toUpperCase() + day.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                {(['office','hybrid','remote'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setEditWorkMode(mode)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all capitalize ${
+                      editWorkMode === mode
+                        ? 'bg-[#bc7e57]/10 text-[#bc7e57] border-[#bc7e57]/50'
+                        : 'bg-muted text-muted-foreground border-border hover:border-[#bc7e57]/30'
+                    }`}
+                  >
+                    {mode === 'office' ? '🏢 Office' : mode === 'hybrid' ? '🔀 Hybrid' : '🏠 Remote'}
+                  </button>
+                ))}
+              </div>
             </div>
             <Button
               onClick={handleSaveEdit}
