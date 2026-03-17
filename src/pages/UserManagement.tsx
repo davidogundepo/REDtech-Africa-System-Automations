@@ -476,7 +476,6 @@ const UserManagement = () => {
                 </SelectContent>
               </Select>
             </div>
-            </div>
             {/* Work Schedule Config */}
             <div className="space-y-3">
               <Label className="flex items-center gap-2 text-sm font-medium">
