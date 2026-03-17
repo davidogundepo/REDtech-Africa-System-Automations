@@ -18,11 +18,12 @@ import { Progress } from "@/components/ui/progress";
 import {
   Linkedin, Twitter, Instagram, Facebook, Youtube,
   Plus, Clock, CheckCircle2, Trash2, Upload, Calendar,
-  Film, LayoutGrid, BookImage, Newspaper, ImageIcon, Video,
+  Film, LayoutGrid, BookImage, Newspaper, Video,
   ChevronLeft, ChevronRight, Eye, Edit3, Tag, Users, Activity,
   Layers, SmartphoneIcon, Monitor, Megaphone, User, AlignLeft,
-  X, Check, AlertCircle, RefreshCw, Filter, Search, Download
+  X, Check, AlertCircle, RefreshCw, Search, TrendingUp, BarChart3, PieChart
 } from "lucide-react";
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie } from "recharts";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PostPreview } from "@/components/shared/PostPreview";
@@ -45,25 +46,27 @@ interface SocialPost {
 
 // ─── Constants ────────────────────────────────────────────────────
 const PLATFORMS = [
-  { value: "instagram", label: "Instagram", icon: Instagram, color: "#E1306C", bg: "bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400" },
-  { value: "linkedin",  label: "LinkedIn",  icon: Linkedin,  color: "#0077B5", bg: "bg-[#0077B5]" },
-  { value: "twitter",   label: "Twitter / X", icon: Twitter, color: "#1DA1F2", bg: "bg-black" },
-  { value: "facebook",  label: "Facebook",  icon: Facebook,  color: "#1877F2", bg: "bg-[#1877F2]" },
-  { value: "youtube",   label: "YouTube",   icon: Youtube,   color: "#FF0000", bg: "bg-[#FF0000]" },
+  { value: "instagram", label: "Instagram", icon: Instagram, color: "#E1306C" },
+  { value: "linkedin",  label: "LinkedIn",  icon: Linkedin,  color: "#0077B5" },
+  { value: "x",         label: "X",          icon: Twitter,   color: "#000000" },
+  { value: "facebook",  label: "Facebook",  icon: Facebook,  color: "#1877F2" },
+  { value: "youtube",   label: "YouTube",   icon: Youtube,   color: "#FF0000" },
+  { value: "tiktok",    label: "TikTok",    icon: Film,      color: "#010101" },
 ];
 
-const POST_TYPES: Record<string, { label: string; icon: React.ReactNode; platforms: string[]; dimensions: string; orientation: string }> = {
-  post:      { label: "Post",     icon: <Newspaper className="h-3.5 w-3.5"/>, platforms: ["instagram","linkedin","facebook","twitter"], dimensions: "1:1 square", orientation: "square" },
-  portrait:  { label: "Portrait", icon: <SmartphoneIcon className="h-3.5 w-3.5"/>, platforms: ["instagram","facebook"], dimensions: "4:5 portrait", orientation: "portrait" },
-  landscape: { label: "Landscape",icon: <Monitor className="h-3.5 w-3.5"/>, platforms: ["twitter","facebook","linkedin"], dimensions: "16:9 landscape", orientation: "landscape" },
-  reel:      { label: "Reel",     icon: <Film className="h-3.5 w-3.5"/>, platforms: ["instagram","youtube","tiktok"], dimensions: "9:16 vertical video", orientation: "story" },
-  story:     { label: "Story",    icon: <BookImage className="h-3.5 w-3.5"/>, platforms: ["instagram","facebook"], dimensions: "9:16 story", orientation: "story" },
-  carousel:  { label: "Carousel", icon: <LayoutGrid className="h-3.5 w-3.5"/>, platforms: ["instagram","linkedin","facebook"], dimensions: "1:1 swipeable", orientation: "square" },
-  video:     { label: "Video",    icon: <Video className="h-3.5 w-3.5"/>, platforms: ["youtube","facebook","instagram","twitter"], dimensions: "16:9 video", orientation: "landscape" },
-  thread:    { label: "Thread",   icon: <AlignLeft className="h-3.5 w-3.5"/>, platforms: ["twitter"], dimensions: "text only", orientation: "square" },
+const POST_TYPES: Record<string, { label: string; icon: React.ReactNode; platforms: string[]; dimensions: string; res: string; orientation: string }> = {
+  post:      { label: "Post",     icon: <Newspaper className="h-3.5 w-3.5"/>,    platforms: ["instagram","linkedin","facebook","x"],              dimensions: "1080 × 1080", res: "1:1 Square",          orientation: "square"   },
+  portrait:  { label: "Portrait", icon: <SmartphoneIcon className="h-3.5 w-3.5"/>, platforms: ["instagram","facebook"],                          dimensions: "1080 × 1350", res: "4:5 Portrait",        orientation: "portrait" },
+  landscape: { label: "Landscape",icon: <Monitor className="h-3.5 w-3.5"/>,       platforms: ["x","facebook","linkedin"],                        dimensions: "1200 × 675",  res: "16:9 Landscape",     orientation: "landscape"},
+  reel:      { label: "Reel",     icon: <Film className="h-3.5 w-3.5"/>,          platforms: ["instagram","tiktok"],                             dimensions: "1080 × 1920", res: "9:16 Vertical",      orientation: "story"    },
+  short:     { label: "Short",    icon: <SmartphoneIcon className="h-3.5 w-3.5"/>, platforms: ["youtube"],                                       dimensions: "1080 × 1920", res: "9:16 Vertical",      orientation: "story"    },
+  story:     { label: "Story",    icon: <BookImage className="h-3.5 w-3.5"/>,     platforms: ["instagram","facebook"],                          dimensions: "1080 × 1920", res: "9:16 Full Screen",   orientation: "story"    },
+  carousel:  { label: "Carousel", icon: <LayoutGrid className="h-3.5 w-3.5"/>,   platforms: ["instagram","linkedin","facebook"],                dimensions: "1080 × 1080", res: "1:1 Swipeable",      orientation: "square"   },
+  video:     { label: "Video",    icon: <Video className="h-3.5 w-3.5"/>,         platforms: ["youtube","facebook","instagram","x"],              dimensions: "1920 × 1080", res: "16:9 Widescreen",    orientation: "landscape"},
+  thread:    { label: "Thread",   icon: <AlignLeft className="h-3.5 w-3.5"/>,    platforms: ["x"],                                             dimensions: "Text only",   res: "280 chars max",      orientation: "square"   },
 };
 
-const CHAR_LIMITS: Record<string, number> = { linkedin: 3000, twitter: 280, instagram: 2200, facebook: 63206, youtube: 5000 };
+const CHAR_LIMITS: Record<string, number> = { linkedin: 3000, x: 280, instagram: 2200, facebook: 63206, youtube: 5000, tiktok: 2200 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   draft:     { label: "Draft",     color: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300", icon: <Edit3 className="h-3 w-3"/> },
@@ -537,7 +540,8 @@ const SocialMediaHub = () => {
           <TabsList>
             <TabsTrigger value="posts" className="gap-2"><Layers className="h-4 w-4"/> All Posts</TabsTrigger>
             <TabsTrigger value="calendar" className="gap-2"><Calendar className="h-4 w-4"/> Calendar</TabsTrigger>
-            <TabsTrigger value="activity" className="gap-2"><Activity className="h-4 w-4"/> Team Activity</TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2"><BarChart3 className="h-4 w-4"/> Analytics</TabsTrigger>
+            <TabsTrigger value="activity" className="gap-2"><Activity className="h-4 w-4"/> Activity</TabsTrigger>
           </TabsList>
 
           {/* ── POSTS TAB ── */}
@@ -600,9 +604,252 @@ const SocialMediaHub = () => {
             )}
           </TabsContent>
 
-          {/* ── CALENDAR TAB ── */}
-          <TabsContent value="calendar">
-            <ContentCalendar posts={posts}/>
+          {/* ── CALENDAR TAB ── Full Sprout-style weekly calendar */}
+          <TabsContent value="calendar" className="space-y-4">
+            {(() => {
+              const [calView, setCalView] = React.useState<"week"|"month">("week");
+              const [weekOffset, setWeekOffset] = React.useState(0);
+              // Week dates
+              const today = new Date();
+              const startOfWeek = new Date(today);
+              startOfWeek.setDate(today.getDate() - today.getDay() + 1 + weekOffset * 7); // Mon
+              const weekDays = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(startOfWeek);
+                d.setDate(startOfWeek.getDate() + i);
+                return d;
+              });
+              const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+              const postsForDay = (day: Date) => posts.filter((p: SocialPost) => {
+                if (!p.scheduled_date) return false;
+                const pd = new Date(p.scheduled_date);
+                return pd.getFullYear() === day.getFullYear() && pd.getMonth() === day.getMonth() && pd.getDate() === day.getDate();
+              });
+              const postsForSlot = (day: Date, hour: number) => postsForDay(day).filter((p: SocialPost) => {
+                const pd = new Date(p.scheduled_date);
+                return pd.getHours() === hour;
+              });
+              const weekLabel = `${format(weekDays[0], 'd MMM')} – ${format(weekDays[6], 'd MMM yyyy')}`;
+
+              return (
+                <Card className="border-border/50">
+                  {/* Calendar header */}
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-border/40">
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setWeekOffset(w => w - 1)} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center transition-colors">
+                        <ChevronLeft className="h-4 w-4"/>
+                      </button>
+                      <h3 className="text-sm font-bold">{weekLabel}</h3>
+                      <button onClick={() => setWeekOffset(w => w + 1)} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center transition-colors">
+                        <ChevronRight className="h-4 w-4"/>
+                      </button>
+                      <button onClick={() => setWeekOffset(0)} className="text-xs px-2.5 py-1 rounded-md border border-border hover:bg-muted transition-colors">Today</button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* platform legend */}
+                      <div className="flex gap-2 items-center mr-3">
+                        {PLATFORMS.map(p => (
+                          <div key={p.value} className="flex items-center gap-1 text-[9px]">
+                            <div className="h-2 w-2 rounded-full" style={{ background: p.color }}/>
+                            <span className="text-muted-foreground">{p.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {canEdit && <Button size="sm" className="gap-1.5 text-xs text-white" style={{ backgroundColor: "#bc7e57" }} onClick={() => openStudio()}><Plus className="h-3.5 w-3.5"/> Add Post</Button>}
+                    </div>
+                  </div>
+
+                  {/* Week grid */}
+                  <div className="overflow-x-auto">
+                    <div style={{ minWidth: 900 }}>
+                      {/* Day headers */}
+                      <div className="grid border-b border-border/30" style={{ gridTemplateColumns: '64px repeat(7, 1fr)' }}>
+                        <div className="border-r border-border/20 h-12"/>
+                        {weekDays.map((day, i) => {
+                          const isToday = isSameDay(day, new Date());
+                          const dayPosts = postsForDay(day);
+                          return (
+                            <div key={i} className={`border-r border-border/20 p-2 text-center ${isToday ? 'bg-[#bc7e57]/5' : ''}`}>
+                              <p className="text-[10px] text-muted-foreground font-medium uppercase">{format(day, 'EEE')}</p>
+                              <div className={`mx-auto mt-0.5 h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold ${isToday ? 'bg-[#bc7e57] text-white' : 'text-foreground'}`}>{format(day, 'd')}</div>
+                              {dayPosts.length > 0 && <div className="flex justify-center gap-0.5 mt-1">{dayPosts.slice(0,4).map((p: SocialPost) => { const plt = PLATFORMS.find(x => x.value === p.platform); return <div key={p.id} className="h-1.5 w-1.5 rounded-full" style={{ background: plt?.color || '#bc7e57' }}/>; })}</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Time rows */}
+                      <div className="overflow-y-auto" style={{ maxHeight: 520 }}>
+                        {hours.map(hour => (
+                          <div key={hour} className="grid border-b border-border/10" style={{ gridTemplateColumns: '64px repeat(7, 1fr)', minHeight: 68 }}>
+                            <div className="border-r border-border/20 px-2 pt-1 text-[9px] text-muted-foreground font-medium flex-shrink-0">
+                              {hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`}
+                            </div>
+                            {weekDays.map((day, di) => {
+                              const slotPosts = postsForSlot(day, hour);
+                              const isToday = isSameDay(day, new Date());
+                              return (
+                                <div key={di} className={`border-r border-border/10 p-1 ${isToday ? 'bg-[#bc7e57]/3' : 'hover:bg-muted/20'} transition-colors`}>
+                                  {slotPosts.map((p: SocialPost) => {
+                                    const plt = PLATFORMS.find(x => x.value === p.platform);
+                                    const PIcon = plt?.icon || Megaphone;
+                                    return (
+                                      <button
+                                        key={p.id}
+                                        onClick={() => setPreviewPost(p)}
+                                        className="w-full text-left rounded-md p-1.5 mb-0.5 text-white text-[9px] leading-tight hover:opacity-90 transition-opacity flex items-start gap-1"
+                                        style={{ background: plt?.color || '#bc7e57' }}
+                                      >
+                                        <PIcon className="h-2.5 w-2.5 flex-shrink-0 mt-0.5"/>
+                                        <span className="truncate">{p.content?.slice(0, 30) || 'No caption'}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })()}
+          </TabsContent>
+
+          {/* ── ANALYTICS TAB ── */}
+          <TabsContent value="analytics" className="space-y-5">
+            {(() => {
+              // Build chart data from real posts
+              const platformCounts = PLATFORMS.map(p => ({
+                name: p.label,
+                value: posts.filter((x: SocialPost) => x.platform === p.value).length,
+                color: p.color,
+              }));
+              const statusCounts = Object.entries(STATUS_CONFIG).map(([k, v]) => ({
+                name: v.label,
+                value: posts.filter((x: SocialPost) => x.status === k).length,
+                color: k === 'published' ? '#bc7e57' : k === 'approved' ? '#22c55e' : k === 'scheduled' ? '#3b82f6' : k === 'draft' ? '#8b5cf6' : '#ef4444',
+              }));
+              // Posts per last 6 weeks
+              const weeklyData = Array.from({ length: 6 }, (_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (5 - i) * 7);
+                const wStart = new Date(d); wStart.setDate(d.getDate() - d.getDay());
+                const wEnd = new Date(wStart); wEnd.setDate(wStart.getDate() + 6);
+                const cnt = posts.filter((p: SocialPost) => {
+                  if (!p.created_at) return false;
+                  const pd = new Date(p.created_at);
+                  return pd >= wStart && pd <= wEnd;
+                }).length;
+                return { week: format(d, 'MMM d'), posts: cnt };
+              });
+
+              const topPlatform = [...platformCounts].sort((a,b) => b.value - a.value)[0];
+              const engagePct = total > 0 ? Math.round((published / total) * 100) : 0;
+
+              return (
+                <>
+                  {/* KPI row */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { label: 'Total Content', val: total, sub: 'across all platforms', color: '#bc7e57', icon: Layers },
+                      { label: 'Published', val: published, sub: `${engagePct}% publish rate`, color: '#22c55e', icon: CheckCircle2 },
+                      { label: 'Top Platform', val: topPlatform?.name || '—', sub: `${topPlatform?.value || 0} posts`, color: topPlatform?.color || '#bc7e57', icon: TrendingUp },
+                      { label: 'Awaiting Action', val: approved + drafts, sub: `${approved} to publish, ${drafts} drafts`, color: '#f59e0b', icon: AlertCircle },
+                    ].map(({ label, val, sub, color, icon: Icon }) => (
+                      <Card key={label} className="border-border/50">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="h-7 w-7 rounded-lg flex items-center justify-center" style={{ background: color + '22' }}>
+                              <Icon className="h-4 w-4" style={{ color }}/>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground font-medium">{label}</p>
+                          </div>
+                          <p className="text-2xl font-black">{val}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Posts per week trend */}
+                    <Card className="md:col-span-2 border-border/50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold">Content Volume — Last 6 Weeks</CardTitle>
+                        <CardDescription className="text-xs">Posts created per week across all platforms</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <AreaChart data={weeklyData} margin={{ top: 4, right: 8, bottom: 0, left: -24 }}>
+                            <defs>
+                              <linearGradient id="aGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.35}/>
+                                <stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="week" tick={{ fontSize: 9 }} axisLine={false} tickLine={false}/>
+                            <YAxis tick={{ fontSize: 9 }} allowDecimals={false} axisLine={false} tickLine={false}/>
+                            <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }}/>
+                            <Area type="monotone" dataKey="posts" stroke="#bc7e57" strokeWidth={2.5} fill="url(#aGrad)" dot={{ r: 3, fill: '#bc7e57' }}/>
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+
+                    {/* Posts by platform */}
+                    <Card className="border-border/50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold">By Platform</CardTitle>
+                        <CardDescription className="text-xs">Distribution across channels</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <BarChart data={platformCounts} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 8 }}>
+                            <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} allowDecimals={false}/>
+                            <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={60}/>
+                            <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }}/>
+                            <Bar dataKey="value" radius={[0,4,4,0]}>
+                              {platformCounts.map((entry, i) => <Cell key={i} fill={entry.color}/>)}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Status breakdown */}
+                  <Card className="border-border/50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-bold">Content Pipeline — Status Breakdown</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-6 flex-wrap">
+                        {statusCounts.map(s => (
+                          <div key={s.name} className="flex items-center gap-2.5">
+                            <div className="relative h-14 w-14 flex-shrink-0">
+                              <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+                                <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/30"/>
+                                <circle cx="18" cy="18" r="14" fill="none" stroke={s.color} strokeWidth="4"
+                                  strokeDasharray={`${total > 0 ? (s.value/total)*87.96 : 0} 87.96`}/>
+                              </svg>
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-[10px] font-black">{s.value}</span>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold">{s.name}</p>
+                              <p className="text-[10px] text-muted-foreground">{total > 0 ? Math.round((s.value/total)*100) : 0}% of total</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              );
+            })()}
           </TabsContent>
 
           {/* ── TEAM ACTIVITY TAB ── */}
@@ -845,16 +1092,53 @@ const SocialMediaHub = () => {
                     />
                   </div>
                 </div>
-                {/* Format info */}
-                <div className="px-4 py-3 border-t border-border/40 space-y-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Format specs</p>
-                  <div className="space-y-1 text-[10px] text-muted-foreground">
-                    <p>📐 {POST_TYPES[form.post_type]?.dimensions || "Standard"}</p>
-                    <p>📝 Char limit: {CHAR_LIMITS[form.platform] || 2200}</p>
-                    <p>🔡 Used: {form.content.length} chars</p>
-                    {form.tagged_users?.length ? <p>🏷️ Tagged: {form.tagged_users?.length} teammate(s)</p> : null}
-                  </div>
-                </div>
+                {/* Format specs — premium panel */}
+                {(() => {
+                  const pt = POST_TYPES[form.post_type];
+                  const limit = CHAR_LIMITS[form.platform] || 2200;
+                  const used = form.content.length;
+                  const pct = Math.min(100, Math.round((used / limit) * 100));
+                  const barColor = pct > 90 ? "#ef4444" : pct > 70 ? "#f59e0b" : "#22c55e";
+                  const plt = PLATFORMS.find(p => p.value === form.platform);
+                  return (
+                    <div className="px-4 py-4 border-t border-border/40 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold tracking-wide">Format Specs</p>
+                        {plt && <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full text-white" style={{ background: plt.color }}>{plt.label}</span>}
+                      </div>
+                      {/* Dimension card */}
+                      <div className="rounded-xl border border-border/60 overflow-hidden">
+                        <div className="flex items-center gap-3 p-2.5" style={{ background: (plt?.color || "#bc7e57") + "18" }}>
+                          <div className="rounded-lg flex items-center justify-center flex-shrink-0" style={{ width: 36, height: 36, background: (plt?.color || "#bc7e57") + "30" }}>
+                            {pt?.icon && React.cloneElement(pt.icon as React.ReactElement, { className: "h-4 w-4", style: { color: plt?.color || "#bc7e57" } })}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold">{pt?.label || "Post"}</p>
+                            <p className="text-[10px] text-muted-foreground">{pt?.res || "Standard"}</p>
+                            <p className="text-[9px] font-mono text-muted-foreground">{pt?.dimensions || ""}</p>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Character bar */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-[10px]">
+                          <span className="text-muted-foreground font-medium">Caption length</span>
+                          <span className="font-bold" style={{ color: barColor }}>{used} / {limit.toLocaleString()}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: barColor }}/>
+                        </div>
+                        <p className="text-[9px] text-muted-foreground">{pct < 50 ? "✅ Plenty of space" : pct < 90 ? "⚠️ Getting long" : "🔴 Near limit"}</p>
+                      </div>
+                      {form.tagged_users?.length ? (
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <span className="font-medium">Tagged:</span>
+                          <span>{form.tagged_users.length} teammate{form.tagged_users.length>1?"s":""}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -864,24 +1148,56 @@ const SocialMediaHub = () => {
       {/* ── Preview Modal ── */}
       {previewPost && (
         <Dialog open={!!previewPost} onOpenChange={open => !open && setPreviewPost(null)}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base">
-                <Eye className="h-4 w-4"/> Post Preview
-                <PlatformPill platform={previewPost.platform} size="xs"/>
-              </DialogTitle>
-            </DialogHeader>
-            <div className="py-4 flex justify-center">
-              <PostPreview
-                platform={previewPost.platform}
-                postType={previewPost.post_type}
-                caption={previewPost.content}
-                imageUrl={previewPost.image_url}
-                authorName={previewPost.created_by || profile?.full_name || "Team Member"}
-              />
-            </div>
-            <div className="text-xs text-muted-foreground text-center">
-              Scheduled: {previewPost.scheduled_date ? format(parseISO(previewPost.scheduled_date), "EEEE d MMMM yyyy, HH:mm") : "Not scheduled"}
+          <DialogContent className="max-w-2xl w-full p-0 overflow-hidden">
+            <div className="flex">
+              {/* Preview */}
+              <div className="flex-1 flex flex-col items-center justify-center p-8 bg-muted/30 min-h-[500px]">
+                <PostPreview
+                  platform={previewPost.platform}
+                  postType={previewPost.post_type}
+                  caption={previewPost.content}
+                  imageUrl={previewPost.image_url}
+                  authorName={previewPost.created_by || profile?.full_name || "Team Member"}
+                />
+              </div>
+              {/* Meta panel */}
+              <div className="w-56 flex-shrink-0 border-l border-border/40 p-5 flex flex-col gap-4">
+                <div>
+                  <p className="text-xs font-bold mb-2">Platform & Format</p>
+                  <PlatformPill platform={previewPost.platform} size="sm"/>
+                  <div className="mt-1.5"><PostTypeBadge type={previewPost.post_type}/></div>
+                </div>
+                <div>
+                  <p className="text-xs font-bold mb-1">Status</p>
+                  <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${(STATUS_CONFIG[previewPost.status]||STATUS_CONFIG.draft).color}`}>
+                    {(STATUS_CONFIG[previewPost.status]||STATUS_CONFIG.draft).label}
+                  </span>
+                </div>
+                {previewPost.scheduled_date && (
+                  <div>
+                    <p className="text-xs font-bold mb-1">Scheduled</p>
+                    <p className="text-[11px] text-muted-foreground">{format(parseISO(previewPost.scheduled_date), "EEE d MMM yyyy")}</p>
+                    <p className="text-[11px] font-semibold">{format(parseISO(previewPost.scheduled_date), "HH:mm")}</p>
+                  </div>
+                )}
+                {previewPost.created_by && (
+                  <div>
+                    <p className="text-xs font-bold mb-1">Created by</p>
+                    <p className="text-[11px] text-muted-foreground">{previewPost.created_by}</p>
+                  </div>
+                )}
+                {(previewPost.tagged_users||[]).length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold mb-1">Tagged</p>
+                    <div className="flex flex-wrap gap-1">{(previewPost.tagged_users||[]).map(n=><span key={n} className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#bc7e57]/15 text-[#bc7e57] font-medium">{n}</span>)}</div>
+                  </div>
+                )}
+                <div className="mt-auto">
+                  <Button size="sm" variant="outline" className="w-full text-xs gap-1.5" onClick={() => { setPreviewPost(null); openStudio(previewPost); }}>
+                    <Edit3 className="h-3.5 w-3.5"/> Edit Post
+                  </Button>
+                </div>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
