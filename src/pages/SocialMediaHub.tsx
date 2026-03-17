@@ -24,6 +24,7 @@ import {
   X, Check, AlertCircle, RefreshCw, Search, TrendingUp, BarChart3, PieChart
 } from "lucide-react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie } from "recharts";
+import { XIcon, TikTokIcon } from "@/components/shared/PlatformIcons";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PostPreview } from "@/components/shared/PostPreview";
@@ -46,12 +47,12 @@ interface SocialPost {
 
 // ─── Constants ────────────────────────────────────────────────────
 const PLATFORMS = [
-  { value: "instagram", label: "Instagram", icon: Instagram, color: "#E1306C" },
-  { value: "linkedin",  label: "LinkedIn",  icon: Linkedin,  color: "#0077B5" },
-  { value: "x",         label: "X",          icon: Twitter,   color: "#000000" },
-  { value: "facebook",  label: "Facebook",  icon: Facebook,  color: "#1877F2" },
-  { value: "youtube",   label: "YouTube",   icon: Youtube,   color: "#FF0000" },
-  { value: "tiktok",    label: "TikTok",    icon: Film,      color: "#010101" },
+  { value: "instagram", label: "Instagram", icon: Instagram,  color: "#E1306C" },
+  { value: "linkedin",  label: "LinkedIn",  icon: Linkedin,   color: "#0077B5" },
+  { value: "x",         label: "X",          icon: XIcon,      color: "#000000" },
+  { value: "facebook",  label: "Facebook",  icon: Facebook,   color: "#1877F2" },
+  { value: "youtube",   label: "YouTube",   icon: Youtube,    color: "#FF0000" },
+  { value: "tiktok",    label: "TikTok",    icon: TikTokIcon, color: "#010101" },
 ];
 
 const POST_TYPES: Record<string, { label: string; icon: React.ReactNode; platforms: string[]; dimensions: string; res: string; orientation: string }> = {
