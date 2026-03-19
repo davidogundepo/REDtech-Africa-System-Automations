@@ -14,8 +14,6 @@ const MediaRenderer = ({ url, className, style, isVideoFormat, format }: { url?:
   const urls = url.split(',').map(u => u.trim()).filter(Boolean);
   if (urls.length === 0) return null;
 
-  const isDirectVideo = (u: string) => u.match(/\.(mp4|mov|webm|ogg)$/i) || u.includes("blob:") || u.includes("data:video");
-  const isDirectImage = (u: string) => u.match(/\.(jpg|jpeg|png|gif|webp|svg|avif)$/i) || u.includes("data:image");
 
   const getEmbedUrl = (link: string) => {
     // YouTube
@@ -55,10 +53,20 @@ const MediaRenderer = ({ url, className, style, isVideoFormat, format }: { url?:
       );
     }
 
-    // Smart detection: Direct video extension wins, otherwise image
-    const isVideo = isDirectVideo(u) || (isVideoFormat && !isDirectImage(u));
+    // Smart detection priority:
+    // 1. If it has a direct video extension (.mp4, .mov, etc.) → video
+    // 2. If it's a blob URL → always img (browsers render both image and video blobs as img)
+    // 3. If isVideoFormat hint is set AND it's NOT an image extension → video
+    // 4. Everything else → img
+    const isBlobUrl = u.startsWith('blob:') || u.startsWith('data:');
+    const hasVideoExt = /\.(mp4|mov|webm|ogg)$/i.test(u);
+    const hasImageExt = /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp)$/i.test(u);
     
-    if (isVideo) {
+    // For blob URLs: default to image (works for previewing uploaded images)
+    // For regular URLs: check extension first, then fall back to isVideoFormat hint
+    const shouldRenderAsVideo = hasVideoExt || (!isBlobUrl && !hasImageExt && isVideoFormat);
+    
+    if (shouldRenderAsVideo) {
       return <video src={u} className={classes} style={{ objectFit: 'cover', ...s }} autoPlay loop muted playsInline controls />;
     }
     return <img src={u} alt="" className={classes} style={{ objectFit: 'cover', ...s }} />;
