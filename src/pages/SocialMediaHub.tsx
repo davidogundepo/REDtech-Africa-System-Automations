@@ -58,7 +58,7 @@ const PLATFORMS = [
 const POST_TYPES: Record<string, { label: string; icon: React.ReactNode; platforms: string[]; dimensions: string; res: string; orientation: string }> = {
   post:      { label: "Post",     icon: <Newspaper className="h-3.5 w-3.5"/>,    platforms: ["instagram","linkedin","facebook","x"],              dimensions: "1080 × 1080", res: "1:1 Square",          orientation: "square"   },
   portrait:  { label: "Portrait", icon: <SmartphoneIcon className="h-3.5 w-3.5"/>, platforms: ["instagram","facebook"],                          dimensions: "1080 × 1350", res: "4:5 Portrait",        orientation: "portrait" },
-  landscape: { label: "Landscape",icon: <Monitor className="h-3.5 w-3.5"/>,       platforms: ["x","facebook","linkedin"],                        dimensions: "1200 × 675",  res: "16:9 Landscape",     orientation: "landscape"},
+  landscape: { label: "Landscape",icon: <Monitor className="h-3.5 w-3.5"/>,       platforms: ["x","facebook"],                        dimensions: "1200 × 675",  res: "16:9 Landscape",     orientation: "landscape"},
   reel:      { label: "Reel",     icon: <Film className="h-3.5 w-3.5"/>,          platforms: ["instagram","tiktok"],                             dimensions: "1080 × 1920", res: "9:16 Vertical",      orientation: "story"    },
   short:     { label: "Short",    icon: <SmartphoneIcon className="h-3.5 w-3.5"/>, platforms: ["youtube"],                                       dimensions: "1080 × 1920", res: "9:16 Vertical",      orientation: "story"    },
   story:     { label: "Story",    icon: <BookImage className="h-3.5 w-3.5"/>,     platforms: ["instagram","facebook"],                          dimensions: "1080 × 1920", res: "9:16 Full Screen",   orientation: "story"    },
@@ -121,45 +121,126 @@ const CharLimitBar = ({ platform, value }: { platform: string; value: string }) 
 };
 
 // ─── Drag-and-drop upload zone ────────────────────────────────────
-const UploadZone = ({ onFile, preview, onClear }: { onFile: (f: File) => void; preview: string | null; onClear: () => void }) => {
+const UploadZone = ({ onFiles, previews, onClear }: { onFiles: (f: File[]) => void; previews: string[]; onClear: (i?: number) => void }) => {
   const [dragging, setDragging] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
+  
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file && (file.type.startsWith("image/") || file.type.startsWith("video/"))) onFile(file);
-    else toast.error("Please drop an image or video file.");
-  }, [onFile]);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/") || f.type.startsWith("video/"));
+    if (files.length) onFiles(files);
+    else toast.error("Please drop image or video files.");
+  }, [onFiles]);
 
-  if (preview) {
-    return (
-      <div className="relative rounded-xl overflow-hidden border border-border" style={{ aspectRatio: "16/9", maxHeight: 200 }}>
-        <img src={preview} alt="" className="w-full h-full object-cover"/>
-        <button onClick={onClear} className="absolute top-2 right-2 h-6 w-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
-          <X className="h-3.5 w-3.5 text-white"/>
-        </button>
-        <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[9px] px-2 py-1 rounded">Media attached ✓</div>
-      </div>
-    );
-  }
+  const triggerUpload = () => ref.current?.click();
 
-  return (
+  const UploadTrigger = ({ compact = false }: { compact?: boolean }) => (
     <div
-      className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all p-6 ${dragging ? "border-[#bc7e57] bg-[#bc7e57]/5" : "border-border hover:border-[#bc7e57]/50 hover:bg-muted/30"}`}
-      style={{ minHeight: 120 }}
+      className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${dragging ? "border-[#bc7e57] bg-[#bc7e57]/5" : "border-border hover:border-[#bc7e57]/50 hover:bg-muted/30"} ${compact ? "h-full w-full" : "p-8 min-h-[140px]"}`}
       onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
-      onClick={() => ref.current?.click()}
+      onClick={triggerUpload}
     >
-      <input ref={ref} type="file" accept="image/*,video/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); }}/>
-      <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${dragging ? "bg-[#bc7e57]/20" : "bg-muted"}`}>
-        <Upload className={`h-5 w-5 ${dragging ? "text-[#bc7e57]" : "text-muted-foreground"}`}/>
+      <input ref={ref} type="file" multiple accept="image/*,video/*" className="hidden" onChange={e => { const f = Array.from(e.target.files||[]); if (f.length) onFiles(f); }}/>
+      <div className={`${compact ? "h-7 w-7" : "h-10 w-10"} rounded-xl flex items-center justify-center transition-colors ${dragging ? "bg-[#bc7e57]/20" : "bg-muted"}`}>
+        {compact ? <Plus className="h-4 w-4 text-[#bc7e57]" /> : <Upload className={`h-5 w-5 ${dragging ? "text-[#bc7e57]" : "text-muted-foreground"}`}/>}
       </div>
-      <div className="text-center">
-        <p className="text-sm font-medium">{dragging ? "Drop it!" : "Drag & drop or click to upload"}</p>
-        <p className="text-xs text-muted-foreground">JPG, PNG, MP4, MOV (max 50MB)</p>
-      </div>
+      {!compact && (
+        <div className="text-center">
+          <p className="text-sm font-medium">{dragging ? "Drop media!" : "Drag & drop or click to upload"}</p>
+          <p className="text-xs text-muted-foreground mt-1">Select multiple images or 1 video</p>
+        </div>
+      )}
+      {compact && <span className="text-[10px] font-medium text-muted-foreground">Add more</span>}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {previews.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          {previews.map((p, i) => (
+            <div key={i} className="relative rounded-xl overflow-hidden border border-border aspect-square bg-muted shadow-sm group">
+              {p.match(/\.(mp4|mov|webm)$/i) || p.includes("video") || p.includes("reel") || p.includes("short") ? (
+                <video src={p} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+              ) : (
+                <img src={p} alt="" className="w-full h-full object-cover"/>
+              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs">
+                <button 
+                  onClick={(e) => { e.preventDefault(); onClear(i); }} 
+                  className="h-8 w-8 rounded-full bg-red-500/90 flex items-center justify-center hover:bg-red-600 transition-colors shadow-lg"
+                >
+                  <X className="h-4 w-4 text-white"/>
+                </button>
+              </div>
+            </div>
+          ))}
+          <div className="aspect-square">
+            <UploadTrigger compact />
+          </div>
+        </div>
+      ) : (
+        <UploadTrigger />
+      )}
+    </div>
+  );
+};
+
+// ─── Media Renderer ───────────────────────────────────────────────
+const MediaRenderer = ({ urlStr, className = "" }: { urlStr?: string; className?: string }) => {
+  if (!urlStr) return null;
+  const urls = urlStr.split(',').filter(Boolean);
+  if (!urls.length) return null;
+
+  const getEmbedUrl = (link: string) => {
+    const ytMatch = link.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}`;
+    const ttMatch = link.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/)(\d+)/);
+    if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`;
+    const vmMatch = link.match(/vimeo\.com\/(\d+)/);
+    if (vmMatch) return `https://player.vimeo.com/video/${vmMatch[1]}?autoplay=1&muted=1&loop=1`;
+    return null;
+  };
+
+  const renderSingle = (u: string, classes: string) => {
+    const embedUrl = getEmbedUrl(u);
+    if (embedUrl) {
+      return (
+        <iframe 
+          src={embedUrl}
+          className={classes}
+          style={{ border: 0 }}
+          allow="autoplay; encrypted-media; picture-in-picture"
+          allowFullScreen
+        />
+      );
+    }
+    const isVideo = u.match(/\.(mp4|mov|webm)$/i) || u.includes("video") || u.includes("reel") || u.includes("short");
+    return isVideo ? (
+      <video src={u} className={classes} controls autoPlay loop muted playsInline />
+    ) : (
+      <img src={u} alt="" className={classes} />
+    );
+  };
+
+  if (urls.length === 1) {
+    return renderSingle(urls[0], `${className} object-cover w-full h-full`);
+  }
+
+  return (
+    <div className={`grid gap-1 ${urls.length === 2 ? "grid-cols-2" : "grid-cols-2 grid-rows-2"} ${className}`}>
+      {urls.slice(0, 4).map((p, i) => (
+        <div key={i} className={`relative block overflow-hidden ${urls.length === 3 && i === 0 ? "row-span-2 col-span-1" : ""}`}>
+          {renderSingle(p, "w-full h-full object-cover absolute inset-0")}
+          {i === 3 && urls.length > 4 && (
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-lg">
+              +{urls.length - 4}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 };
@@ -260,8 +341,8 @@ const PostCard = ({ post, onPreview, onEdit, onDelete, onStatusChange, isAdmin }
 
             {/* Thumbnail if image */}
             {post.image_url && (
-              <div className="rounded-lg overflow-hidden mb-2 border border-border/30" style={{ height: 80, width: "100%" }}>
-                <img src={post.image_url} alt="" className="w-full h-full object-cover"/>
+              <div className="rounded-lg overflow-hidden mb-2 border border-border/30" style={{ height: 120, width: "100%" }}>
+                <MediaRenderer urlStr={post.image_url} className="w-full h-full" />
               </div>
             )}
 
@@ -273,11 +354,9 @@ const PostCard = ({ post, onPreview, onEdit, onDelete, onStatusChange, isAdmin }
                   {format(parseISO(post.scheduled_date), "d MMM, HH:mm")}
                 </span>
               )}
-              {post.created_by && (
-                <span className="flex items-center gap-1">
-                  <User className="h-3 w-3"/>{post.created_by.split(" ")[0]}
-                </span>
-              )}
+              <span className="flex items-center gap-1">
+                <User className="h-3 w-3"/>REDtech Africa
+              </span>
               {(post.tagged_users || []).length > 0 && (
                 <span className="flex items-center gap-1">
                   <Tag className="h-3 w-3"/>{(post.tagged_users || []).length} tagged
@@ -314,6 +393,292 @@ const PostCard = ({ post, onPreview, onEdit, onDelete, onStatusChange, isAdmin }
   );
 };
 
+// ─── Weekly Calendar ─────────────────────────────────────────────
+const WeeklyCalendar = ({
+  posts, canEdit, openStudio, setPreviewPost
+}: {
+  posts: SocialPost[];
+  canEdit: boolean;
+  openStudio: (p?: SocialPost) => void;
+  setPreviewPost: (p: SocialPost | null) => void;
+}) => {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay() + 1 + weekOffset * 7);
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + i);
+    return d;
+  });
+
+  const postsForDay = (day: Date) =>
+    posts.filter((p: SocialPost) => {
+      if (!p.scheduled_date) return false;
+      const pd = new Date(p.scheduled_date);
+      return pd.getFullYear() === day.getFullYear() && pd.getMonth() === day.getMonth() && pd.getDate() === day.getDate();
+    });
+
+  const postsForSlot = (day: Date, hour: number) =>
+    postsForDay(day).filter((p: SocialPost) => new Date(p.scheduled_date).getHours() === hour);
+
+  const weekLabel = `${format(weekDays[0], 'd MMM')} – ${format(weekDays[6], 'd MMM yyyy')}`;
+
+  return (
+    <Card className="border-border/50">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border/40 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setWeekOffset(w => w - 1)} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center transition-colors">
+            <ChevronLeft className="h-4 w-4"/>
+          </button>
+          <h3 className="text-sm font-bold min-w-40 text-center">{weekLabel}</h3>
+          <button onClick={() => setWeekOffset(w => w + 1)} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center transition-colors">
+            <ChevronRight className="h-4 w-4"/>
+          </button>
+          <button onClick={() => setWeekOffset(0)} className="text-xs px-2.5 py-1 rounded-md border border-border hover:bg-muted transition-colors">Today</button>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2 items-center">
+            {PLATFORMS.map(p => (
+              <div key={p.value} className="flex items-center gap-1 text-[9px]">
+                <div className="h-2 w-2 rounded-full" style={{ background: p.color }}/>
+                <span className="text-muted-foreground hidden md:inline">{p.label}</span>
+              </div>
+            ))}
+          </div>
+          {canEdit && (
+            <Button size="sm" className="gap-1.5 text-xs text-white" style={{ backgroundColor: "#bc7e57" }} onClick={() => openStudio()}>
+              <Plus className="h-3.5 w-3.5"/> Add Post
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="overflow-x-auto">
+        <div style={{ minWidth: 840 }}>
+          {/* Day headers */}
+          <div className="grid border-b border-border/20" style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}>
+            <div className="border-r border-border/20 h-12"/>
+            {weekDays.map((day, i) => {
+              const isTodayD = isSameDay(day, new Date());
+              const dp = postsForDay(day);
+              return (
+                <div key={i} className={`border-r border-border/20 p-2 text-center ${isTodayD ? 'bg-[#bc7e57]/5' : ''}`}>
+                  <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wide">{format(day, 'EEE')}</p>
+                  <div className={`mx-auto mt-0.5 h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    isTodayD ? 'bg-[#bc7e57] text-white' : 'text-foreground'
+                  }`}>{format(day, 'd')}</div>
+                  {dp.length > 0 && (
+                    <div className="flex justify-center gap-0.5 mt-1">
+                      {dp.slice(0, 5).map((p: SocialPost) => {
+                        const plt = PLATFORMS.find(x => x.value === p.platform);
+                        return <div key={p.id} className="h-1.5 w-1.5 rounded-full" style={{ background: plt?.color || '#bc7e57' }}/>;
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Time slot rows */}
+          <div className="overflow-y-auto" style={{ maxHeight: 540 }}>
+            {hours.map(hour => (
+              <div key={hour} className="grid border-b border-border/10" style={{ gridTemplateColumns: '60px repeat(7, 1fr)', minHeight: 64 }}>
+                <div className="border-r border-border/20 px-2 pt-1.5 text-[9px] text-muted-foreground font-medium">
+                  {hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`}
+                </div>
+                {weekDays.map((day, di) => {
+                  const slotPosts = postsForSlot(day, hour);
+                  const isTodayD = isSameDay(day, new Date());
+                  return (
+                    <div key={di} className={`border-r border-border/10 p-1 space-y-0.5 ${
+                      isTodayD ? 'bg-[#bc7e57]/[0.03]' : 'hover:bg-muted/20'
+                    } transition-colors`}>
+                      {slotPosts.map((p: SocialPost) => {
+                        const plt = PLATFORMS.find(x => x.value === p.platform);
+                        const PIcon = plt?.icon || Megaphone;
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => setPreviewPost(p)}
+                            className="w-full text-left rounded-md px-1.5 py-1 text-white text-[9px] leading-tight hover:opacity-90 transition-opacity flex items-start gap-1 shadow-sm"
+                            style={{ background: plt?.color || '#bc7e57' }}
+                          >
+                            <PIcon className="h-2.5 w-2.5 flex-shrink-0 mt-0.5"/>
+                            <span className="truncate">{p.content?.slice(0, 28) || 'No caption'}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+// ─── Analytics Tab ────────────────────────────────────────────────
+const AnalyticsTab = ({
+  posts, total, published, approved, drafts
+}: {
+  posts: SocialPost[]; total: number; published: number; approved: number; drafts: number;
+}) => {
+  const platformCounts = PLATFORMS.map(p => ({
+    name: p.label,
+    value: posts.filter((x: SocialPost) => x.platform === p.value).length,
+    color: p.color,
+  }));
+  const statusCounts = Object.entries(STATUS_CONFIG).map(([k, v]) => ({
+    name: v.label,
+    value: posts.filter((x: SocialPost) => x.status === k).length,
+    color: k==='published'?'#bc7e57':k==='approved'?'#22c55e':k==='scheduled'?'#3b82f6':k==='draft'?'#8b5cf6':'#ef4444',
+  }));
+  const weeklyData = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (5 - i) * 7);
+    const wStart = new Date(d); wStart.setDate(d.getDate() - d.getDay());
+    const wEnd = new Date(wStart); wEnd.setDate(wStart.getDate() + 6);
+    const cnt = posts.filter((p: SocialPost) => {
+      if (!p.created_at) return false;
+      const pd = new Date(p.created_at);
+      return pd >= wStart && pd <= wEnd;
+    }).length;
+    return { week: format(d, 'MMM d'), posts: cnt };
+  });
+
+  const topPlatform = [...platformCounts].sort((a,b) => b.value - a.value)[0];
+  const engagePct = total > 0 ? Math.round((published / total) * 100) : 0;
+
+  return (
+    <div className="space-y-5">
+      {/* KPI row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Total Content',   val: String(total),              sub: 'across all platforms',            color: '#bc7e57', icon: Layers },
+          { label: 'Published',       val: String(published),          sub: `${engagePct}% publish rate`,       color: '#22c55e', icon: CheckCircle2 },
+          { label: 'Top Platform',    val: topPlatform?.name || '—',    sub: `${topPlatform?.value||0} posts`,   color: topPlatform?.color||'#bc7e57', icon: TrendingUp },
+          { label: 'Awaiting Action', val: String(approved + drafts),  sub: `${approved} to publish, ${drafts} drafts`, color: '#f59e0b', icon: AlertCircle },
+        ].map(({ label, val, sub, color, icon: Icon }) => (
+          <Card key={label} className="border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-7 w-7 rounded-lg flex items-center justify-center" style={{ background: color+'22' }}>
+                  <Icon className="h-4 w-4" style={{ color }}/>
+                </div>
+                <p className="text-[10px] text-muted-foreground font-medium">{label}</p>
+              </div>
+              <p className="text-2xl font-black">{val}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="md:col-span-2 border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold">Content Volume — Last 6 Weeks</CardTitle>
+            <CardDescription className="text-xs">Posts created per week across all platforms</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={weeklyData} margin={{ top: 4, right: 8, bottom: 0, left: -24 }}>
+                <defs>
+                  <linearGradient id="calGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.35}/>
+                    <stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="week" tick={{ fontSize: 9 }} axisLine={false} tickLine={false}/>
+                <YAxis tick={{ fontSize: 9 }} allowDecimals={false} axisLine={false} tickLine={false}/>
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                <Area type="monotone" dataKey="posts" stroke="#bc7e57" strokeWidth={2.5} fill="url(#calGrad)" dot={{ r: 3, fill: '#bc7e57' }}/>
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold">By Platform</CardTitle>
+            <CardDescription className="text-xs">Posts per channel</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={platformCounts} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 8 }}>
+                <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} allowDecimals={false}/>
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={60}/>
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                <Bar dataKey="value" radius={[0,4,4,0]}>
+                  {platformCounts.map((entry, i) => <Cell key={i} fill={entry.color}/>)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Status donut rings */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-bold">Content Pipeline — Status Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-6 flex-wrap">
+            {statusCounts.map(s => (
+              <div key={s.name} className="flex items-center gap-2.5">
+                <div className="relative h-14 w-14 flex-shrink-0">
+                  <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/30"/>
+                    <circle cx="18" cy="18" r="14" fill="none" stroke={s.color} strokeWidth="4"
+                      strokeDasharray={`${total > 0 ? (s.value/total)*87.96 : 0} 87.96`}
+                      strokeLinecap="round"/>
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-[10px] font-black">{s.value}</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold">{s.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{total > 0 ? Math.round((s.value/total)*100) : 0}%</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-popover text-popover-foreground border border-border p-3 rounded-lg shadow-xl text-xs z-[100]">
+        <p className="font-bold mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="flex items-center gap-2 mt-1.5 label text-[11px] font-medium">
+            <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
+            <span className="opacity-80">{entry.name || 'Posts'} :</span>
+            <span className="font-bold tabular-nums">{entry.value}</span>
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 // ─── Main Component ───────────────────────────────────────────────
 const SocialMediaHub = () => {
   const { profile, canEdit, isAdmin, isSuperAdmin } = useAuth();
@@ -332,8 +697,8 @@ const SocialMediaHub = () => {
 
   // Form
   const [form, setForm] = useState({ ...emptyPost });
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [showPreviewPanel, setShowPreviewPanel] = useState(true);
@@ -350,7 +715,11 @@ const SocialMediaHub = () => {
         image_url: editingPost.image_url || "",
         tagged_users: editingPost.tagged_users || [],
       });
-      if (editingPost.image_url) setImagePreview(editingPost.image_url);
+      if (editingPost.image_url) {
+        setImagePreviews(editingPost.image_url.split(',').filter(Boolean));
+      } else {
+        setImagePreviews([]);
+      }
       setIsStudioOpen(true);
     }
   }, [editingPost]);
@@ -390,9 +759,9 @@ const SocialMediaHub = () => {
       setIsStudioOpen(false);
       setEditingPost(null);
       setForm({ ...emptyPost });
-      setImageFile(null);
-      setImagePreview(null);
-      toast.success(editingPost ? "Post updated!" : `Post saved, ${profile?.full_name?.split(" ")[0]}! 📝`);
+      setImageFiles([]);
+      setImagePreviews([]);
+      toast.success(editingPost ? "Post updated!" : "Post saved to Hub! 🚀");
     },
     onError: (e: any) => toast.error("Failed to save: " + e.message),
   });
@@ -420,15 +789,26 @@ const SocialMediaHub = () => {
   const handleSave = async () => {
     if (!form.content.trim()) return toast.error("Caption / content is required.");
     let image_url = form.image_url;
-    if (imageFile) {
+    
+    // We only upload 'new' files (File objects). Strings in imagePreviews are already uploaded.
+    if (imageFiles.length > 0) {
       setUploading(true);
-      const ext = imageFile.name.split(".").pop();
-      const fileName = `${Date.now()}.${ext}`;
-      const { error: upErr } = await (supabase as any).storage.from("post-images").upload(fileName, imageFile);
+      const newUrls: string[] = [];
+      for (const file of imageFiles) {
+        const ext = file.name.split(".").pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+        const { error: upErr } = await (supabase as any).storage.from("post-images").upload(fileName, file);
+        if (upErr) { toast.error("Upload failed: " + upErr.message); continue; }
+        const { data: urlData } = (supabase as any).storage.from("post-images").getPublicUrl(fileName);
+        if (urlData?.publicUrl) newUrls.push(urlData.publicUrl);
+      }
       setUploading(false);
-      if (upErr) { toast.error("Upload failed: " + upErr.message); return; }
-      const { data: urlData } = (supabase as any).storage.from("post-images").getPublicUrl(fileName);
-      image_url = urlData?.publicUrl || "";
+      // Filter out local blob URLs from previews, keep real URLs
+      const existingUrls = imagePreviews.filter(u => !u.startsWith("blob:"));
+      image_url = [...existingUrls, ...newUrls].join(',');
+    } else {
+      // Just save the filtered real URLs if no new files
+      image_url = imagePreviews.filter(u => !u.startsWith("blob:")).join(',');
     }
     saveMutation.mutate({
       platform:      form.platform,
@@ -437,7 +817,7 @@ const SocialMediaHub = () => {
       scheduled_date: form.scheduled_date,
       post_type:     form.post_type,
       image_url,
-      created_by:    profile?.full_name || "Unknown",
+      created_by:    "REDtech Africa",
       created_by_user_id: profile?.id,
       tagged_users:  form.tagged_users,
       updated_at:    new Date().toISOString(),
@@ -464,8 +844,8 @@ const SocialMediaHub = () => {
     setEditingPost(post || null);
     if (!post) {
       setForm({ ...emptyPost });
-      setImageFile(null);
-      setImagePreview(null);
+      setImageFiles([]);
+      setImagePreviews([]);
     }
     setIsStudioOpen(true);
   };
@@ -605,117 +985,14 @@ const SocialMediaHub = () => {
             )}
           </TabsContent>
 
-          {/* ── CALENDAR TAB ── Full Sprout-style weekly calendar */}
-          <TabsContent value="calendar" className="space-y-4">
-            {(() => {
-              const [calView, setCalView] = React.useState<"week"|"month">("week");
-              const [weekOffset, setWeekOffset] = React.useState(0);
-              // Week dates
-              const today = new Date();
-              const startOfWeek = new Date(today);
-              startOfWeek.setDate(today.getDate() - today.getDay() + 1 + weekOffset * 7); // Mon
-              const weekDays = Array.from({ length: 7 }, (_, i) => {
-                const d = new Date(startOfWeek);
-                d.setDate(startOfWeek.getDate() + i);
-                return d;
-              });
-              const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
-              const postsForDay = (day: Date) => posts.filter((p: SocialPost) => {
-                if (!p.scheduled_date) return false;
-                const pd = new Date(p.scheduled_date);
-                return pd.getFullYear() === day.getFullYear() && pd.getMonth() === day.getMonth() && pd.getDate() === day.getDate();
-              });
-              const postsForSlot = (day: Date, hour: number) => postsForDay(day).filter((p: SocialPost) => {
-                const pd = new Date(p.scheduled_date);
-                return pd.getHours() === hour;
-              });
-              const weekLabel = `${format(weekDays[0], 'd MMM')} – ${format(weekDays[6], 'd MMM yyyy')}`;
-
-              return (
-                <Card className="border-border/50">
-                  {/* Calendar header */}
-                  <div className="flex items-center justify-between px-5 py-3 border-b border-border/40">
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => setWeekOffset(w => w - 1)} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center transition-colors">
-                        <ChevronLeft className="h-4 w-4"/>
-                      </button>
-                      <h3 className="text-sm font-bold">{weekLabel}</h3>
-                      <button onClick={() => setWeekOffset(w => w + 1)} className="h-8 w-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center transition-colors">
-                        <ChevronRight className="h-4 w-4"/>
-                      </button>
-                      <button onClick={() => setWeekOffset(0)} className="text-xs px-2.5 py-1 rounded-md border border-border hover:bg-muted transition-colors">Today</button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {/* platform legend */}
-                      <div className="flex gap-2 items-center mr-3">
-                        {PLATFORMS.map(p => (
-                          <div key={p.value} className="flex items-center gap-1 text-[9px]">
-                            <div className="h-2 w-2 rounded-full" style={{ background: p.color }}/>
-                            <span className="text-muted-foreground">{p.label}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {canEdit && <Button size="sm" className="gap-1.5 text-xs text-white" style={{ backgroundColor: "#bc7e57" }} onClick={() => openStudio()}><Plus className="h-3.5 w-3.5"/> Add Post</Button>}
-                    </div>
-                  </div>
-
-                  {/* Week grid */}
-                  <div className="overflow-x-auto">
-                    <div style={{ minWidth: 900 }}>
-                      {/* Day headers */}
-                      <div className="grid border-b border-border/30" style={{ gridTemplateColumns: '64px repeat(7, 1fr)' }}>
-                        <div className="border-r border-border/20 h-12"/>
-                        {weekDays.map((day, i) => {
-                          const isToday = isSameDay(day, new Date());
-                          const dayPosts = postsForDay(day);
-                          return (
-                            <div key={i} className={`border-r border-border/20 p-2 text-center ${isToday ? 'bg-[#bc7e57]/5' : ''}`}>
-                              <p className="text-[10px] text-muted-foreground font-medium uppercase">{format(day, 'EEE')}</p>
-                              <div className={`mx-auto mt-0.5 h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold ${isToday ? 'bg-[#bc7e57] text-white' : 'text-foreground'}`}>{format(day, 'd')}</div>
-                              {dayPosts.length > 0 && <div className="flex justify-center gap-0.5 mt-1">{dayPosts.slice(0,4).map((p: SocialPost) => { const plt = PLATFORMS.find(x => x.value === p.platform); return <div key={p.id} className="h-1.5 w-1.5 rounded-full" style={{ background: plt?.color || '#bc7e57' }}/>; })}</div>}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Time rows */}
-                      <div className="overflow-y-auto" style={{ maxHeight: 520 }}>
-                        {hours.map(hour => (
-                          <div key={hour} className="grid border-b border-border/10" style={{ gridTemplateColumns: '64px repeat(7, 1fr)', minHeight: 68 }}>
-                            <div className="border-r border-border/20 px-2 pt-1 text-[9px] text-muted-foreground font-medium flex-shrink-0">
-                              {hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`}
-                            </div>
-                            {weekDays.map((day, di) => {
-                              const slotPosts = postsForSlot(day, hour);
-                              const isToday = isSameDay(day, new Date());
-                              return (
-                                <div key={di} className={`border-r border-border/10 p-1 ${isToday ? 'bg-[#bc7e57]/3' : 'hover:bg-muted/20'} transition-colors`}>
-                                  {slotPosts.map((p: SocialPost) => {
-                                    const plt = PLATFORMS.find(x => x.value === p.platform);
-                                    const PIcon = plt?.icon || Megaphone;
-                                    return (
-                                      <button
-                                        key={p.id}
-                                        onClick={() => setPreviewPost(p)}
-                                        className="w-full text-left rounded-md p-1.5 mb-0.5 text-white text-[9px] leading-tight hover:opacity-90 transition-opacity flex items-start gap-1"
-                                        style={{ background: plt?.color || '#bc7e57' }}
-                                      >
-                                        <PIcon className="h-2.5 w-2.5 flex-shrink-0 mt-0.5"/>
-                                        <span className="truncate">{p.content?.slice(0, 30) || 'No caption'}</span>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })()}
+          {/* ── CALENDAR TAB ── */}
+          <TabsContent value="calendar">
+            <WeeklyCalendar
+              posts={posts}
+              canEdit={canEdit}
+              openStudio={openStudio}
+              setPreviewPost={setPreviewPost}
+            />
           </TabsContent>
 
           {/* ── ANALYTICS TAB ── */}
@@ -792,7 +1069,7 @@ const SocialMediaHub = () => {
                             </defs>
                             <XAxis dataKey="week" tick={{ fontSize: 9 }} axisLine={false} tickLine={false}/>
                             <YAxis tick={{ fontSize: 9 }} allowDecimals={false} axisLine={false} tickLine={false}/>
-                            <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }}/>
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                             <Area type="monotone" dataKey="posts" stroke="#bc7e57" strokeWidth={2.5} fill="url(#aGrad)" dot={{ r: 3, fill: '#bc7e57' }}/>
                           </AreaChart>
                         </ResponsiveContainer>
@@ -810,7 +1087,7 @@ const SocialMediaHub = () => {
                           <BarChart data={platformCounts} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 8 }}>
                             <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} allowDecimals={false}/>
                             <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={60}/>
-                            <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }}/>
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                             <Bar dataKey="value" radius={[0,4,4,0]}>
                               {platformCounts.map((entry, i) => <Cell key={i} fill={entry.color}/>)}
                             </Bar>
@@ -852,6 +1129,7 @@ const SocialMediaHub = () => {
               );
             })()}
           </TabsContent>
+
 
           {/* ── TEAM ACTIVITY TAB ── */}
           <TabsContent value="activity" className="space-y-4">
@@ -914,11 +1192,10 @@ const SocialMediaHub = () => {
            CONTENT STUDIO DIALOG
       ═══════════════════════════════════════════════════════════ */}
       <Dialog open={isStudioOpen} onOpenChange={open => { if (!open) { setIsStudioOpen(false); setEditingPost(null); } }}>
-        <DialogContent className="max-w-5xl w-full h-[92vh] p-0 overflow-hidden" style={{ maxHeight: "92vh" }}>
-          <div className="flex h-full">
-
+        <DialogContent className="max-w-6xl w-full p-0 overflow-hidden md:h-[90vh] flex flex-col md:flex-row shadow-2xl">
+          <div className="flex flex-col md:flex-row flex-1 h-full min-h-0 overflow-hidden">
             {/* ── Left panel: form ── */}
-            <div className="flex-1 flex flex-col overflow-y-auto border-r border-border/40" style={{ minWidth: 0 }}>
+            <div className="flex-1 flex flex-col overflow-y-auto border-r border-border/40 bg-card z-10">
               {/* Studio header */}
               <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between bg-muted/20">
                 <div>
@@ -995,11 +1272,23 @@ const SocialMediaHub = () => {
 
                 {/* Media */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Media (Image / Video)</Label>
+                  <Label className="text-xs">Media (Images / Video)</Label>
                   <UploadZone
-                    onFile={f => { setImageFile(f); setImagePreview(URL.createObjectURL(f)); }}
-                    preview={imagePreview}
-                    onClear={() => { setImageFile(null); setImagePreview(null); setForm(f => ({ ...f, image_url: "" })); }}
+                    onFiles={fs => {
+                      setImageFiles(prev => [...prev, ...fs]);
+                      setImagePreviews(prev => [...prev, ...fs.map(f => URL.createObjectURL(f))]);
+                    }}
+                    previews={imagePreviews}
+                    onClear={(i) => {
+                      if (i === undefined) { setImageFiles([]); setImagePreviews([]); }
+                      else {
+                        setImagePreviews(p => p.filter((_, idx) => idx !== i));
+                        // It's tricky to map the exact file to remove if there's a mix of old URLs and new files,
+                        // but since imageFiles only tracks NEW files appended at the end, we can estimate:
+                        const existingCount = imagePreviews.filter(u => !u.startsWith('blob:')).length;
+                        if (i >= existingCount) setImageFiles(fs => fs.filter((_, idx) => idx !== (i - existingCount)));
+                      }
+                    }}
                   />
                 </div>
 
@@ -1076,7 +1365,7 @@ const SocialMediaHub = () => {
 
             {/* ── Right panel: live preview ── */}
             {showPreviewPanel && (
-              <div className="w-80 flex-shrink-0 flex flex-col bg-muted/20 overflow-y-auto">
+              <div className="w-full md:w-[380px] lg:w-[420px] flex-shrink-0 flex flex-col bg-muted/30 overflow-y-auto z-0 border-t md:border-t-0 border-border/40">
                 <div className="px-4 py-4 border-b border-border/40">
                   <p className="font-semibold text-sm">Live Preview</p>
                   <p className="text-[10px] text-muted-foreground">Updates as you type</p>
@@ -1087,8 +1376,8 @@ const SocialMediaHub = () => {
                       platform={form.platform}
                       postType={form.post_type}
                       caption={form.content}
-                      imageUrl={imagePreview}
-                      authorName={profile?.full_name || "Team Member"}
+                      imageUrl={imagePreviews.join(',')}
+                      authorName="REDtech Africa"
                       scheduledDate={form.scheduled_date}
                     />
                   </div>
@@ -1158,7 +1447,7 @@ const SocialMediaHub = () => {
                   postType={previewPost.post_type}
                   caption={previewPost.content}
                   imageUrl={previewPost.image_url}
-                  authorName={previewPost.created_by || profile?.full_name || "Team Member"}
+                  authorName="REDtech Africa"
                 />
               </div>
               {/* Meta panel */}

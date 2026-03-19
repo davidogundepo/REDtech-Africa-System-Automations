@@ -4,6 +4,72 @@
  */
 import React from "react";
 import { Heart, MessageCircle, Bookmark, MoreHorizontal, ThumbsUp, Repeat2, Share2, Play, Send } from "lucide-react";
+import companyLogo from "@/assets/company-logo.png";
+
+// ─── Media Renderer for Images & Video ────────────────────────────
+const MediaRenderer = ({ url, className, style, isVideoFormat, format }: { url?: string | null; className?: string; style?: React.CSSProperties; isVideoFormat?: boolean; format?: "grid" | "single" }) => {
+  if (!url) return null;
+  const urls = url.split(',').map(u => u.trim()).filter(Boolean);
+  if (urls.length === 0) return null;
+
+  const getEmbedUrl = (link: string) => {
+    // YouTube
+    const ytMatch = link.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}`;
+    
+    // TikTok
+    const ttMatch = link.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/)(\d+)/);
+    if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`;
+
+    // Vimeo
+    const vmMatch = link.match(/vimeo\.com\/(\d+)/);
+    if (vmMatch) return `https://player.vimeo.com/video/${vmMatch[1]}?autoplay=1&muted=1&loop=1`;
+
+    return null;
+  };
+
+  const renderSingle = (u: string, classes: string, s: React.CSSProperties = {}) => {
+    const embedUrl = getEmbedUrl(u);
+    if (embedUrl) {
+      return (
+        <iframe 
+          src={embedUrl}
+          className={classes}
+          style={{ border: 0, ...s }}
+          allow="autoplay; encrypted-media; picture-in-picture"
+          allowFullScreen
+        />
+      );
+    }
+
+    const isVideo = isVideoFormat || u.match(/\.(mp4|mov|webm)$/i) || u.includes("video") || u.includes("reel") || u.includes("short");
+    if (isVideo) {
+      return <video src={u} className={classes} style={{ objectFit: 'cover', ...s }} autoPlay loop muted playsInline controls />;
+    }
+    return <img src={u} alt="" className={classes} style={{ objectFit: 'cover', ...s }} />;
+  };
+
+  if (urls.length === 1) {
+    return renderSingle(urls[0], className || "w-full h-full object-cover", style);
+  }
+
+  const gridClasses = urls.length === 2 ? "grid-cols-2" : urls.length === 3 ? "grid-cols-2" : "grid-cols-2";
+  return (
+    <div className={`grid ${gridClasses} gap-0.5 w-full h-full overflow-hidden ${className || ""}`} style={style}>
+      {urls.slice(0, 4).map((u, i) => (
+        <div key={i} className="relative w-full h-full" style={{ minHeight: urls.length > 2 && i === 0 ? "100%" : "auto", gridRow: urls.length === 3 && i === 0 ? "span 2" : "auto" }}>
+          {renderSingle(u, "absolute inset-0 w-full h-full object-cover")}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ─── Company Avatar ───────────────────────────────────────────────
+const CompanyAvatar = ({ className }: { className?: string }) => (
+  <img src={companyLogo} alt="REDtech" className={`object-cover rounded-full bg-white ${className || ""}`} />
+);
+
 
 export interface PostPreviewProps {
   platform: string;
@@ -14,14 +80,8 @@ export interface PostPreviewProps {
   scheduledDate?: string;
 }
 
-const handle = (p: string, name: string) => {
-  const n = (name || "User").toLowerCase().replace(/\s+/g, "");
-  const map: Record<string, string> = {
-    instagram: `@${n}`, linkedin: name || "User",
-    x: `@${n}`, facebook: name || "User",
-    youtube: name || "Channel", tiktok: `@${n}`,
-  };
-  return map[p] || `@${n}`;
+const handle = (p: string) => {
+  return "@REDtechAfrica";
 };
 
 // ─── Phone frame wrapper (for vertical formats) ───────────────────
@@ -61,7 +121,7 @@ const IGReelPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => (
   <PhoneFrame bg="#000">
     <div className="absolute inset-0">
       {imageUrl
-        ? <img src={imageUrl} alt="" className="w-full h-full object-cover"/>
+        ? <MediaRenderer url={imageUrl} className="w-full h-full object-cover" isVideoFormat/>
         : <div className="w-full h-full" style={{ background: "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)" }}>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
@@ -84,7 +144,7 @@ const IGReelPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => (
         {/* avatar with + */}
         <div className="relative">
           <div className="h-9 w-9 rounded-full border-2 border-white overflow-hidden" style={{ background: "linear-gradient(135deg,#833ab4,#fcb045)" }}>
-            <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">{(authorName||"U")[0]}</div>
+            <CompanyAvatar className="w-full h-full"/>
           </div>
           <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 h-4 w-4 rounded-full bg-[#E1306C] flex items-center justify-center text-white text-[10px] font-bold">+</div>
         </div>
@@ -101,7 +161,7 @@ const IGReelPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => (
       </div>
       {/* bottom content */}
       <div className="absolute bottom-6 left-3 right-14 z-10">
-        <p className="text-white font-semibold text-xs mb-1">{handle("instagram", authorName)}</p>
+        <p className="text-white font-semibold text-xs mb-1">REDtech Africa</p>
         <p className="text-white/90 text-[10px] leading-relaxed line-clamp-3">{caption || "Your reel caption here ✨ #reels #redtechafrica"}</p>
         <div className="flex items-center gap-1.5 mt-2">
           <div className="h-4 w-4 rounded-sm" style={{ background: "linear-gradient(135deg,#833ab4,#fcb045)" }}/>
@@ -118,7 +178,7 @@ const IGStoryPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => 
   <PhoneFrame bg="#000">
     <div className="absolute inset-0">
       {imageUrl
-        ? <img src={imageUrl} alt="" className="w-full h-full object-cover"/>
+        ? <MediaRenderer url={imageUrl} className="w-full h-full object-cover" isVideoFormat/>
         : <div className="w-full h-full" style={{ background: "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)" }}/>
       }
       <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.5) 100%)" }}/>
@@ -130,10 +190,10 @@ const IGStoryPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => 
       <div className="absolute top-14 left-3 right-3 flex items-center justify-between z-10">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full p-0.5" style={{ background: "linear-gradient(135deg,#f09433,#bc1888)" }}>
-            <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-white text-[9px] font-bold">{(authorName||"U")[0]}</div>
+            <CompanyAvatar className="w-full h-full"/>
           </div>
           <div>
-            <p className="text-white text-[10px] font-semibold">{handle("instagram", authorName)}</p>
+            <p className="text-white text-[10px] font-semibold">{handle("instagram")}</p>
             <p className="text-white/60 text-[8px]">Now</p>
           </div>
         </div>
@@ -166,13 +226,11 @@ const IGPostPreview = ({ caption, imageUrl, authorName, postType }: PostPreviewP
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full p-[1.5px]" style={{ background: "linear-gradient(135deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%)" }}>
             <div className="w-full h-full rounded-full bg-white dark:bg-zinc-900 p-[1px]">
-              <div className="w-full h-full rounded-full bg-gradient-to-br from-orange-400 to-pink-600 flex items-center justify-center text-white text-[8px] font-bold">
-                {(authorName||"U")[0]}
-              </div>
+              <CompanyAvatar className="w-full h-full"/>
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold leading-none">{handle("instagram", authorName)}</p>
+            <p className="text-xs font-semibold leading-none">{handle("instagram")}</p>
             <p className="text-[9px] text-zinc-400 mt-0.5">REDtech Africa</p>
           </div>
         </div>
@@ -181,7 +239,7 @@ const IGPostPreview = ({ caption, imageUrl, authorName, postType }: PostPreviewP
       {/* image */}
       <div style={{ height: isPortrait ? 380 : 320, background: imageUrl ? undefined : "linear-gradient(135deg,#fce3ec,#ffd6e7)" }}>
         {imageUrl
-          ? <img src={imageUrl} alt="" className="w-full h-full object-cover"/>
+          ? <MediaRenderer url={imageUrl} className="w-full h-full object-cover"/>
           : <div className="w-full h-full flex items-center justify-center text-5xl opacity-30">📷</div>
         }
       </div>
@@ -197,7 +255,7 @@ const IGPostPreview = ({ caption, imageUrl, authorName, postType }: PostPreviewP
         </div>
         <p className="text-xs font-bold mb-1">14,200 likes</p>
         <p className="text-xs pb-2 leading-relaxed">
-          <span className="font-semibold">{handle("instagram", authorName)}</span>{" "}
+          <span className="font-semibold">{handle("instagram")}</span>{" "}
           <span className="text-zinc-600 dark:text-zinc-400">{(caption||"Your caption here...").slice(0,120)}{(caption||"").length>120?"... more":""}</span>
         </p>
         <p className="text-[10px] text-zinc-400 pb-2 border-b border-zinc-100 dark:border-zinc-800">View all 94 comments</p>
@@ -213,11 +271,9 @@ const LinkedInPostPreview = ({ caption, imageUrl, authorName }: PostPreviewProps
     <div className="bg-[#f3f2ef] dark:bg-zinc-900 p-3">
       <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm">
         <div className="p-3 flex gap-2.5">
-          <div className="h-11 w-11 rounded-full bg-[#0077B5] flex items-center justify-center text-white text-base font-bold flex-shrink-0">
-            {(authorName||"U")[0]}
-          </div>
+          <CompanyAvatar className="h-11 w-11 flex-shrink-0"/>
           <div className="flex-1">
-            <p className="text-sm font-semibold leading-tight">{authorName || "Team Member"}</p>
+            <p className="text-sm font-semibold leading-tight">REDtech Africa</p>
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Social Media Manager · REDtech Africa</p>
             <div className="flex items-center gap-1 mt-0.5">
               <span className="text-[9px] text-zinc-400">Just now ·</span>
@@ -229,7 +285,7 @@ const LinkedInPostPreview = ({ caption, imageUrl, authorName }: PostPreviewProps
         <div className="px-3 pb-2">
           <p className="text-xs leading-relaxed whitespace-pre-wrap">{(caption||"Your professional post content here...").slice(0,300)}{(caption||"").length>300?"\n\n...see more":""}</p>
         </div>
-        {imageUrl && <img src={imageUrl} alt="" className="w-full" style={{ maxHeight: 180, objectFit: "cover" }}/>}
+        {imageUrl && <MediaRenderer url={imageUrl} className="w-full" style={{ maxHeight: 300, objectFit: "cover" }}/>}
         <div className="px-3 py-1.5 flex justify-between text-[9px] text-zinc-400 border-t border-zinc-100 dark:border-zinc-700">
           <span className="flex items-center gap-1">👍 ❤️ 💡 <span>523</span></span>
           <span>61 comments · 88 reposts</span>
@@ -253,16 +309,16 @@ const LinkedInCarouselPreview = ({ caption, imageUrl, authorName }: PostPreviewP
     <div className="bg-[#f3f2ef] dark:bg-zinc-900 p-3">
       <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm overflow-hidden">
         <div className="p-3 flex gap-2 items-center">
-          <div className="h-10 w-10 rounded-full bg-[#0077B5] flex items-center justify-center text-white text-sm font-bold">{(authorName||"U")[0]}</div>
+          <CompanyAvatar className="h-10 w-10"/>
           <div>
-            <p className="text-xs font-semibold">{authorName||"Team Member"}</p>
+            <p className="text-xs font-semibold">REDtech Africa</p>
             <p className="text-[9px] text-zinc-400">Just now · 🌐</p>
           </div>
         </div>
         <p className="px-3 text-xs text-zinc-600 dark:text-zinc-300 pb-2 leading-relaxed">{(caption||"Carousel post caption...").slice(0,100)}</p>
         {/* Slide */}
         <div className="relative h-48 flex items-center justify-center" style={{ background: imageUrl ? undefined : "linear-gradient(135deg,#dbeafe,#bfdbfe)" }}>
-          {imageUrl ? <img src={imageUrl} alt="" className="w-full h-full object-cover absolute inset-0"/> : null}
+          {imageUrl ? <MediaRenderer url={imageUrl} className="w-full h-full object-cover absolute inset-0"/> : null}
           <div className="relative z-10 text-center px-6">
             <p className="text-5xl font-black text-[#0077B5] drop-shadow">01</p>
             <p className="text-sm font-semibold text-zinc-800 mt-1">Slide 1 of 5</p>
@@ -298,22 +354,24 @@ const XPostPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => (
       <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24">
         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
       </svg>
-      <div className="h-7 w-7 rounded-full bg-zinc-700"/>
+      <CompanyAvatar className="h-7 w-7"/>
     </div>
     {/* post */}
     <div className="px-4 py-3 flex gap-3">
-      <div className="h-10 w-10 rounded-full bg-zinc-700 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-        {(authorName||"U")[0]}
-      </div>
+      <CompanyAvatar className="h-10 w-10 flex-shrink-0"/>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 mb-1">
-          <span className="text-white text-sm font-bold">{authorName||"Team Member"}</span>
+          <span className="text-white text-sm font-bold">REDtech Africa</span>
           {/* checkmark */}
           <svg className="h-4 w-4 text-[#1D9BF0]" fill="currentColor" viewBox="0 0 24 24"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81C14.67 2.88 13.43 2 12 2s-2.67.88-3.34 2.19c-1.39-.46-2.9-.2-3.91.81s-1.27 2.52-.81 3.91C2.88 9.33 2 10.57 2 12s.88 2.67 2.19 3.34c-.46 1.39-.2 2.9.81 3.91s2.52 1.27 3.91.81C9.33 21.12 10.57 22 12 22s2.67-.88 3.34-2.19c1.39.46 2.9.2 3.91-.81s1.27-2.52.81-3.91C21.12 14.67 22 13.43 22 12z"/></svg>
-          <span className="text-zinc-500 text-xs">@{(authorName||"user").toLowerCase().replace(/\s+/g,"_")}</span>
+          <span className="text-zinc-500 text-xs">{handle("x")}</span>
         </div>
-        <p className="text-white text-sm leading-relaxed">{(caption||"Your post on X...").slice(0,280)}</p>
-        {imageUrl && <img src={imageUrl} alt="" className="w-full rounded-2xl mt-2 border border-zinc-800"/>}
+        <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">{(caption||"Your post on X...").slice(0,280)}</p>
+        {imageUrl && (
+          <div className="mt-3 rounded-2xl overflow-hidden border border-zinc-800" style={{ maxHeight: 290 }}>
+            <MediaRenderer url={imageUrl} format="grid" className="w-full h-full object-cover"/>
+          </div>
+        )}
         {/* engagement */}
         <div className="flex justify-between mt-3 text-zinc-500">
           {[{icon:MessageCircle,n:"24"},{icon:Repeat2,n:"97"},{icon:Heart,n:"412"},{icon:Share2,n:""}].map(({icon:Icon,n},i)=>(
@@ -328,7 +386,7 @@ const XPostPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => (
       </div>
     </div>
     <div className="border-t border-zinc-800 px-4 py-2.5 flex items-center gap-2">
-      <div className="h-7 w-7 rounded-full bg-zinc-700 flex items-center justify-center text-white text-xs">{(authorName||"U")[0]}</div>
+      <CompanyAvatar className="h-7 w-7"/>
       <div className="flex-1 h-8 rounded-full bg-zinc-900 border border-zinc-700 flex items-center px-3">
         <span className="text-zinc-500 text-xs">Post your reply</span>
       </div>
@@ -342,11 +400,9 @@ const FacebookPostPreview = ({ caption, imageUrl, authorName }: PostPreviewProps
     <div className="bg-[#f0f2f5] dark:bg-zinc-900 p-3">
       <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-sm">
         <div className="p-3 flex gap-2">
-          <div className="h-10 w-10 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-            {(authorName||"U")[0]}
-          </div>
+          <CompanyAvatar className="h-10 w-10 flex-shrink-0"/>
           <div>
-            <p className="text-sm font-semibold">{authorName||"Team Member"}</p>
+            <p className="text-sm font-semibold">REDtech Africa</p>
             <div className="flex items-center gap-1 text-[9px] text-zinc-400 mt-0.5">
               <span>Just now ·</span>
               <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
@@ -355,8 +411,12 @@ const FacebookPostPreview = ({ caption, imageUrl, authorName }: PostPreviewProps
           </div>
           <MoreHorizontal className="h-5 w-5 text-zinc-400 ml-auto"/>
         </div>
-        <p className="px-3 pb-2 text-sm leading-relaxed">{(caption||"Your Facebook post...").slice(0,200)}</p>
-        {imageUrl && <img src={imageUrl} alt="" className="w-full" style={{ maxHeight: 200, objectFit: "cover" }}/>}
+        <p className="px-3 pb-2 text-sm leading-relaxed whitespace-pre-wrap">{(caption||"Your Facebook post...").slice(0,200)}</p>
+        {imageUrl && (
+          <div style={{ maxHeight: 300, minHeight: 200 }} className="flex">
+            <MediaRenderer url={imageUrl} format="grid" className="w-full flex-1"/>
+          </div>
+        )}
         <div className="px-3 py-1.5 flex justify-between text-[10px] text-zinc-400 border-b border-zinc-100 dark:border-zinc-700">
           <span>👍 ❤️ 😮 178</span><span>23 comments · 41 shares</span>
         </div>
@@ -379,7 +439,7 @@ const YouTubePreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => 
       {/* video */}
       <div className="relative" style={{ aspectRatio:"16/9" }}>
         {imageUrl
-          ? <img src={imageUrl} alt="" className="w-full h-full object-cover"/>
+          ? <MediaRenderer url={imageUrl} className="w-full h-full object-cover" isVideoFormat/>
           : <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg,#1a0000,#3d0000)" }}>
               <div className="h-16 w-16 rounded-full bg-[#FF0000] flex items-center justify-center shadow-2xl">
                 <Play className="h-8 w-8 text-white fill-white ml-1"/>
@@ -401,12 +461,10 @@ const YouTubePreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => 
       </div>
       {/* meta */}
       <div className="p-3 flex gap-3">
-        <div className="h-9 w-9 rounded-full bg-[#FF0000] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-          {(authorName||"U")[0]}
-        </div>
+        <CompanyAvatar className="h-9 w-9 flex-shrink-0"/>
         <div className="flex-1 min-w-0">
           <p className="text-white text-sm font-semibold leading-tight line-clamp-2">{caption?.slice(0,80) || "Video Title Appears Here"}</p>
-          <p className="text-zinc-400 text-xs mt-1">{authorName||"Channel"} · 0 views · Just now</p>
+          <p className="text-zinc-400 text-xs mt-1">REDtech Africa · 0 views · Just now</p>
         </div>
         <MoreHorizontal className="h-5 w-5 text-zinc-400 flex-shrink-0"/>
       </div>
@@ -419,7 +477,7 @@ const TikTokPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => (
   <PhoneFrame bg="#000">
     <div className="absolute inset-0">
       {imageUrl
-        ? <img src={imageUrl} alt="" className="w-full h-full object-cover"/>
+        ? <MediaRenderer url={imageUrl} className="w-full h-full object-cover" isVideoFormat/>
         : <div className="w-full h-full" style={{ background: "linear-gradient(135deg,#010101 0%,#1a1a2e 50%,#16213e 100%)" }}>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-6xl opacity-50">🎵</div>
@@ -437,7 +495,7 @@ const TikTokPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => (
       <div className="absolute right-3 bottom-28 flex flex-col items-center gap-5 z-10">
         <div className="relative">
           <div className="h-10 w-10 rounded-full border-2 border-white overflow-hidden bg-zinc-700 flex items-center justify-center text-white text-sm font-bold">
-            {(authorName||"U")[0]}
+            <CompanyAvatar className="w-full h-full"/>
           </div>
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 h-5 w-5 rounded-full bg-[#FE2C55] flex items-center justify-center text-white text-xs font-bold">+</div>
         </div>
@@ -454,12 +512,12 @@ const TikTokPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => (
       </div>
       {/* bottom */}
       <div className="absolute bottom-4 left-3 right-16 z-10">
-        <p className="text-white text-xs font-bold mb-1">@{(authorName||"user").toLowerCase().replace(/\s+/g,"")}</p>
+        <p className="text-white text-xs font-bold mb-1">@redtechafrica</p>
         <p className="text-white/90 text-[10px] leading-relaxed line-clamp-2">{caption||"Your TikTok caption here 🔥 #fyp #viral"}</p>
         <div className="flex items-center gap-1.5 mt-2">
           <span className="text-[9px] text-white/70">♪</span>
           <div className="flex-1 h-px bg-white/30"/>
-          <span className="text-[9px] text-white/70">Original Sound · {authorName||"creator"}</span>
+          <span className="text-[9px] text-white/70">Original Sound · REDtech Africa</span>
         </div>
       </div>
     </div>
@@ -471,7 +529,7 @@ const YouTubeShortsPreview = ({ caption, imageUrl, authorName }: PostPreviewProp
   <PhoneFrame bg="#000">
     <div className="absolute inset-0">
       {imageUrl
-        ? <img src={imageUrl} alt="" className="w-full h-full object-cover"/>
+        ? <MediaRenderer url={imageUrl} className="w-full h-full object-cover" isVideoFormat/>
         : <div className="w-full h-full" style={{ background: "linear-gradient(135deg,#1a0000 0%,#3d0000 50%,#000 100%)" }}>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="h-16 w-16 rounded-full bg-[#FF0000] flex items-center justify-center shadow-2xl">
@@ -504,8 +562,8 @@ const YouTubeShortsPreview = ({ caption, imageUrl, authorName }: PostPreviewProp
       {/* Bottom */}
       <div className="absolute bottom-5 left-3 right-14 z-10">
         <div className="flex items-center gap-2 mb-1.5">
-          <div className="h-8 w-8 rounded-full border-2 border-white bg-[#FF0000] flex items-center justify-center text-white text-xs font-bold">{(authorName||"U")[0]}</div>
-          <p className="text-white text-[10px] font-bold">{authorName||"Creator"}</p>
+          <CompanyAvatar className="h-8 w-8 border-2 border-white"/>
+          <p className="text-white text-[10px] font-bold">REDtech Africa</p>
           <span className="text-white text-[9px] border border-white/60 rounded px-1.5 py-0.5 ml-1">Subscribe</span>
         </div>
         <p className="text-white text-[10px] leading-relaxed line-clamp-3">{caption||"Your YouTube Short caption... #Shorts"}</p>
