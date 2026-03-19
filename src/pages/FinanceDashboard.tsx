@@ -28,23 +28,27 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(amount);
 };
 
-const StatCard = ({ title, value, change, isPositive, icon: Icon }: any) => (
-  <Card className="hover:shadow-md transition-all border-[#bc7e57]/20">
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-      <div className="p-2 bg-[#bc7e57]/10 rounded-full">
-        <Icon className="h-4 w-4 text-[#bc7e57]" />
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">{value}</div>
-      <p className={`text-xs flex items-center mt-1 ${isPositive ? "text-green-500" : "text-red-500"}`}>
-        {isPositive ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
-        {change}
-      </p>
-    </CardContent>
-  </Card>
-);
+const StatCard = ({ title, value, change, isPositive, icon: Icon }: any) => {
+  const color = isPositive ? '#22c55e' : '#f59e0b';
+  return (
+    <Card className="hover:shadow-md transition-shadow relative overflow-hidden group border-border/50">
+      <div className="absolute inset-x-0 top-0 h-1 bg-[#bc7e57]" />
+      <CardContent className="p-5 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">{title}</p>
+          <div className="text-3xl font-black text-foreground">{value}</div>
+          <p className={`text-xs flex items-center font-medium mt-1.5 ${isPositive ? "text-green-500 dark:text-green-400" : "text-amber-500 dark:text-amber-400"}`}>
+            {isPositive ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
+            {change}
+          </p>
+        </div>
+        <div className="h-10 w-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm bg-[#bc7e57]/10">
+          <Icon className="h-5 w-5 text-[#bc7e57]" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const FinanceDashboard = () => {
   const { theme } = useTheme();
@@ -460,14 +464,14 @@ const FinanceDashboard = () => {
           <CardContent className="h-[300px]">
             {barData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={tooltipBorder} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: textFill }} />
-                  <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₦${val/1000}k`} tick={{ fontSize: 12, fill: textFill }} />
-                  <Tooltip cursor={{ fill: 'rgba(201, 166, 107, 0.1)' }} contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '8px' }} formatter={(val: number) => formatCurrency(val)} />
-                  <Legend iconType="circle" />
-                  <Bar dataKey="revenue" name="Revenue" fill="#bc7e57" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                  <Bar dataKey="expense" name="Expenses" fill={expensesFill} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <BarChart data={barData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₦${val/1000}k`} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip cursor={{ fill: 'rgba(188, 126, 87, 0.05)' }} contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(val: number) => formatCurrency(val)} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                  <Bar dataKey="revenue" name="Revenue" fill="#bc7e57" radius={[4, 4, 4, 4]} maxBarSize={32} />
+                  <Bar dataKey="expense" name="Expenses" fill="hsl(var(--muted-foreground))" radius={[4, 4, 4, 4]} maxBarSize={32} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -485,13 +489,13 @@ const FinanceDashboard = () => {
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={65} outerRadius={85} paddingAngle={4} dataKey="value" stroke="none">
                     {pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, borderRadius: '8px' }} formatter={(val: number) => formatCurrency(val)} />
-                  <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(val: number) => formatCurrency(val)} />
+                  <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: '11px' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (

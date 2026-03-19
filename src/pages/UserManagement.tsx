@@ -342,17 +342,24 @@ const UserManagement = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {(["super_admin", "admin", "team_member", "viewer"] as UserRole[]).map(role => (
-          <Card key={role}>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{roleLabels[role]}s</p>
-                <p className="text-2xl font-bold">{users?.filter((u: any) => u.role === role).length || 0}</p>
-              </div>
-              <Users className="h-8 w-8 text-muted-foreground/30" />
-            </CardContent>
-          </Card>
-        ))}
+        {(["super_admin", "admin", "team_member", "viewer"] as UserRole[]).map(role => {
+          const colors: Record<string, string> = { super_admin: '#dc2626', admin: '#2563eb', team_member: '#16a34a', viewer: '#64748b' };
+          const color = colors[role];
+          return (
+            <Card key={role} className="border-border/50 hover:shadow-md transition-shadow relative overflow-hidden group">
+              <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} />
+              <CardContent className="p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">{roleLabels[role]}s</p>
+                  <p className="text-3xl font-black text-foreground">{users?.filter((u: any) => u.role === role).length || 0}</p>
+                </div>
+                <div className="h-10 w-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm" style={{ backgroundColor: `${color}15` }}>
+                  <Users className="h-5 w-5" style={{ color }} />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Users Table */}

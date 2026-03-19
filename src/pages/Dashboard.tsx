@@ -162,14 +162,21 @@ const Dashboard = () => {
           </div>
 
           {/* Daily tip */}
-          <NavLink to={todayTip.link} className="block mt-4">
-            <div className="flex items-center gap-3 py-2.5 px-4 rounded-lg bg-[#bc7e57]/5 border border-[#bc7e57]/10 hover:bg-[#bc7e57]/10 transition-colors group">
-              <todayTip.icon className="h-4 w-4 flex-shrink-0" style={{ color: '#bc7e57' }} />
-              <p className="text-sm text-muted-foreground flex-1">
-                <span className="font-medium text-foreground">💡 Tip: </span>
-                {todayTip.text}
-              </p>
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+          <NavLink to={todayTip.link} className="block mt-6 group">
+            <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-card to-muted py-3 px-5 hover:shadow-md hover:border-[#bc7e57]/30 transition-all duration-300">
+              <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-[#bc7e57] to-orange-400 group-hover:w-2 transition-all"></div>
+              <div className="flex items-center gap-3 relative z-10">
+                <div className="h-8 w-8 rounded-full bg-[#bc7e57]/10 flex items-center justify-center group-hover:bg-[#bc7e57]/20 transition-colors">
+                  <todayTip.icon className="h-4 w-4" style={{ color: '#bc7e57' }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold tracking-tight text-foreground">Tip of the day</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{todayTip.text}</p>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-background border border-border/50 flex items-center justify-center group-hover:bg-[#bc7e57] group-hover:border-[#bc7e57] transition-all duration-300">
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-white group-hover:-rotate-45 transition-transform" />
+                </div>
+              </div>
             </div>
           </NavLink>
         </div>
@@ -196,21 +203,24 @@ const Dashboard = () => {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {modules.map((mod) => (
               <NavLink key={mod.path} to={mod.path} className="group">
-                <Card className="h-full transition-all duration-200 hover:shadow-md hover:border-[#bc7e57]/40 hover:-translate-y-0.5 cursor-pointer">
-                  <CardHeader className="pb-3">
+                <Card className="relative h-full transition-all duration-300 hover:shadow-xl hover:shadow-[#bc7e57]/5 hover:-translate-y-1 overflow-hidden border-border/50">
+                  <div className="absolute inset-0 bg-gradient-to-br from-transparent to-[#bc7e57]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  <CardHeader className="pb-3 border-b border-border/30 bg-muted/20">
                     <div className="flex items-start justify-between">
-                      <div className="p-2.5 rounded-xl bg-[#bc7e57]/8">
+                      <div className="p-2.5 rounded-xl bg-background shadow-sm border border-border/50 group-hover:scale-110 group-hover:border-[#bc7e57]/30 transition-all duration-300">
                         <mod.icon className="h-5 w-5" style={{ color: '#bc7e57' }} />
                       </div>
-                      <Badge variant="secondary" className="text-[10px] font-medium">{mod.department}</Badge>
+                      <Badge variant="secondary" className="text-[10px] font-semibold tracking-wider uppercase bg-background shadow-sm">{mod.department}</Badge>
                     </div>
-                    <CardTitle className="text-base mt-3 group-hover:text-[#bc7e57] transition-colors">{mod.title}</CardTitle>
+                    <CardTitle className="text-base font-bold mt-4 group-hover:text-[#bc7e57] transition-colors">{mod.title}</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{mod.description}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium" style={{ color: '#bc7e57' }}>{mod.benefit}</span>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-[#bc7e57] group-hover:translate-x-1 transition-all" />
+                  <CardContent className="pt-4">
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2 leading-relaxed">{mod.description}</p>
+                    <div className="flex items-center justify-between text-xs mt-auto pt-2 border-t border-border/30">
+                      <span className="font-semibold uppercase tracking-wider" style={{ color: '#bc7e57' }}>{mod.benefit}</span>
+                      <div className="flex items-center gap-1 font-medium text-muted-foreground group-hover:text-[#bc7e57] transition-colors">
+                        Open <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 group-hover:-rotate-45 transition-all duration-300" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -224,15 +234,17 @@ const Dashboard = () => {
 };
 
 function StatCard({ icon: Icon, label, value, accent, warning }: { icon: React.ElementType; label: string; value: string; accent?: boolean; warning?: boolean }) {
+  const color = accent ? '#bc7e57' : warning ? '#f59e0b' : '#64748b';
   return (
-    <Card className={accent ? "border-[#bc7e57]/30" : warning ? "border-orange-200 dark:border-orange-900/30" : ""}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className={`p-2.5 rounded-xl ${accent ? "bg-[#bc7e57]/10" : warning ? "bg-orange-50 dark:bg-orange-900/20" : "bg-muted/50"}`}>
-          <Icon className="h-4 w-4" style={{ color: accent ? '#bc7e57' : warning ? '#f59e0b' : '#64748b' }} />
-        </div>
+    <Card className="border-border/50 hover:shadow-md transition-shadow relative overflow-hidden group">
+      <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} />
+      <CardContent className="p-5 flex items-center justify-between">
         <div>
-          <p className={`text-2xl font-bold ${warning ? 'text-orange-500' : ''}`}>{value}</p>
-          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">{label}</p>
+          <p className="text-3xl font-black text-foreground">{value}</p>
+        </div>
+        <div className="h-10 w-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm" style={{ backgroundColor: color + '15' }}>
+          <Icon className="h-5 w-5" style={{ color }} />
         </div>
       </CardContent>
     </Card>
