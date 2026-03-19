@@ -30,15 +30,19 @@ const getEmbedUrl = (link: string) => {
   return null;
 };
 
+/** Helper to determine if a URL should render as a video */
+const isLikelyVideo = (src: string, isVideoHint?: boolean) => {
+  const isBlob = src.startsWith("blob:") || src.startsWith("data:");
+  const hasVidExt = /\.(mp4|mov|webm|ogg)(\?|$)/i.test(src);
+  const hasImgExt = /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp)(\?|$)/i.test(src);
+  return hasVidExt || (!isBlob && !hasImgExt && isVideoHint);
+};
+
 /** Renders a single media URL — embed, video, or image (smart detection) */
 const RenderMedia = ({ src, className = "", style, isVideoHint }: { src: string; className?: string; style?: React.CSSProperties; isVideoHint?: boolean }) => {
   const embed = getEmbedUrl(src);
   if (embed) return <iframe src={embed} className={className} style={{ border: 0, ...style }} allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-popups" title="Video" allowFullScreen />;
-  const isBlob = src.startsWith("blob:") || src.startsWith("data:");
-  const hasVidExt = /\.(mp4|mov|webm|ogg)(\?|$)/i.test(src);
-  const hasImgExt = /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp)(\?|$)/i.test(src);
-  const asVideo = hasVidExt || (!isBlob && !hasImgExt && isVideoHint);
-  if (asVideo) return <video src={src} className={className} style={{ objectFit: "cover", ...style }} autoPlay loop muted playsInline />;
+  if (isLikelyVideo(src, isVideoHint)) return <video src={src} className={className} style={{ objectFit: "cover", ...style }} autoPlay loop muted playsInline />;
   return <img src={src} alt="" className={className} style={{ objectFit: "cover", ...style }} />;
 };
 
@@ -365,8 +369,8 @@ const YouTubePreview = ({ caption, imageUrl }: PostPreviewProps) => {
     <BrowserFrame brandColor="#FF0000">
       <div className="bg-[#0f0f0f]">
         <div className="relative" style={{ aspectRatio: "16/9" }}>
-          {urls.length > 0 ? <RenderMedia src={urls[0]} className="w-full h-full object-cover" isVideoHint /> : <div className="w-full h-full bg-zinc-800" />}
-          <PlayOverlay playing={playing} onToggle={() => setPlaying(!playing)} accent="bg-red-600/80" />
+          {urls.length > 0 ? <RenderMedia src={urls[0]} className="w-full h-full object-cover" isVideoHint={isLikelyVideo(urls[0])} /> : <div className="w-full h-full bg-zinc-800" />}
+          {urls.length > 0 && isLikelyVideo(urls[0]) && <PlayOverlay playing={playing} onToggle={() => setPlaying(!playing)} accent="bg-red-600/80" />}
         </div>
         <div className="p-3 flex gap-3"><CompanyAvatar className="h-9 w-9 flex-shrink-0" /><div className="flex-1 min-w-0"><p className="text-white text-sm font-semibold leading-tight line-clamp-2">{caption || "Video Title"}</p><p className="text-zinc-400 text-xs mt-1">REDtech Africa · Just now</p></div></div>
       </div>
@@ -380,8 +384,8 @@ const YouTubeShortsPreview = ({ caption, imageUrl }: PostPreviewProps) => {
   return (
     <PhoneFrame bg="#000">
       <div className="absolute inset-0">
-        {urls.length > 0 ? <RenderMedia src={urls[0]} className="w-full h-full object-cover" isVideoHint /> : <div className="w-full h-full bg-zinc-900" />}
-        <PlayOverlay playing={playing} onToggle={() => setPlaying(!playing)} accent="bg-red-600/70" />
+        {urls.length > 0 ? <RenderMedia src={urls[0]} className="w-full h-full object-cover" isVideoHint={isLikelyVideo(urls[0])} /> : <div className="w-full h-full bg-zinc-900" />}
+        {urls.length > 0 && isLikelyVideo(urls[0]) && <PlayOverlay playing={playing} onToggle={() => setPlaying(!playing)} accent="bg-red-600/70" />}
         <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)" }} />
         <div className="absolute top-8 left-3 z-10 pointer-events-none flex items-center gap-1.5"><Youtube className="h-4 w-4 text-white fill-white" /><span className="text-white font-bold text-xs">Shorts</span></div>
         <div className="absolute bottom-5 left-3 right-14 z-10 pointer-events-none"><div className="flex items-center gap-2 mb-1.5"><CompanyAvatar className="h-8 w-8" /><span className="text-white text-xs font-bold">{handle("youtube")}</span></div><p className="text-white text-[10px] leading-relaxed line-clamp-3">{caption}</p></div>
@@ -400,8 +404,8 @@ const TikTokPreview = ({ caption, imageUrl }: PostPreviewProps) => {
   return (
     <PhoneFrame bg="#000">
       <div className="absolute inset-0">
-        {urls.length > 0 ? <RenderMedia src={urls[0]} className="w-full h-full object-cover" isVideoHint /> : <div className="w-full h-full bg-zinc-900" />}
-        <PlayOverlay playing={playing} onToggle={() => setPlaying(!playing)} />
+        {urls.length > 0 ? <RenderMedia src={urls[0]} className="w-full h-full object-cover" isVideoHint={isLikelyVideo(urls[0])} /> : <div className="w-full h-full bg-zinc-900" />}
+        {urls.length > 0 && isLikelyVideo(urls[0]) && <PlayOverlay playing={playing} onToggle={() => setPlaying(!playing)} />}
         <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)" }} />
         {/* TikTok side action bar */}
         <div className="absolute right-2 bottom-24 flex flex-col gap-4 items-center z-10 pointer-events-none">

@@ -928,7 +928,7 @@ const SocialMediaHub = () => {
                   setActiveTab("posts"); // Ensure we jump to posts view if clicking a stat
                 }}
                 className={`cursor-pointer border-border/50 hover:shadow-md transition-all group overflow-hidden relative ${isActive ? "ring-2 ring-offset-2 bg-muted/20" : ""}`}
-                style={isActive ? { ringColor: color } : {}}
+                style={isActive ? { "--tw-ring-color": color } as any : {}}
               >
                 {isActive && <div className="absolute inset-0 opacity-10" style={{ backgroundColor: color }} />}
                 <CardContent className="p-5 flex flex-col gap-3 relative z-10">
@@ -1087,105 +1087,113 @@ const SocialMediaHub = () => {
               const engagePct = total > 0 ? Math.round((published / total) * 100) : 0;
 
               return (
-                <>
+                <div className="space-y-6">
                   {/* KPI row */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                      { label: 'Total Content', val: total, sub: 'across all platforms', color: '#bc7e57', icon: Layers },
-                      { label: 'Published', val: published, sub: `${engagePct}% publish rate`, color: '#22c55e', icon: CheckCircle2 },
+                      { label: 'Total Content', val: total, sub: 'Across all platforms', color: '#bc7e57', icon: Layers },
+                      { label: 'Publish Rate', val: `${engagePct}%`, sub: `${published} published posts`, color: '#22c55e', icon: CheckCircle2 },
                       { label: 'Top Platform', val: topPlatform?.name || '—', sub: `${topPlatform?.value || 0} posts`, color: topPlatform?.color || '#bc7e57', icon: TrendingUp },
-                      { label: 'Awaiting Action', val: approved + drafts, sub: `${approved} to publish, ${drafts} drafts`, color: '#f59e0b', icon: AlertCircle },
+                      { label: 'Pending Action', val: approved + drafts, sub: `${approved} approved, ${drafts} drafts`, color: '#f59e0b', icon: AlertCircle },
                     ].map(({ label, val, sub, color, icon: Icon }) => (
-                      <Card key={label} className="border-border/50">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="h-7 w-7 rounded-lg flex items-center justify-center" style={{ background: color + '22' }}>
+                      <Card key={label} className="border-border/50 hover:shadow-md transition-shadow relative overflow-hidden group">
+                        <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} />
+                        <CardContent className="p-5 pt-6">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="h-9 w-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110" style={{ backgroundColor: color + '15' }}>
                               <Icon className="h-4 w-4" style={{ color }}/>
                             </div>
-                            <p className="text-[10px] text-muted-foreground font-medium">{label}</p>
+                            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{label}</p>
                           </div>
-                          <p className="text-2xl font-black">{val}</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>
+                          <p className="text-3xl font-black text-foreground">{val}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1 font-medium">{sub}</p>
                         </CardContent>
                       </Card>
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Posts per week trend */}
-                    <Card className="md:col-span-2 border-border/50">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-bold">Content Volume — Last 6 Weeks</CardTitle>
-                        <CardDescription className="text-xs">Posts created per week across all platforms</CardDescription>
+                    <Card className="lg:col-span-2 border-border/50 shadow-sm">
+                      <CardHeader className="pb-4 border-b border-border/30">
+                        <CardTitle className="text-base font-bold flex items-center gap-2"><BarChart3 className="h-4 w-4 text-[#bc7e57]"/> Content Volume Trend</CardTitle>
+                        <CardDescription className="text-xs">Posts created over the last 6 weeks across all platforms</CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        <ResponsiveContainer width="100%" height={200}>
-                          <AreaChart data={weeklyData} margin={{ top: 4, right: 8, bottom: 0, left: -24 }}>
+                      <CardContent className="pt-6">
+                        <ResponsiveContainer width="100%" height={240}>
+                          <AreaChart data={weeklyData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
                             <defs>
                               <linearGradient id="aGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.35}/>
-                                <stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/>
+                                <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.4}/>
+                                <stop offset="95%" stopColor="#bc7e57" stopOpacity={0.0}/>
                               </linearGradient>
                             </defs>
-                            <XAxis dataKey="week" tick={{ fontSize: 9 }} axisLine={false} tickLine={false}/>
-                            <YAxis tick={{ fontSize: 9 }} allowDecimals={false} axisLine={false} tickLine={false}/>
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                            <Area type="monotone" dataKey="posts" stroke="#bc7e57" strokeWidth={2.5} fill="url(#aGrad)" dot={{ r: 3, fill: '#bc7e57' }}/>
+                            <XAxis dataKey="week" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} dy={10}/>
+                            <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} allowDecimals={false} axisLine={false} tickLine={false}/>
+                            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(188,126,87,0.2)', strokeWidth: 2, strokeDasharray: "4 4" }} />
+                            <Area type="monotone" dataKey="posts" stroke="#bc7e57" strokeWidth={3} fill="url(#aGrad)" activeDot={{ r: 6, fill: '#bc7e57', stroke: '#fff', strokeWidth: 2 }}/>
                           </AreaChart>
                         </ResponsiveContainer>
                       </CardContent>
                     </Card>
 
                     {/* Posts by platform */}
-                    <Card className="border-border/50">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-bold">By Platform</CardTitle>
-                        <CardDescription className="text-xs">Distribution across channels</CardDescription>
+                    <Card className="border-border/50 shadow-sm">
+                      <CardHeader className="pb-4 border-b border-border/30">
+                        <CardTitle className="text-base font-bold flex items-center gap-2"><Layers className="h-4 w-4 text-[#bc7e57]"/> Platform Distribution</CardTitle>
+                        <CardDescription className="text-xs">Content breakdown by channel</CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        <ResponsiveContainer width="100%" height={200}>
-                          <BarChart data={platformCounts} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 8 }}>
-                            <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} allowDecimals={false}/>
-                            <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={60}/>
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                            <Bar dataKey="value" radius={[0,4,4,0]}>
-                              {platformCounts.map((entry, i) => <Cell key={i} fill={entry.color}/>)}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
+                      <CardContent className="pt-6">
+                        <div className="space-y-5">
+                          {platformCounts.sort((a,b) => b.value - a.value).map(p => {
+                            const pct = total > 0 ? Math.round((p.value / total) * 100) : 0;
+                            return (
+                              <div key={p.name} className="space-y-1.5">
+                                <div className="flex justify-between items-center text-xs">
+                                  <span className="font-semibold flex items-center gap-2">
+                                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: p.color }}/> {p.name}
+                                  </span>
+                                  <span className="text-muted-foreground font-medium">{p.value} posts ({pct}%)</span>
+                                </div>
+                                <div className="h-2 w-full bg-muted/50 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${pct}%`, backgroundColor: p.color }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
 
                   {/* Status breakdown */}
-                  <Card className="border-border/50">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-bold">Content Pipeline — Status Breakdown</CardTitle>
+                  <Card className="border-border/50 shadow-sm">
+                    <CardHeader className="pb-4 border-b border-border/30">
+                      <CardTitle className="text-base font-bold flex items-center gap-2"><Activity className="h-4 w-4 text-[#bc7e57]"/> Content Pipeline Pipeline</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-6 flex-wrap">
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {statusCounts.map(s => (
-                          <div key={s.name} className="flex items-center gap-2.5">
-                            <div className="relative h-14 w-14 flex-shrink-0">
-                              <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
-                                <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/30"/>
-                                <circle cx="18" cy="18" r="14" fill="none" stroke={s.color} strokeWidth="4"
-                                  strokeDasharray={`${total > 0 ? (s.value/total)*87.96 : 0} 87.96`}/>
+                          <div key={s.name} className="flex items-center gap-3 bg-muted/10 p-4 rounded-xl border border-border/30">
+                            <div className="relative h-12 w-12 flex-shrink-0">
+                              <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90 drop-shadow-sm">
+                                <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/20"/>
+                                <circle cx="18" cy="18" r="14" fill="none" stroke={s.color} strokeWidth="3" strokeDasharray={`${total > 0 ? (s.value/total)*87.96 : 0} 87.96`} className="transition-all duration-1000"/>
                               </svg>
                               <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-[10px] font-black">{s.value}</span>
+                                <span className="text-xs font-black">{s.value}</span>
                               </div>
                             </div>
                             <div>
-                              <p className="text-xs font-semibold">{s.name}</p>
-                              <p className="text-[10px] text-muted-foreground">{total > 0 ? Math.round((s.value/total)*100) : 0}% of total</p>
+                              <p className="text-xs font-bold">{s.name}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{total > 0 ? Math.round((s.value/total)*100) : 0}% of total</p>
                             </div>
                           </div>
                         ))}
                       </div>
                     </CardContent>
                   </Card>
-                </>
+                </div>
               );
             })()}
           </TabsContent>
@@ -1204,42 +1212,55 @@ const SocialMediaHub = () => {
                 {activityFeed.length === 0 ? (
                   <div className="py-12 text-center text-sm text-muted-foreground">No activity yet. Start creating posts!</div>
                 ) : (
-                  <div className="divide-y divide-border/40">
-                    {activityFeed.map((post: SocialPost) => {
-                      const plt = PLATFORMS.find(p => p.value === post.platform);
-                      const PIcon = plt?.icon || Megaphone;
-                      const initials = (post.created_by || "?").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
-                      return (
-                        <div key={post.id} className="flex items-start gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
-                          <div className="h-8 w-8 rounded-full bg-[#bc7e57]/15 flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ color: "#bc7e57" }}>
-                            {initials}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm">
-                              <span className="font-semibold">{post.created_by || "Team member"}</span>
-                              <span className="text-muted-foreground"> created a </span>
-                              <span className="font-medium">{POST_TYPES[post.post_type]?.label || post.post_type}</span>
-                              <span className="text-muted-foreground"> for </span>
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <PlatformPill platform={post.platform} size="xs"/>
-                              <span className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full font-medium ${(STATUS_CONFIG[post.status] || STATUS_CONFIG.draft).color}`}>
-                                {(STATUS_CONFIG[post.status] || STATUS_CONFIG.draft).label}
-                              </span>
+                  <div className="p-6">
+                    <div className="relative border-l-2 border-border/60 ml-4 space-y-8 pb-4">
+                      {activityFeed.map((post: SocialPost, i) => {
+                        const plt = PLATFORMS.find(p => p.value === post.platform);
+                        const initials = (post.created_by || "?").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
+                        const isLatest = i === 0;
+                        return (
+                          <div key={post.id} className="relative pl-6 sm:pl-8 group">
+                            {/* Timeline node */}
+                            <div className={`absolute -left-[17px] top-1.5 h-8 w-8 rounded-full border-4 border-background flex items-center justify-center text-[10px] font-bold shadow-sm transition-transform group-hover:scale-110 ${isLatest ? "bg-[#bc7e57] text-white ring-2 ring-[#bc7e57]/20" : "bg-muted text-muted-foreground"}`}>
+                              {initials}
                             </div>
-                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{post.content?.slice(0, 80) || "(No caption)"}</p>
-                            {(post.tagged_users || []).length > 0 && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                                <Tag className="h-3 w-3"/> Tagged: {(post.tagged_users || []).join(", ")}
-                              </p>
-                            )}
+                            
+                            <div className="bg-background border border-border/50 rounded-xl p-4 shadow-sm group-hover:shadow-md group-hover:border-border transition-all">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                <p className="text-sm">
+                                  <span className="font-bold text-foreground">{post.created_by || "Team member"}</span>
+                                  <span className="text-muted-foreground"> created a </span>
+                                  <span className="font-semibold text-foreground">{POST_TYPES[post.post_type]?.label || post.post_type}</span>
+                                </p>
+                                <div className="text-[10px] font-medium text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
+                                  {post.created_at ? format(parseISO(post.created_at), "MMM d, h:mm a") : ""}
+                                </div>
+                              </div>
+                              
+                              <div className="flex flex-wrap items-center gap-2 mb-3">
+                                <PlatformPill platform={post.platform} size="sm"/>
+                                <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold ${(STATUS_CONFIG[post.status] || STATUS_CONFIG.draft).color}`}>
+                                  {(STATUS_CONFIG[post.status] || STATUS_CONFIG.draft).label}
+                                </span>
+                              </div>
+                              
+                              <div className="bg-muted/20 border border-border/40 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed">
+                                {post.content || <span className="italic">No caption provided</span>}
+                              </div>
+                              
+                              {(post.tagged_users || []).length > 0 && (
+                                <div className="mt-3 flex items-center gap-1.5">
+                                  <Tag className="h-3 w-3 text-muted-foreground"/>
+                                  <span className="text-[10px] font-medium text-muted-foreground">
+                                    Tagged: <span className="text-foreground">{post.tagged_users?.join(", ")}</span>
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-[10px] text-muted-foreground flex-shrink-0">
-                            {post.created_at ? format(parseISO(post.created_at), "d MMM, HH:mm") : ""}
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </CardContent>
