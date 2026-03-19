@@ -17,14 +17,14 @@ const MediaRenderer = ({ url, className, style, isVideoFormat, format }: { url?:
     const ytMatch = link.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
     if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}`;
     
-    // TikTok
-    const ttMatch = link.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/|embed\/v2\/)(\d+)/) || link.match(/video\/(\d+)/);
-    if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`;
+    // TikTok - more robust matching
+    const ttMatch = link.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/|embed\/v2\/|video\/)(\d+)/) || link.match(/video\/(\d+)/);
+    if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}?autoplay=1&mute=1`;
     
     // TikTok shortened fallback
     if (link.includes("tiktok.com") && !link.includes("video")) {
        const idMatch = link.match(/tiktok\.com\/(\d+)/);
-       if (idMatch) return `https://www.tiktok.com/embed/v2/${idMatch[1]}`;
+       if (idMatch) return `https://www.tiktok.com/embed/v2/${idMatch[1]}?autoplay=1&mute=1`;
     }
 
     // Vimeo
@@ -43,12 +43,17 @@ const MediaRenderer = ({ url, className, style, isVideoFormat, format }: { url?:
           className={classes}
           style={{ border: 0, ...s }}
           allow="autoplay; encrypted-media; picture-in-picture"
+          sandbox="allow-scripts allow-same-origin allow-popups"
           allowFullScreen
         />
       );
     }
 
-    const isVideo = isVideoFormat || u.match(/\.(mp4|mov|webm)$/i) || u.includes("video") || u.includes("reel") || u.includes("short");
+    // Only treat as direct video if it has a video extension or is explicitly marked, 
+    // but EXCLUDE social media domains that should have been handled by getEmbedUrl
+    const isSocialDomain = u.includes("tiktok.com") || u.includes("youtube.com") || u.includes("youtu.be") || u.includes("vimeo.com") || u.includes("facebook.com") || u.includes("instagram.com");
+    const isVideo = !isSocialDomain && (isVideoFormat || u.match(/\.(mp4|mov|webm|ogg)$/i) || u.includes("blob:") || u.includes("data:video"));
+    
     if (isVideo) {
       return <video src={u} className={classes} style={{ objectFit: 'cover', ...s }} autoPlay loop muted playsInline controls />;
     }
