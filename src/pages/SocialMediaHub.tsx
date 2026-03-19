@@ -162,7 +162,7 @@ const UploadZone = ({ onFiles, previews, onClear }: { onFiles: (f: File[]) => vo
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {previews.map((p, i) => (
             <div key={i} className="relative rounded-xl overflow-hidden border border-border aspect-square bg-muted shadow-sm group">
-              {p.match(/\.(mp4|mov|webm)$/i) || p.includes("video") || p.includes("reel") || p.includes("short") ? (
+              {p.match(/\.(mp4|mov|webm|ogg)$/i) || p.startsWith("data:video") ? (
                 <video src={p} className="w-full h-full object-cover" autoPlay loop muted playsInline />
               ) : (
                 <img src={p} alt="" className="w-full h-full object-cover"/>
@@ -191,14 +191,21 @@ const UploadZone = ({ onFiles, previews, onClear }: { onFiles: (f: File[]) => vo
 // ─── Media Renderer ───────────────────────────────────────────────
 const MediaRenderer = ({ urlStr, className = "" }: { urlStr?: string; className?: string }) => {
   if (!urlStr) return null;
-  const urls = urlStr.split(',').filter(Boolean);
+  const urls = urlStr.split(',').map(u => u.trim()).filter(Boolean);
   if (!urls.length) return null;
 
   const getEmbedUrl = (link: string) => {
+    // YouTube
     const ytMatch = link.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
     if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}`;
-    const ttMatch = link.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/)(\d+)/);
-    if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}`;
+    // TikTok
+    const ttMatch = link.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/|embed\/v2\/|video\/)(\d+)/) || link.match(/video\/(\d+)/);
+    if (ttMatch) return `https://www.tiktok.com/embed/${ttMatch[1]}`;
+    if (link.includes('tiktok.com')) {
+      const idMatch = link.match(/tiktok\.com\/(\d+)/);
+      if (idMatch) return `https://www.tiktok.com/embed/${idMatch[1]}`;
+    }
+    // Vimeo
     const vmMatch = link.match(/vimeo\.com\/(\d+)/);
     if (vmMatch) return `https://player.vimeo.com/video/${vmMatch[1]}?autoplay=1&muted=1&loop=1`;
     return null;
@@ -213,11 +220,13 @@ const MediaRenderer = ({ urlStr, className = "" }: { urlStr?: string; className?
           className={classes}
           style={{ border: 0 }}
           allow="autoplay; encrypted-media; picture-in-picture"
+          sandbox="allow-scripts allow-same-origin allow-popups"
           allowFullScreen
         />
       );
     }
-    const isVideo = u.match(/\.(mp4|mov|webm)$/i) || u.includes("video") || u.includes("reel") || u.includes("short");
+    // Smart detection: only direct video file extensions, never URL substrings
+    const isVideo = u.match(/\.(mp4|mov|webm|ogg)$/i) || u.startsWith('blob:') && u.includes('video') || u.startsWith('data:video');
     return isVideo ? (
       <video src={u} className={classes} controls autoPlay loop muted playsInline />
     ) : (
@@ -754,8 +763,9 @@ const SocialMediaHub = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["social_posts"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["social_posts"] });
+      await queryClient.refetchQueries({ queryKey: ["social_posts"] });
       setIsStudioOpen(false);
       setEditingPost(null);
       setForm({ ...emptyPost });
@@ -820,6 +830,7 @@ const SocialMediaHub = () => {
       created_by:    "REDtech Africa",
       created_by_user_id: profile?.id,
       tagged_users:  form.tagged_users,
+      created_at:    editingPost ? undefined : new Date().toISOString(),
       updated_at:    new Date().toISOString(),
     });
   };
