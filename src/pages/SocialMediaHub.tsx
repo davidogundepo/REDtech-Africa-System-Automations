@@ -1128,8 +1128,8 @@ const SocialMediaHub = () => {
                                 <stop offset="95%" stopColor="#bc7e57" stopOpacity={0.0}/>
                               </linearGradient>
                             </defs>
-                            <XAxis dataKey="week" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} dy={10}/>
-                            <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} allowDecimals={false} axisLine={false} tickLine={false}/>
+                            <XAxis dataKey="week" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} dy={10}/>
+                            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} axisLine={false} tickLine={false}/>
                             <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(188,126,87,0.2)', strokeWidth: 2, strokeDasharray: "4 4" }} />
                             <Area type="monotone" dataKey="posts" stroke="#bc7e57" strokeWidth={3} fill="url(#aGrad)" activeDot={{ r: 6, fill: '#bc7e57', stroke: '#fff', strokeWidth: 2 }}/>
                           </AreaChart>
