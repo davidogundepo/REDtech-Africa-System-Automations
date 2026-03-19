@@ -254,7 +254,7 @@ const MediaRenderer = ({ urlStr, className = "" }: { urlStr?: string; className?
   );
 };
 
-// ─── Content Calendar ─────────────────────────────────────────────
+// ─── Content Calendar (Enhanced UI/UX) ────────────────────────────
 const ContentCalendar = ({ posts }: { posts: SocialPost[] }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const days = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) });
@@ -264,40 +264,52 @@ const ContentCalendar = ({ posts }: { posts: SocialPost[] }) => {
     posts.filter(p => p.scheduled_date && isSameDay(parseISO(p.scheduled_date), day));
 
   return (
-    <Card className="border-[#bc7e57]/20">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="h-4 w-4" style={{ color: "#bc7e57" }}/> Content Calendar
+    <Card className="border-[#bc7e57]/20 shadow-sm overflow-hidden">
+      <CardHeader className="bg-muted/30 border-b border-border/50 pb-4 pt-5">
+        <div className="flex items-center justify-between px-2">
+          <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
+            <Calendar className="h-5 w-5" style={{ color: "#bc7e57" }}/> Content Calendar
           </CardTitle>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(m => subMonths(m, 1))}><ChevronLeft className="h-4 w-4"/></Button>
-            <span className="text-sm font-semibold w-28 text-center">{format(currentMonth, "MMMM yyyy")}</span>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(m => addMonths(m, 1))}><ChevronRight className="h-4 w-4"/></Button>
+          <div className="flex items-center gap-1 bg-background border rounded-lg p-1 shadow-sm">
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-muted" onClick={() => setCurrentMonth(m => subMonths(m, 1))}><ChevronLeft className="h-4 w-4"/></Button>
+            <span className="text-sm font-semibold w-32 text-center">{format(currentMonth, "MMMM yyyy")}</span>
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-muted" onClick={() => setCurrentMonth(m => addMonths(m, 1))}><ChevronRight className="h-4 w-4"/></Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-0 pb-4">
-        <div className="grid grid-cols-7 text-center px-4">
+      <CardContent className="p-0">
+        <div className="grid grid-cols-7 border-b border-border/50 bg-muted/10">
           {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-            <div key={d} className="text-[10px] font-semibold text-muted-foreground py-2">{d}</div>
+            <div key={d} className="text-xs font-bold text-muted-foreground text-center py-3 uppercase tracking-wider">{d}</div>
           ))}
-          {Array.from({ length: startOffset }).map((_, i) => <div key={`e${i}`}/>)}
+        </div>
+        <div className="grid grid-cols-7 auto-rows-fr">
+          {Array.from({ length: startOffset }).map((_, i) => (
+            <div key={`empty-${i}`} className="min-h-[100px] border-r border-b border-border/30 bg-muted/5 pointer-events-none" />
+          ))}
           {days.map(day => {
             const dayPosts = getPostsForDay(day);
             const today = isToday(day);
             return (
-              <div key={day.toISOString()} className={`min-h-[68px] border border-border/20 p-1 transition-colors hover:bg-muted/30 ${!isSameMonth(day, currentMonth) ? "opacity-30" : ""}`}>
-                <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium mb-1 ${today ? "bg-[#bc7e57] text-white" : "text-foreground"}`}>
-                  {format(day, "d")}
-                </span>
-                <div className="space-y-0.5">
-                  {dayPosts.slice(0, 3).map(p => {
+              <div 
+                key={day.toISOString()} 
+                className={`min-h-[100px] border-r border-b border-border/30 p-1.5 flex flex-col transition-colors hover:bg-muted/40 cursor-pointer ${!isSameMonth(day, currentMonth) ? "opacity-40 bg-muted/5" : ""} ${today ? "bg-[#bc7e57]/5" : ""}`}
+              >
+                <div className="flex justify-between items-start mb-1.5 px-1">
+                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${today ? "bg-[#bc7e57] text-white shadow-md shadow-[#bc7e57]/20" : "text-foreground"}`}>
+                    {format(day, "d")}
+                  </span>
+                  {dayPosts.length > 0 && (
+                     <span className="text-[9px] font-medium text-muted-foreground mt-1">{dayPosts.length} post{dayPosts.length > 1 ? 's' : ''}</span>
+                  )}
+                </div>
+                <div className="flex-1 space-y-1 overflow-y-auto pr-0.5 custom-scrollbar">
+                  {dayPosts.map(p => {
                     const plt = PLATFORMS.find(x => x.value === p.platform);
                     return (
-                      <div key={p.id} className="flex items-center gap-0.5 rounded px-1 py-0.5 text-white text-[8px] truncate" style={{ backgroundColor: plt?.color || "#bc7e57" }}>
-                        {plt && <plt.icon className="h-2 w-2 flex-shrink-0"/>}
-                        <span className="truncate">{p.content?.slice(0, 15) || "(No caption)"}</span>
+                      <div key={p.id} className="group relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-white border border-white/10 shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md" style={{ backgroundColor: plt?.color || "#bc7e57" }}>
+                        {plt && <plt.icon className="h-2.5 w-2.5 flex-shrink-0 opacity-90"/>}
+                        <span className="text-[9px] font-medium truncate leading-tight tracking-tight drop-shadow-sm">{p.content?.slice(0, 24) || "New Post"}</span>
                       </div>
                     );
                   })}
