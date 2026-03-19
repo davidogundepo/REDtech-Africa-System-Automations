@@ -901,18 +901,7 @@ const SocialMediaHub = () => {
             <p className="text-sm text-muted-foreground">Plan · Create · Schedule · Collaborate</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Platform filter chips */}
-            {PLATFORMS.map(p => (
-              <button
-                key={p.value}
-                onClick={() => setFilterPlatform(curr => curr === p.value ? "all" : p.value)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${filterPlatform === p.value ? "text-white border-transparent" : "border-border text-muted-foreground hover:border-[#bc7e57]/50"}`}
-                style={filterPlatform === p.value ? { backgroundColor: p.color, borderColor: p.color } : {}}
-              >
-                <p.icon className="h-3.5 w-3.5"/>{p.label}
-              </button>
-            ))}
-            <Button onClick={() => openStudio()} className="gap-2 ml-2 text-white" style={{ backgroundColor: "#bc7e57" }}>
+            <Button onClick={() => openStudio()} className="gap-2 text-white shadow-md hover:scale-105 transition-transform" style={{ backgroundColor: "#bc7e57" }}>
               <Plus className="h-4 w-4"/> Create Post
             </Button>
           </div>
@@ -921,27 +910,41 @@ const SocialMediaHub = () => {
 
       <div className="max-w-7xl mx-auto px-6 py-6 w-full space-y-6">
 
-        {/* ── Stat Cards ── */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {/* ── Interactive Stat Cards ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {[
-            { label: "Total Posts", value: total, icon: Layers, color: "#bc7e57" },
-            { label: "Drafts", value: drafts, icon: Edit3, color: "#8b5cf6" },
-            { label: "Scheduled", value: scheduled, icon: Clock, color: "#3b82f6" },
-            { label: "Approved", value: approved, icon: CheckCircle2, color: "#10b981" },
-            { label: "Published", value: published, icon: Activity, color: "#bc7e57" },
-          ].map(({ label, value, icon: Icon, color }) => (
-            <Card key={label} className="border-border/50 hover:shadow-sm transition-all">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color + "22" }}>
-                  <Icon className="h-4 w-4" style={{ color }}/>
-                </div>
-                <div>
-                  <p className="text-xl font-bold">{value}</p>
-                  <p className="text-[10px] text-muted-foreground">{label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+            { id: "all", label: "Total Posts", value: total, icon: Layers, color: "#bc7e57" },
+            { id: "draft", label: "Drafts", value: drafts, icon: Edit3, color: "#8b5cf6" },
+            { id: "scheduled", label: "Scheduled", value: scheduled, icon: Clock, color: "#3b82f6" },
+            { id: "approved", label: "Approved", value: approved, icon: CheckCircle2, color: "#10b981" },
+            { id: "published", label: "Published", value: published, icon: Activity, color: "#bc7e57" },
+          ].map(({ id, label, value, icon: Icon, color }) => {
+            const isActive = filterStatus === id;
+            return (
+              <Card 
+                key={label} 
+                onClick={() => {
+                  setFilterStatus(id);
+                  setActiveTab("posts"); // Ensure we jump to posts view if clicking a stat
+                }}
+                className={`cursor-pointer border-border/50 hover:shadow-md transition-all group overflow-hidden relative ${isActive ? "ring-2 ring-offset-2 bg-muted/20" : ""}`}
+                style={isActive ? { ringColor: color } : {}}
+              >
+                {isActive && <div className="absolute inset-0 opacity-10" style={{ backgroundColor: color }} />}
+                <CardContent className="p-5 flex flex-col gap-3 relative z-10">
+                  <div className="flex justify-between items-start">
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 shadow-sm`} style={{ backgroundColor: color + "15", color }}>
+                      <Icon className="h-5 w-5"/>
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-black tracking-tight text-foreground">{value}</h2>
+                    <p className="text-xs font-semibold text-muted-foreground mt-0.5">{label}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* ── Main Tabs ── */}
