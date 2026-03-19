@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSpreadsheet, FileImage, Link as LinkIcon, ExternalLink, Trash2, Clock, Eye, AlertCircle, Building2, Globe } from "lucide-react";
+import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSpreadsheet, FileImage, Link as LinkIcon, ExternalLink, Trash2, Clock, Eye, AlertCircle, Building2, Globe, X } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useTheme } from "@/components/ThemeProvider";
