@@ -3,28 +3,33 @@
  * Each platform/format has a completely distinct visual identity.
  */
 import React, { useState } from "react";
-import { Heart, MessageCircle, Bookmark, MoreHorizontal, ThumbsUp, Repeat2, Share2, Play, Send, Plus, Search, Youtube, SmartphoneIcon, Monitor, Newspaper, Film, BookImage, LayoutGrid, Video, AlignLeft } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, MoreHorizontal, ThumbsUp, Repeat2, Share2, Play, Send, Plus, Search, Youtube, ChevronLeft, ChevronRight } from "lucide-react";
 import companyLogo from "@/assets/company-logo.png";
 
 // ─── Media Renderer for Images & Video ────────────────────────────
-const MediaRenderer = ({ url, className, style, isVideoFormat, format }: { url?: string | null; className?: string; style?: React.CSSProperties; isVideoFormat?: boolean; format?: "grid" | "single" }) => {
+const MediaRenderer = ({ url, className, style, isVideoFormat, format }: { url?: string | null; className?: string; style?: React.CSSProperties; isVideoFormat?: boolean; format?: "grid" | "single" | "carousel" }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
   if (!url) return null;
   const urls = url.split(',').map(u => u.trim()).filter(Boolean);
   if (urls.length === 0) return null;
+
+  const isDirectVideo = (u: string) => u.match(/\.(mp4|mov|webm|ogg)$/i) || u.includes("blob:") || u.includes("data:video");
+  const isDirectImage = (u: string) => u.match(/\.(jpg|jpeg|png|gif|webp|svg|avif)$/i) || u.includes("data:image");
 
   const getEmbedUrl = (link: string) => {
     // YouTube
     const ytMatch = link.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
     if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}`;
     
-    // TikTok - more robust matching
+    // TikTok
     const ttMatch = link.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/|embed\/v2\/|video\/)(\d+)/) || link.match(/video\/(\d+)/);
-    if (ttMatch) return `https://www.tiktok.com/embed/v2/${ttMatch[1]}?autoplay=1&mute=1`;
+    if (ttMatch) return `https://www.tiktok.com/embed/${ttMatch[1]}?autoplay=1&mute=1`;
     
-    // TikTok shortened fallback
+    // TikTok shortened
     if (link.includes("tiktok.com") && !link.includes("video")) {
        const idMatch = link.match(/tiktok\.com\/(\d+)/);
-       if (idMatch) return `https://www.tiktok.com/embed/v2/${idMatch[1]}?autoplay=1&mute=1`;
+       if (idMatch) return `https://www.tiktok.com/embed/${idMatch[1]}?autoplay=1&mute=1`;
     }
 
     // Vimeo
@@ -44,15 +49,14 @@ const MediaRenderer = ({ url, className, style, isVideoFormat, format }: { url?:
           style={{ border: 0, ...s }}
           allow="autoplay; encrypted-media; picture-in-picture"
           sandbox="allow-scripts allow-same-origin allow-popups"
+          title="Video Preview"
           allowFullScreen
         />
       );
     }
 
-    // Only treat as direct video if it has a video extension or is explicitly marked, 
-    // but EXCLUDE social media domains that should have been handled by getEmbedUrl
-    const isSocialDomain = u.includes("tiktok.com") || u.includes("youtube.com") || u.includes("youtu.be") || u.includes("vimeo.com") || u.includes("facebook.com") || u.includes("instagram.com");
-    const isVideo = !isSocialDomain && (isVideoFormat || u.match(/\.(mp4|mov|webm|ogg)$/i) || u.includes("blob:") || u.includes("data:video"));
+    // Smart detection: Direct video extension wins, otherwise image
+    const isVideo = isDirectVideo(u) || (isVideoFormat && !isDirectImage(u));
     
     if (isVideo) {
       return <video src={u} className={classes} style={{ objectFit: 'cover', ...s }} autoPlay loop muted playsInline controls />;
@@ -60,20 +64,52 @@ const MediaRenderer = ({ url, className, style, isVideoFormat, format }: { url?:
     return <img src={u} alt="" className={classes} style={{ objectFit: 'cover', ...s }} />;
   };
 
-  if (urls.length === 1) {
-    return renderSingle(urls[0], className || "w-full h-full object-cover", style);
+  // Carousel View (Sequential)
+  if (urls.length > 1 && (format === "carousel" || format === "single")) {
+    return (
+      <div className={`relative w-full h-full group ${className || ""}`} style={style}>
+        {renderSingle(urls[currentIndex], "w-full h-full object-cover")}
+        <button 
+          onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => (prev > 0 ? prev - 1 : urls.length - 1)); }}
+          className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+        >
+          <ChevronLeft className="h-5 w-5"/>
+        </button>
+        <button 
+          onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => (prev < urls.length - 1 ? prev + 1 : 0)); }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+        >
+          <ChevronRight className="h-5 w-5"/>
+        </button>
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-20">
+          {urls.map((_, i) => (
+            <div key={i} className={`h-1.5 w-1.5 rounded-full transition-all ${i === currentIndex ? "bg-white w-3" : "bg-white/50"}`}/>
+          ))}
+        </div>
+      </div>
+    );
   }
 
-  const gridClasses = "grid-cols-2";
-  return (
-    <div className={`grid ${gridClasses} gap-0.5 w-full h-full overflow-hidden ${className || ""}`} style={style}>
-      {urls.slice(0, 4).map((u, i) => (
-        <div key={i} className="relative w-full h-full" style={{ minHeight: urls.length > 2 && i === 0 ? "100%" : "auto", gridRow: urls.length === 3 && i === 0 ? "span 2" : "auto" }}>
-          {renderSingle(u, "absolute inset-0 w-full h-full object-cover")}
-        </div>
-      ))}
-    </div>
-  );
+  // Grid View (default for multi-image posts)
+  if (urls.length > 1) {
+    const gridClasses = urls.length === 2 ? "grid-cols-2" : "grid-cols-2 grid-rows-2";
+    return (
+      <div className={`grid ${gridClasses} gap-0.5 w-full h-full overflow-hidden ${className || ""}`} style={style}>
+        {urls.slice(0, 4).map((u, i) => (
+          <div key={i} className="relative w-full h-full">
+            {renderSingle(u, "absolute inset-0 w-full h-full object-cover")}
+            {i === 3 && urls.length > 4 && (
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white font-bold text-lg pointer-events-none">
+                +{urls.length - 3}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return renderSingle(urls[0], className || "w-full h-full object-cover", style);
 };
 
 // ─── Company Avatar ───────────────────────────────────────────────
@@ -130,7 +166,7 @@ const BrowserFrame = ({ children, brandColor = "#0077B5" }: { children: React.Re
   </div>
 );
 
-// ─── Instagram Reel (9:16 phone) ──────────────────────────────────
+// ─── Instagram Reel ──────────────────────────────────
 const IGReelPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => {
   const [playing, setPlaying] = useState(false);
   return (
@@ -177,12 +213,12 @@ const IGReelPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => {
   );
 };
 
-// ─── Instagram Story (9:16 phone) ─────────────────────────────────
+// ─── Instagram Story ─────────────────────────────────
 const IGStoryPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => (
   <PhoneFrame bg="#000">
     <div className="absolute inset-0">
       {imageUrl
-        ? <MediaRenderer url={imageUrl} className="w-full h-full object-cover" isVideoFormat/>
+        ? <MediaRenderer url={imageUrl} className="w-full h-full object-cover" isVideoFormat format="carousel" />
         : <div className="w-full h-full" style={{ background: "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)" }}/>
       }
       <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.5) 100%)" }}/>
@@ -204,9 +240,10 @@ const IGStoryPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => 
   </PhoneFrame>
 );
 
-// ─── Instagram Post (feed card) ───────────────────────────────────
+// ─── Instagram Post ───────────────────────────────────
 const IGPostPreview = ({ caption, imageUrl, authorName, postType }: PostPreviewProps) => {
   const isPortrait = postType === "portrait";
+  const isCarousel = postType === "carousel";
   return (
     <div className="mx-auto bg-white dark:bg-zinc-900 shadow-2xl" style={{ width: 320, borderRadius: 0 }}>
       <div className="px-3 py-2 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800">
@@ -220,7 +257,7 @@ const IGPostPreview = ({ caption, imageUrl, authorName, postType }: PostPreviewP
         <MoreHorizontal className="h-4 w-4 text-zinc-400"/>
       </div>
       <div style={{ height: isPortrait ? 380 : 320, background: imageUrl ? undefined : "linear-gradient(135deg,#fce3ec,#ffd6e7)" }}>
-        <MediaRenderer url={imageUrl} className="w-full h-full object-cover"/>
+        <MediaRenderer url={imageUrl} className="w-full h-full object-cover" format={isCarousel ? "carousel" : "grid"} />
       </div>
       <div className="px-3 pt-2">
         <div className="flex items-center gap-4 mb-1.5">
@@ -251,7 +288,7 @@ const LinkedInPostPreview = ({ caption, imageUrl, authorName }: PostPreviewProps
         <div className="px-3 pb-2 text-xs leading-relaxed whitespace-pre-wrap">{caption}</div>
         {imageUrl && <MediaRenderer url={imageUrl} className="w-full" style={{ maxHeight: 300, objectFit: "cover" }}/>}
         <div className="px-3 py-1.5 flex justify-between text-[9px] text-zinc-400 border-t border-zinc-100 dark:border-zinc-700">
-          <span>👍 ❤️ 523</span><span>61 comments · 88 reposts</span>
+          <span>👍 ❤️ 255</span><span>61 comments · 88 reposts</span>
         </div>
         <div className="px-2 py-1 grid grid-cols-4 border-t border-zinc-100 dark:border-zinc-700">
           {[{icon:ThumbsUp,l:"Like"},{icon:MessageCircle,l:"Comment"},{icon:Repeat2,l:"Repost"},{icon:Send,l:"Send"}].map(({icon:Icon,l})=>(
@@ -275,12 +312,8 @@ const LinkedInCarouselPreview = ({ caption, imageUrl, authorName }: PostPreviewP
           <div><p className="text-xs font-semibold">REDtech Africa</p><p className="text-[9px] text-zinc-400">Just now · 🌐</p></div>
         </div>
         <p className="px-3 text-xs text-zinc-600 dark:text-zinc-300 pb-2 leading-relaxed">{caption?.slice(0,100)}</p>
-        <div className="relative h-48 bg-zinc-100">
-          {imageUrl ? <MediaRenderer url={imageUrl} className="w-full h-full object-cover"/> : null}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/5"><p className="text-sm font-bold opacity-30">Slide 1 of 5</p></div>
-          <div className="absolute bottom-2 flex gap-1 left-1/2 -translate-x-1/2">
-            {[1,2,3,4,5].map(i=><div key={i} className={`h-1.5 rounded-full ${i===1?"w-4 bg-[#0077B5]":"w-1.5 bg-[#0077B5]/30"}`}/>)}
-          </div>
+        <div className="relative" style={{ height: 240 }}>
+          {imageUrl ? <MediaRenderer url={imageUrl} className="w-full h-full object-cover" format="carousel" /> : <div className="w-full h-full bg-zinc-100"/>}
         </div>
       </div>
     </div>
@@ -293,7 +326,7 @@ const XPostPreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => (
     <div className="px-4 py-3 flex gap-3">
       <CompanyAvatar className="h-10 w-10 flex-shrink-0"/>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 mb-1">
+        <div className="flex items-center gap-1.5 mb-0.5">
           <span className="text-white text-sm font-bold">REDtech Africa</span>
           <span className="text-zinc-500 text-xs">{handle("x")}</span>
         </div>
@@ -347,7 +380,7 @@ const YouTubePreview = ({ caption, imageUrl, authorName }: PostPreviewProps) => 
         <div className="p-3 flex gap-3">
           <CompanyAvatar className="h-9 w-9 flex-shrink-0"/>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-semibold leading-tight line-clamp-2">{caption || "Video Title Appears Here"}</p>
+            <p className="text-white text-sm font-semibold leading-tight line-clamp-2">{caption || "Video Title"}</p>
             <p className="text-zinc-400 text-xs mt-1">REDtech Africa · Just now</p>
           </div>
         </div>
