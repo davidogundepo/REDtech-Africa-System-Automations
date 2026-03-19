@@ -158,18 +158,26 @@ const BrowserFrame = ({ children, brandColor = "#0077B5" }: { children: React.Re
 
 // ─── Video play overlay (reusable) ───
 const PlayOverlay = ({ playing, onToggle, accent = "bg-white/30" }: { playing: boolean; onToggle: () => void; accent?: string }) => (
-  !playing ? (
-    <div className="absolute inset-0 flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors cursor-pointer z-10" onClick={onToggle}>
-      <div className={`h-14 w-14 rounded-full ${accent} flex items-center justify-center backdrop-blur-md shadow-2xl`}>
-        <Play className="h-7 w-7 text-white fill-white ml-0.5" />
+  <div className="absolute inset-0 cursor-pointer z-10" onClick={onToggle}>
+    {!playing ? (
+      <div className="absolute inset-0 flex items-center justify-center bg-black/10 hover:bg-black/20 transition-colors">
+        <div className={`h-14 w-14 rounded-full ${accent} flex items-center justify-center backdrop-blur-md shadow-2xl`}>
+          <Play className="h-7 w-7 text-white fill-white ml-0.5" />
+        </div>
       </div>
-    </div>
-  ) : (
-    <div className="absolute top-3 right-3 z-20 flex gap-1.5">
-      <button onClick={onToggle} className="h-8 w-8 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm"><Pause className="h-4 w-4 text-white fill-white" /></button>
-      <div className="h-8 w-8 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm"><Maximize2 className="h-3.5 w-3.5 text-white" /></div>
-    </div>
-  )
+    ) : (
+      <div className="absolute inset-0 group/play">
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/play:opacity-100 transition-opacity bg-black/10">
+          <div className={`h-14 w-14 rounded-full bg-black/40 flex items-center justify-center backdrop-blur-md shadow-2xl`}>
+            <Pause className="h-7 w-7 text-white fill-white" />
+          </div>
+        </div>
+        <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover/play:opacity-100 transition-opacity">
+          <div className="h-8 w-8 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm"><Maximize2 className="h-3.5 w-3.5 text-white" /></div>
+        </div>
+      </div>
+    )}
+  </div>
 );
 
 /* ╔════════════════════════════════════════════════════════════════╗
