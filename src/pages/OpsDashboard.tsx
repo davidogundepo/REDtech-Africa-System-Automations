@@ -112,7 +112,8 @@ const OperationsDashboard = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ops_metrics'] });
       toast.success("Metric record deleted");
-    }
+    },
+    onError: (error: any) => toast.error("Failed to delete metric: " + error.message)
   });
 
   const handleCreate = (e: React.FormEvent) => {

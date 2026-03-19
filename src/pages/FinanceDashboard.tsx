@@ -215,7 +215,8 @@ const FinanceDashboard = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       toast.success("Transaction deleted");
-    }
+    },
+    onError: (error: any) => toast.error("Failed to delete transaction: " + error.message)
   });
 
   const restoreTxMutation = useMutation({
@@ -226,7 +227,8 @@ const FinanceDashboard = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       toast.success("Transaction restored");
-    }
+    },
+    onError: (error: any) => toast.error("Failed to restore transaction: " + error.message)
   });
 
   // Mutations: Payment Requests
