@@ -47,19 +47,19 @@ interface SocialPost {
 
 // ─── Constants ────────────────────────────────────────────────────
 const PLATFORMS = [
-  { value: "instagram", label: "Instagram", icon: Instagram,  color: "#E1306C" },
-  { value: "linkedin",  label: "LinkedIn",  icon: Linkedin,   color: "#0077B5" },
-  { value: "x",         label: "X",          icon: XIcon,      color: "#000000" },
-  { value: "facebook",  label: "Facebook",  icon: Facebook,   color: "#1877F2" },
-  { value: "youtube",   label: "YouTube",   icon: Youtube,    color: "#FF0000" },
-  { value: "tiktok",    label: "TikTok",    icon: TikTokIcon, color: "#010101" },
+  { value: "instagram", label: "Instagram", icon: Instagram,  color: "#E1306C", handle: "@REDtechAfrica" },
+  { value: "linkedin",  label: "LinkedIn",  icon: Linkedin,   color: "#0077B5", handle: "REDtech Africa" },
+  { value: "x",         label: "X",          icon: XIcon,      color: "#000000", handle: "@REDtech_Africa" },
+  { value: "facebook",  label: "Facebook",  icon: Facebook,   color: "#1877F2", handle: "REDtech Africa" },
+  { value: "youtube",   label: "YouTube",   icon: Youtube,    color: "#FF0000", handle: "REDtech Africa" },
+  { value: "tiktok",    label: "TikTok",    icon: TikTokIcon, color: "#010101", handle: "@redtechafrica" },
 ];
 
 const POST_TYPES: Record<string, { label: string; icon: React.ReactNode; platforms: string[]; dimensions: string; res: string; orientation: string }> = {
   post:      { label: "Post",     icon: <Newspaper className="h-3.5 w-3.5"/>,    platforms: ["instagram","linkedin","facebook","x"],              dimensions: "1080 × 1080", res: "1:1 Square",          orientation: "square"   },
   portrait:  { label: "Portrait", icon: <SmartphoneIcon className="h-3.5 w-3.5"/>, platforms: ["instagram","facebook"],                          dimensions: "1080 × 1350", res: "4:5 Portrait",        orientation: "portrait" },
-  landscape: { label: "Landscape",icon: <Monitor className="h-3.5 w-3.5"/>,       platforms: ["x","facebook"],                        dimensions: "1200 × 675",  res: "16:9 Landscape",     orientation: "landscape"},
-  reel:      { label: "Reel",     icon: <Film className="h-3.5 w-3.5"/>,          platforms: ["instagram","tiktok"],                             dimensions: "1080 × 1920", res: "9:16 Vertical",      orientation: "story"    },
+  landscape: { label: "Landscape",icon: <Monitor className="h-3.5 w-3.5"/>,       platforms: ["x","facebook","linkedin"],                        dimensions: "1200 × 630",  res: "1.91:1 Landscape",   orientation: "landscape"},
+  reel:      { label: "Reel",     icon: <Film className="h-3.5 w-3.5"/>,          platforms: ["instagram","tiktok","facebook"],                  dimensions: "1080 × 1920", res: "9:16 Vertical",      orientation: "story"    },
   short:     { label: "Short",    icon: <SmartphoneIcon className="h-3.5 w-3.5"/>, platforms: ["youtube"],                                       dimensions: "1080 × 1920", res: "9:16 Vertical",      orientation: "story"    },
   story:     { label: "Story",    icon: <BookImage className="h-3.5 w-3.5"/>,     platforms: ["instagram","facebook"],                          dimensions: "1080 × 1920", res: "9:16 Full Screen",   orientation: "story"    },
   carousel:  { label: "Carousel", icon: <LayoutGrid className="h-3.5 w-3.5"/>,   platforms: ["instagram","linkedin","facebook"],                dimensions: "1080 × 1080", res: "1:1 Swipeable",      orientation: "square"   },
@@ -926,8 +926,37 @@ const SocialMediaHub = () => {
           </TabsList>
 
           {/* ── POSTS TAB ── */}
-          <TabsContent value="posts" className="space-y-4">
-            {/* Filters */}
+          <TabsContent value="posts" className="space-y-5">
+            {/* Quick Platform Filters */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+              <Button 
+                variant={filterPlatform === "all" ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => setFilterPlatform("all")}
+                className={`h-9 px-4 rounded-full text-xs font-semibold shrink-0 transition-all ${filterPlatform === "all" ? "bg-[#bc7e57] hover:bg-[#bc7e57]/90 shadow-md translate-y-[-1px]" : "border-border/60 hover:border-[#bc7e57]/40"}`}
+              >
+                All Platforms
+              </Button>
+              {PLATFORMS.map(p => {
+                const Icon = p.icon;
+                const active = filterPlatform === p.value;
+                return (
+                  <Button
+                    key={p.value}
+                    variant={active ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilterPlatform(p.value)}
+                    className={`h-9 px-4 rounded-full text-xs font-semibold shrink-0 gap-2 transition-all ${active ? "shadow-md translate-y-[-1px]" : "border-border/60 hover:border-[#bc7e57]/40"}`}
+                    style={active ? { backgroundColor: p.color, border: "none" } : {}}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {p.label}
+                  </Button>
+                );
+              })}
+            </div>
+
+            {/* Sub-Filters */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="relative flex-1 min-w-[200px] max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"/>
