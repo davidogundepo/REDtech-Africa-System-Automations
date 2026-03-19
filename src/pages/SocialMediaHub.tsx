@@ -18,7 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Linkedin, Twitter, Instagram, Facebook, Youtube,
   Plus, Clock, CheckCircle2, Trash2, Upload, Calendar,
-  Film, LayoutGrid, BookImage, Newspaper, Video,
+  Film, LayoutGrid, BookImage, Newspaper, Video, Play,
   ChevronLeft, ChevronRight, Eye, Edit3, Tag, Users, Activity,
   Layers, SmartphoneIcon, Monitor, Megaphone, User, AlignLeft,
   X, Check, AlertCircle, RefreshCw, Search, TrendingUp, BarChart3, PieChart
@@ -348,10 +348,17 @@ const PostCard = ({ post, onPreview, onEdit, onDelete, onStatusChange, isAdmin }
               {post.content || <span className="text-muted-foreground italic">No caption</span>}
             </p>
 
-            {/* Thumbnail if image */}
+            {/* Thumbnail if image/video */}
             {post.image_url && (
-              <div className="rounded-lg overflow-hidden mb-2 border border-border/30" style={{ height: 120, width: "100%" }}>
+              <div className="relative rounded-lg overflow-hidden mb-2 border border-border/30" style={{ height: 120, width: "100%" }}>
                 <MediaRenderer urlStr={post.image_url} className="w-full h-full" />
+                {(post.post_type === "reel" || post.post_type === "short" || post.post_type === "video" || post.platform === "tiktok" || post.platform === "youtube" || post.image_url.match(/\.(mp4|mov|webm)$/i) || post.image_url.includes("tiktok.com") || post.image_url.includes("youtube.com") || post.image_url.includes("youtu.be")) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                    <div className="h-10 w-10 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
+                      <Play className="h-5 w-5 text-white fill-white ml-0.5" />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -893,11 +900,9 @@ const SocialMediaHub = () => {
                 <p.icon className="h-3.5 w-3.5"/>{p.label}
               </button>
             ))}
-            {canEdit && (
-              <Button onClick={() => openStudio()} className="gap-2 ml-2 text-white" style={{ backgroundColor: "#bc7e57" }}>
-                <Plus className="h-4 w-4"/> Create Post
-              </Button>
-            )}
+            <Button onClick={() => openStudio()} className="gap-2 ml-2 text-white" style={{ backgroundColor: "#bc7e57" }}>
+              <Plus className="h-4 w-4"/> Create Post
+            </Button>
           </div>
         </div>
       </div>
@@ -1548,6 +1553,15 @@ const SocialMediaHub = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* ── Floating Create Post Button ── */}
+      <button
+        onClick={() => openStudio()}
+        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 transition-transform"
+        style={{ backgroundColor: "#bc7e57" }}
+        title="Create Post"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
     </div>
   );
 };
