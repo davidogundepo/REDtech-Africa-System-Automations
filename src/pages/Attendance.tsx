@@ -48,6 +48,50 @@ const Attendance = () => {
   const [digestPreviewOpen, setDigestPreviewOpen] = useState(false);
   const [miaSelectAll, setMiaSelectAll] = useState(true);
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
+  const [cumulativePreviewOpen, setCumulativePreviewOpen] = useState(false);
+  const [cumulativePreviewType, setCumulativePreviewType] = useState<"week" | "month">("week");
+
+  const generateCumulativeHtml = (type: "week" | "month") => {
+    if (!profile) return "";
+    const isWeek = type === "week";
+    const summary = isWeek ? generateWeeklySummary() : generateMonthlySummary();
+    if (summary.length === 0) return "";
+
+    const label = isWeek ? "Weekly Executive Report" : "Monthly Executive Report";
+    const subLabel = isWeek ? "weekly summary" : `monthly summary for ${format(new Date(selectedDate), "MMMM yyyy")}`;
+    
+    let htmlRows = summary.map((s: any) => `
+      <tr>
+        <td style="padding:10px; border-bottom:1px solid #eee; font-weight:600;">${s.full_name}</td>
+        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center;">${s.totalDays}</td>
+        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center; color:#16a34a;">${s.daysPresent}</td>
+        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center; color:#ea580c;">${s.daysLate}</td>
+      </tr>
+    `).join("");
+
+    return brandedEmailTemplate({
+      recipientName: profile.full_name,
+      heading: label,
+      body: `
+        <p>Here is your automated aggregated ${subLabel} of the company's attendance metrics.</p>
+        <table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;">
+          <thead>
+            <tr style="background-color:#f8f6f3; color:#bc7e57; text-align:left;">
+              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57;">Staff Member</th>
+              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">Days Logged</th>
+              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">On Time</th>
+              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">Late</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${htmlRows}
+          </tbody>
+        </table>
+      `,
+      ctaText: "View Full System Ledger",
+      ctaUrl: "https://ractools.vercel.app/attendance"
+    });
+  };
 
   const isFriday = new Date().getDay() === 5;
 
@@ -879,12 +923,12 @@ const Attendance = () => {
                                 </ScrollArea>
                                 <Button
                                   variant="outline"
-                                  onClick={() => sendWeeklyReportMutation.mutate()}
-                                  disabled={sendWeeklyReportMutation.isPending || generateWeeklySummary().length === 0}
+                                  onClick={() => { setCumulativePreviewType("week"); setCumulativePreviewOpen(true); }}
+                                  disabled={generateWeeklySummary().length === 0}
                                   className="w-full gap-2.5 h-12 text-sm font-semibold border-[#bc7e57]/30 text-[#bc7e57] hover:bg-[#bc7e57]/10 dark:border-[#bc7e57]/40 dark:text-[#d4a574] dark:hover:bg-[#bc7e57]/20 transition-all duration-300"
                                 >
-                                  <Mail className="h-4 w-4" /> 
-                                  {sendWeeklyReportMutation.isPending ? "Sending..." : "Email Executive Weekly Report"}
+                                  <Eye className="h-4 w-4" /> 
+                                  Preview Executive Weekly Report
                                 </Button>
                               </TabsContent>
                               
@@ -908,12 +952,12 @@ const Attendance = () => {
                                 </ScrollArea>
                                 <Button
                                   variant="outline"
-                                  onClick={() => sendMonthlyReportMutation.mutate()}
-                                  disabled={sendMonthlyReportMutation.isPending || generateMonthlySummary().length === 0}
+                                  onClick={() => { setCumulativePreviewType("month"); setCumulativePreviewOpen(true); }}
+                                  disabled={generateMonthlySummary().length === 0}
                                   className="w-full gap-2.5 h-12 text-sm font-semibold border-[#bc7e57]/30 text-[#bc7e57] hover:bg-[#bc7e57]/10 dark:border-[#bc7e57]/40 dark:text-[#d4a574] dark:hover:bg-[#bc7e57]/20 transition-all duration-300"
                                 >
-                                  <Mail className="h-4 w-4" /> 
-                                  {sendMonthlyReportMutation.isPending ? "Sending..." : "Email Executive Monthly Report"}
+                                  <Eye className="h-4 w-4" /> 
+                                  Preview Executive Monthly Report
                                 </Button>
                               </TabsContent>
                             </Tabs>
@@ -925,6 +969,43 @@ const Attendance = () => {
                   </ScrollArea>
                 </SheetContent>
               </Sheet>
+            )}
+
+            {/* ═══════ CUMULATIVE REPORT PREVIEW MODAL ═══════ */}
+            {isSuperAdmin && (
+              <Dialog open={cumulativePreviewOpen} onOpenChange={setCumulativePreviewOpen}>
+                <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden bg-white/50 backdrop-blur-md">
+                  <div className="px-8 py-5 border-b border-border/50 bg-[#bc7e57]/5 shrink-0 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                    <div>
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-3 text-xl">
+                          <div className="h-9 w-9 rounded-lg bg-[#bc7e57]/15 flex items-center justify-center">
+                            <TrendingUp className="h-5 w-5 text-[#bc7e57]" />
+                          </div>
+                          Executive {cumulativePreviewType === 'week' ? 'Weekly' : 'Monthly'} Report Preview
+                        </DialogTitle>
+                      </DialogHeader>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Review the generated email layout and aggregated data below before delivering it to your inbox.
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={() => {
+                        cumulativePreviewType === "week" ? sendWeeklyReportMutation.mutate() : sendMonthlyReportMutation.mutate();
+                      }}
+                      disabled={sendWeeklyReportMutation.isPending || sendMonthlyReportMutation.isPending}
+                      className="bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-lg gap-2 h-11 px-6 shrink-0"
+                    >
+                      <Send className="h-4 w-4" />
+                      {sendWeeklyReportMutation.isPending || sendMonthlyReportMutation.isPending ? "Delivering..." : "Deliver to Inbox"}
+                    </Button>
+                  </div>
+                  
+                  <ScrollArea className="flex-1 p-6 sm:p-10 bg-muted/20">
+                    <div className="mx-auto max-w-2xl bg-white border border-border/40 rounded-xl shadow-sm overflow-hidden p-8" dangerouslySetInnerHTML={{ __html: generateCumulativeHtml(cumulativePreviewType) }} />
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
             )}
 
             {/* ═══════ DIGEST PREVIEW MODAL — SPLIT PANEL ═══════ */}
