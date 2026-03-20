@@ -650,10 +650,10 @@ const Attendance = () => {
 
                       {/* ═══════ WEEKLY DIGEST SECTION ═══════ */}
                       <div className="rounded-2xl border border-border/60 overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow duration-300">
-                        <div className="bg-indigo-500/5 dark:bg-indigo-500/8 px-6 py-5 border-b border-border/40 flex items-center justify-between">
+                        <div className="bg-[#bc7e57]/5 dark:bg-[#bc7e57]/10 px-6 py-5 border-b border-border/40 flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <div className="h-11 w-11 rounded-xl bg-indigo-500/15 flex items-center justify-center transition-transform duration-300 hover:scale-105">
-                              <Star className="h-5 w-5 text-indigo-500" />
+                            <div className="h-11 w-11 rounded-xl bg-[#bc7e57]/15 flex items-center justify-center transition-transform duration-300 hover:scale-105">
+                              <Star className="h-5 w-5 text-[#bc7e57]" />
                             </div>
                             <div>
                               <h4 className="font-bold text-foreground">Weekly Performance Digest</h4>
@@ -661,7 +661,7 @@ const Attendance = () => {
                             </div>
                           </div>
                           {isFriday && !digestSentToday && totalMembers > 0 && (
-                            <Badge variant="secondary" className="bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/30 text-xs font-semibold px-3">
+                            <Badge variant="secondary" className="bg-[#bc7e57]/10 text-[#bc7e57] dark:bg-[#bc7e57]/20 dark:text-[#d4a574] border border-[#bc7e57]/20 dark:border-[#bc7e57]/30 text-xs font-semibold px-3">
                               {totalMembers} queued
                             </Badge>
                           )}
@@ -691,7 +691,7 @@ const Attendance = () => {
                               <Button
                                 variant="outline"
                                 onClick={() => { setPreviewUserId((allProfiles || [])[0]?.id || null); setDigestPreviewOpen(true); }}
-                                className="w-full gap-2.5 h-12 text-sm font-semibold border-indigo-200 text-indigo-600 hover:bg-indigo-50/80 dark:border-indigo-800/40 dark:text-indigo-400 dark:hover:bg-indigo-900/15 transition-all duration-300 hover:shadow-md"
+                                className="w-full gap-2.5 h-12 text-sm font-semibold border-[#bc7e57]/30 text-[#bc7e57] hover:bg-[#bc7e57]/10 dark:border-[#bc7e57]/40 dark:text-[#d4a574] dark:hover:bg-[#bc7e57]/20 transition-all duration-300 hover:shadow-md"
                               >
                                 <Eye className="h-4 w-4" /> Preview & Review Digest ({totalMembers} users)
                               </Button>
@@ -711,11 +711,11 @@ const Attendance = () => {
               <Dialog open={digestPreviewOpen} onOpenChange={setDigestPreviewOpen}>
                 <DialogContent className="max-w-5xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
                   {/* Modal Header */}
-                  <div className="px-8 py-5 border-b border-border/50 bg-gradient-to-r from-indigo-500/5 via-background to-background shrink-0">
+                  <div className="px-8 py-5 border-b border-border/50 bg-gradient-to-r from-[#bc7e57]/5 via-background to-background shrink-0">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-3 text-xl">
-                        <div className="h-9 w-9 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-                          <Star className="h-5 w-5 text-indigo-500" />
+                        <div className="h-9 w-9 rounded-lg bg-[#bc7e57]/15 flex items-center justify-center">
+                          <Star className="h-5 w-5 text-[#bc7e57]" />
                         </div>
                         Weekly Digest Preview
                       </DialogTitle>
@@ -743,7 +743,7 @@ const Attendance = () => {
                                 onClick={() => setPreviewUserId(user.id)}
                                 className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all duration-200 ${
                                   isActive
-                                    ? 'bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/40 shadow-sm'
+                                    ? 'bg-[#bc7e57]/5 dark:bg-[#bc7e57]/10 border border-[#bc7e57]/30 dark:border-[#bc7e57]/40 shadow-sm'
                                     : 'hover:bg-muted/40 border border-transparent'
                                 }`}
                               >
@@ -841,7 +841,7 @@ const Attendance = () => {
                       <Button
                         onClick={() => sendDigestMutation.mutate()}
                         disabled={sendDigestMutation.isPending}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 px-8 h-11 shadow-lg hover:shadow-xl transition-all duration-300"
+                        className="bg-[#bc7e57] hover:bg-[#a56d49] text-white gap-2 px-8 h-11 shadow-lg hover:shadow-xl transition-all duration-300"
                       >
                         <Send className="h-4 w-4" />
                         {sendDigestMutation.isPending ? "Dispatching..." : `Send All Digests (${totalMembers})`}
