@@ -538,14 +538,8 @@ const DocumentRepository = () => {
             
             {/* Content - flex-1 fills all remaining vertical space */}
             <div className="flex-1 min-h-0 bg-black/5 dark:bg-black/20 relative overflow-hidden">
-              {previewDoc.type === 'pdf' ? (
-                <iframe 
-                  src={previewDoc.url} 
-                  className="absolute inset-0 w-full h-full" 
-                  style={{ border: 'none' }} 
-                  title={previewDoc.name} 
-                />
-              ) : previewDoc.type === 'image' || /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(previewDoc.url || '') ? (
+              {/* Images — render natively */}
+              {previewDoc.type === 'image' || /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(previewDoc.url || '') ? (
                 <div className="absolute inset-0 flex items-center justify-center p-8">
                   <img 
                     src={previewDoc.url} 
@@ -559,25 +553,21 @@ const DocumentRepository = () => {
                   />
                 </div>
               ) : previewDoc.type === 'link' ? (
+                /* External links — try iframe embed */
                 <iframe 
                   src={previewDoc.url} 
                   className="absolute inset-0 w-full h-full" 
                   style={{ border: 'none' }} 
                   title={previewDoc.name} 
                 />
-              ) : previewDoc.type === 'csv' || previewDoc.type === 'excel' ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center">
-                  <div className="h-24 w-24 rounded-2xl bg-muted border border-border flex items-center justify-center mb-6">
-                     <TypeIcon type={previewDoc.type} className="h-12 w-12 opacity-40" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">Spreadsheet File</h3>
-                  <p className="text-muted-foreground max-w-sm mx-auto mb-6 text-sm">
-                     CSV and Excel files cannot be previewed inline. Click below to download.
-                  </p>
-                  <Button onClick={() => window.open(previewDoc.url, '_blank')} className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white px-6">
-                    <ExternalLink className="h-4 w-4 mr-2" /> Download File
-                  </Button>
-                </div>
+              ) : previewDoc.type === 'pdf' || previewDoc.type === 'word' || previewDoc.type === 'docx' || previewDoc.type === 'excel' || previewDoc.type === 'csv' || /\.(pdf|docx?|xlsx?|csv|pptx?)$/i.test(previewDoc.url || '') ? (
+                /* PDF, Word, Excel, CSV — use Google Docs Viewer for reliable inline rendering */
+                <iframe 
+                  src={`https://docs.google.com/gview?url=${encodeURIComponent(previewDoc.url)}&embedded=true`}
+                  className="absolute inset-0 w-full h-full" 
+                  style={{ border: 'none' }} 
+                  title={previewDoc.name} 
+                />
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center">
                   <div className="h-24 w-24 rounded-2xl bg-muted border border-border flex items-center justify-center mb-6">
