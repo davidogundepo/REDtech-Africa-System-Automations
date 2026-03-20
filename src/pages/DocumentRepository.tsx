@@ -326,7 +326,7 @@ const DocumentRepository = () => {
             />
           </div>
 
-          {canEdit && (
+          {profile && (
             <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white shadow-lg hover:shadow-xl transition-all h-11 px-6 rounded-full group w-full sm:w-auto">
