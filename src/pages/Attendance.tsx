@@ -51,47 +51,6 @@ const Attendance = () => {
   const [cumulativePreviewOpen, setCumulativePreviewOpen] = useState(false);
   const [cumulativePreviewType, setCumulativePreviewType] = useState<"week" | "month">("week");
 
-  const generateCumulativeHtml = (type: "week" | "month") => {
-    if (!profile) return "";
-    const isWeek = type === "week";
-    const summary = isWeek ? generateWeeklySummary() : generateMonthlySummary();
-    if (summary.length === 0) return "";
-
-    const label = isWeek ? "Weekly Executive Report" : "Monthly Executive Report";
-    const subLabel = isWeek ? "weekly summary" : `monthly summary for ${format(new Date(selectedDate), "MMMM yyyy")}`;
-    
-    let htmlRows = summary.map((s: any) => `
-      <tr>
-        <td style="padding:10px; border-bottom:1px solid #eee; font-weight:600;">${s.full_name}</td>
-        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center;">${s.totalDays}</td>
-        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center; color:#16a34a;">${s.daysPresent}</td>
-        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center; color:#ea580c;">${s.daysLate}</td>
-      </tr>
-    `).join("");
-
-    return brandedEmailTemplate({
-      recipientName: profile.full_name,
-      heading: label,
-      body: `
-        <p>Here is your automated aggregated ${subLabel} of the company's attendance metrics.</p>
-        <table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;">
-          <thead>
-            <tr style="background-color:#f8f6f3; color:#bc7e57; text-align:left;">
-              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57;">Staff Member</th>
-              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">Days Logged</th>
-              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">On Time</th>
-              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">Late</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${htmlRows}
-          </tbody>
-        </table>
-      `,
-      ctaText: "View Full System Ledger",
-      ctaUrl: "https://ractools.vercel.app/attendance"
-    });
-  };
 
   const isFriday = new Date().getDay() === 5;
 
@@ -263,6 +222,48 @@ const Attendance = () => {
         totalDays
       };
     }).sort((a: any, b: any) => b.totalDays - a.totalDays);
+  };
+
+  const generateCumulativeHtml = (type: "week" | "month") => {
+    if (!profile) return "";
+    const isWeek = type === "week";
+    const summary = isWeek ? generateWeeklySummary() : generateMonthlySummary();
+    if (summary.length === 0) return "";
+
+    const label = isWeek ? "Weekly Executive Report" : "Monthly Executive Report";
+    const subLabel = isWeek ? "weekly summary" : `monthly summary for ${format(new Date(selectedDate), "MMMM yyyy")}`;
+    
+    let htmlRows = summary.map((s: any) => `
+      <tr>
+        <td style="padding:10px; border-bottom:1px solid #eee; font-weight:600;">${s.full_name}</td>
+        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center;">${s.totalDays}</td>
+        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center; color:#16a34a;">${s.daysPresent}</td>
+        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center; color:#ea580c;">${s.daysLate}</td>
+      </tr>
+    `).join("");
+
+    return brandedEmailTemplate({
+      recipientName: profile.full_name,
+      heading: label,
+      body: `
+        <p>Here is your automated aggregated ${subLabel} of the company's attendance metrics.</p>
+        <table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;">
+          <thead>
+            <tr style="background-color:#f8f6f3; color:#bc7e57; text-align:left;">
+              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57;">Staff Member</th>
+              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">Days Logged</th>
+              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">On Time</th>
+              <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">Late</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${htmlRows}
+          </tbody>
+        </table>
+      `,
+      ctaText: "View Full System Ledger",
+      ctaUrl: "https://ractools.vercel.app/attendance"
+    });
   };
 
   const clockInMutation = useMutation({
