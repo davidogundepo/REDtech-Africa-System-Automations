@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { format, parseISO, subDays } from "date-fns";
 import { useTheme } from "@/components/ThemeProvider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import { ArrowUpRight, ArrowDownRight, Banknote, CreditCard, Activity, Calendar as CalendarIcon, Wallet, Plus, Download, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -28,23 +28,41 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(amount);
 };
 
-const StatCard = ({ title, value, change, isPositive, icon: Icon }: any) => {
-  const color = isPositive ? '#22c55e' : '#f59e0b';
+const StatCard = ({ title, value, change, isPositive, icon: Icon, sparklineData, dataKey }: any) => {
   return (
-    <Card className="hover:shadow-md transition-shadow relative overflow-hidden group border-border/50">
-      <div className="absolute inset-x-0 top-0 h-1 bg-[#bc7e57]" />
-      <CardContent className="p-5 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">{title}</p>
-          <div className="text-3xl font-black text-foreground">{value}</div>
-          <p className={`text-xs flex items-center font-medium mt-1.5 ${isPositive ? "text-green-500 dark:text-green-400" : "text-amber-500 dark:text-amber-400"}`}>
-            {isPositive ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
-            {change}
-          </p>
+    <Card className="hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group border-border/40 bg-card/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 flex flex-col h-full">
+      <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#bc7e57] to-[#eab308] opacity-80 z-20" />
+      <div className="absolute -right-6 -top-6 w-24 h-24 bg-[#bc7e57]/10 rounded-full blur-2xl group-hover:bg-[#bc7e57]/20 transition-all duration-500" />
+      <CardContent className="p-6 flex flex-col h-full relative z-10">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-widest mb-1">{title}</p>
+            <div className="text-3xl xl:text-4xl font-black text-foreground tracking-tight">{value}</div>
+            <p className={`text-sm flex items-center font-medium mt-2 ${isPositive ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"}`}>
+              {isPositive ? <ArrowUpRight className="h-4 w-4 mr-1" /> : <ArrowDownRight className="h-4 w-4 mr-1" />}
+              {change}
+            </p>
+          </div>
+          <div className="h-12 w-12 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110 shadow-inner bg-gradient-to-br from-[#bc7e57]/20 to-transparent border border-[#bc7e57]/20 flex-shrink-0">
+            <Icon className="h-6 w-6 text-[#bc7e57]" />
+          </div>
         </div>
-        <div className="h-10 w-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm bg-[#bc7e57]/10">
-          <Icon className="h-5 w-5 text-[#bc7e57]" />
-        </div>
+        
+        {sparklineData && dataKey && sparklineData.length > 0 && (
+          <div className="h-12 w-full mt-auto -mb-2 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={sparklineData}>
+                <defs>
+                  <linearGradient id={`grad-${title.replace(/\s+/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={isPositive ? "#10b981" : "#e11d48"} stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor={isPositive ? "#10b981" : "#e11d48"} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <Area type="monotone" dataKey={dataKey} stroke={isPositive ? "#10b981" : "#e11d48"} strokeWidth={2} fillOpacity={1} fill={`url(#grad-${title.replace(/\s+/g, '')})`} isAnimationActive={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -67,7 +85,7 @@ const FinanceDashboard = () => {
   const expensesFill = theme === "dark" ? "#9ca3af" : "#1f2937";
   const tooltipBg = theme === "dark" ? "#1f2937" : "#ffffff";
   const tooltipBorder = theme === "dark" ? "#374151" : "#e5e7eb";
-  const pieColors = ["#bc7e57", expensesFill, theme === "dark" ? "#4b5563" : "#f3f4f6", "#9ca3af", "#d1d5db", "#ef4444"];
+  const pieColors = ["#bc7e57", "#1e293b", "#10b981", "#f59e0b", "#6366f1", "#e11d48"];
 
   // 1. Fetch Active Transactions
   const { data: transactions, isLoading: loadingTx } = useQuery({
@@ -345,6 +363,25 @@ const FinanceDashboard = () => {
     return acc;
   }, {});
   const barData = Object.values(barDataObj);
+  
+  const sparklineProfitData = barData.map((d: any) => ({ name: d.name, profit: d.revenue - d.expense }));
+  const sparklineMarginData = barData.map((d: any) => ({ name: d.name, margin: d.revenue > 0 ? ((d.revenue - d.expense) / d.revenue) * 100 : 0 }));
+
+  // Advanced Insights Calculation
+  const daysDiff = dateRange === "all" ? 365 : parseInt(dateRange || "30");
+  const avgDailyBurn = totalExpenses > 0 ? totalExpenses / daysDiff : 0;
+  
+  const sortedCategories = Object.keys(expensesByCategory).sort((a, b) => expensesByCategory[b] - expensesByCategory[a]);
+  const topExpenseCat = sortedCategories.length > 0 ? sortedCategories[0] : "None";
+
+  // Startup Metrics
+  const mrr = filteredTransactions
+    .filter(t => t.type === 'revenue' && (t.category.toLowerCase().includes('subscription') || t.category.toLowerCase().includes('retainer') || t.description?.toLowerCase().includes('recurring')))
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const runwayMonths = (netProfit > 0 && avgDailyBurn > 0) 
+    ? (netProfit / (avgDailyBurn * 30)).toFixed(1) 
+    : "—";
 
   return (
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
@@ -450,31 +487,75 @@ const FinanceDashboard = () => {
         </div>
       </div>
 
+      {/* Executive Overview Sparklines */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="Total Revenue" value={formatCurrency(totalRevenue)} change="+12.5% vs last month" isPositive={true} icon={Wallet} />
-        <StatCard title="Total Expenses" value={formatCurrency(totalExpenses)} change="-2.4% vs last month" isPositive={true} icon={CreditCard} />
-        <StatCard title="Net Profit" value={formatCurrency(netProfit)} change="+14.2% vs last month" isPositive={totalRevenue >= totalExpenses} icon={Banknote} />
-        <StatCard title="Profit Margin" value={`${profitMargin}%`} change="+1.2% vs last month" isPositive={parseFloat(profitMargin) > 20} icon={Activity} />
+        <StatCard title="Total Revenue" value={formatCurrency(totalRevenue)} change="+12.5% vs last period" isPositive={true} icon={Wallet} sparklineData={barData} dataKey="revenue" />
+        <StatCard title="Total Expenses" value={formatCurrency(totalExpenses)} change={totalExpenses > 0 ? "+2.4% vs last period" : "0% vs last period"} isPositive={totalExpenses < totalRevenue} icon={CreditCard} sparklineData={barData} dataKey="expense" />
+        <StatCard title="Net Profit" value={formatCurrency(netProfit)} change="+14.2% vs last period" isPositive={netProfit >= 0} icon={Banknote} sparklineData={sparklineProfitData} dataKey="profit" />
+        <StatCard title="Profit Margin" value={`${profitMargin}%`} change="+1.2% vs last period" isPositive={parseFloat(profitMargin) > 20} icon={Activity} sparklineData={sparklineMarginData} dataKey="margin" />
+      </div>
+
+      {/* Financial Insights & Quick Analysis */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+        <Card className="col-span-1 md:col-span-5 bg-gradient-to-br from-[#bc7e57]/10 via-background to-background border-[#bc7e57]/20 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#bc7e57]/5 rounded-full blur-3xl -z-10" />
+          <CardContent className="p-6 flex flex-col md:flex-row gap-6 items-center justify-between z-10">
+            <div className="text-center md:text-left flex-1 border-b md:border-b-0 md:border-r border-border/50 pb-4 md:pb-0 px-2">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center md:justify-start gap-1"><Activity className="h-3 w-3" /> Average Daily Burn</p>
+              <p className="text-2xl font-black font-mono text-rose-500 tracking-tight">{formatCurrency(avgDailyBurn)}</p>
+            </div>
+            <div className="text-center md:text-left flex-1 border-b md:border-b-0 md:border-r border-border/50 pb-4 md:pb-0 px-2">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center md:justify-start gap-1"><Banknote className="h-3 w-3" /> Monthly Recurring (MRR)</p>
+              <p className="text-2xl font-black font-mono text-emerald-500 tracking-tight">{formatCurrency(mrr)}</p>
+            </div>
+            <div className="text-center md:text-left flex-1 border-b md:border-b-0 md:border-r border-border/50 pb-4 md:pb-0 px-2">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center md:justify-start gap-1"><CreditCard className="h-3 w-3" /> Top Expense Driver</p>
+              <p className="text-xl font-bold truncate max-w-[180px] bg-[#bc7e57]/10 text-[#bc7e57] px-3 py-1 rounded-md inline-block">{topExpenseCat}</p>
+            </div>
+            <div className="text-center md:text-left flex-1 border-b md:border-b-0 md:border-r border-border/50 pb-4 md:pb-0 px-2">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center md:justify-start gap-1"><CalendarIcon className="h-3 w-3" /> Estimated Runway</p>
+              <p className="text-2xl font-black font-mono tracking-tight">{runwayMonths !== "—" ? `${runwayMonths} mos` : "—"}</p>
+            </div>
+            <div className="text-center md:text-left flex-1 px-2">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center md:justify-start gap-1"><CheckCircle2 className="h-3 w-3" /> Pending Approvals</p>
+              <p className="text-2xl font-black font-mono text-amber-500 tracking-tight">{formatCurrency(pendingRequestsTotal)}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="col-span-1 lg:col-span-2 shadow-sm border-[#bc7e57]/20">
-          <CardHeader>
-            <CardTitle>Cash Flow Overview</CardTitle>
-            <CardDescription>Revenue vs Expenses over time</CardDescription>
+        <Card className="col-span-1 lg:col-span-2 shadow-xl border-border/40 bg-card/60 backdrop-blur-xl hover:shadow-2xl transition-all duration-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xl font-bold">Cash Flow Overview</CardTitle>
+            <CardDescription className="text-sm">Revenue vs Expenses over time</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent className="h-[350px] pt-4">
             {barData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₦${val/1000}k`} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip cursor={{ fill: 'rgba(188, 126, 87, 0.05)' }} contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(val: number) => formatCurrency(val)} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                  <Bar dataKey="revenue" name="Revenue" fill="#bc7e57" radius={[4, 4, 4, 4]} maxBarSize={32} />
-                  <Bar dataKey="expense" name="Expenses" fill="hsl(var(--muted-foreground))" radius={[4, 4, 4, 4]} maxBarSize={32} />
-                </BarChart>
+                <AreaChart data={barData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.4} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₦${val/1000}k`} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} dx={-10} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '13px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
+                    itemStyle={{ fontWeight: 600 }}
+                    formatter={(val: number) => formatCurrency(val)} 
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', paddingTop: '20px' }} />
+                  <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#bc7e57" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                  <Area type="monotone" dataKey="expense" name="Expenses" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
+                </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No transaction data for this period</div>
@@ -482,22 +563,26 @@ const FinanceDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-[#bc7e57]/20">
-          <CardHeader>
-            <CardTitle>Expense Breakdown</CardTitle>
-            <CardDescription>By Category</CardDescription>
+        <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl hover:shadow-2xl transition-all duration-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xl font-bold">Expense Breakdown</CardTitle>
+            <CardDescription className="text-sm">By Category</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent className="h-[350px] pt-4">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={65} outerRadius={85} paddingAngle={4} dataKey="value" stroke="none">
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={5} dataKey="value" stroke="none">
                     {pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(val: number) => formatCurrency(val)} />
-                  <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: '11px' }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '13px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
+                    itemStyle={{ fontWeight: 600 }}
+                    formatter={(val: number) => formatCurrency(val)} 
+                  />
+                  <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: '12px', paddingTop: '15px' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -519,8 +604,8 @@ const FinanceDashboard = () => {
         </TabsList>
 
         <TabsContent value="transactions" className="space-y-6">
-          <Card>
-            <CardHeader><CardTitle>Recent Transactions</CardTitle></CardHeader>
+          <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl">
+            <CardHeader><CardTitle className="text-xl font-bold">Recent Transactions</CardTitle></CardHeader>
             <CardContent>
               {loadingTx ? (
                 <div className="flex items-center justify-center py-12 text-muted-foreground gap-2"><span className="animate-spin rounded-full h-5 w-5 border-2 border-[#bc7e57] border-t-transparent"/><span>Loading ledger...</span></div>
@@ -581,11 +666,11 @@ const FinanceDashboard = () => {
 
         {/* Payment Requests Tab */}
         <TabsContent value="requests">
-          <Card>
+          <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl">
             <CardHeader>
-              <CardTitle className="flex justify-between items-center">
+              <CardTitle className="flex justify-between items-center text-xl font-bold">
                 <span>Payment Approvals</span>
-                <span className="text-sm font-normal text-muted-foreground">Pending Volume: <strong className="text-foreground">{formatCurrency(pendingRequestsTotal)}</strong></span>
+                <span className="text-sm font-normal text-muted-foreground bg-background/50 px-3 py-1 rounded-full border border-border/50 backdrop-blur-sm">Pending Volume: <strong className="text-foreground">{formatCurrency(pendingRequestsTotal)}</strong></span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -689,10 +774,10 @@ const FinanceDashboard = () => {
         {/* Budgets Tab */}
         {(isAdmin || isSuperAdmin) && (
           <TabsContent value="budgets">
-            <Card>
+            <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Quarterly Budgets</CardTitle>
+                  <CardTitle className="text-xl font-bold">Quarterly Budgets</CardTitle>
                   <CardDescription>Track allocated spend vs actuals.</CardDescription>
                 </div>
                 <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
