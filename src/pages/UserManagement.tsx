@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
-import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus } from "lucide-react";
+import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
@@ -53,6 +53,10 @@ const UserManagement = () => {
   const [broadcastTarget, setBroadcastTarget] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
 
+  const [shiftDialogOpen, setShiftDialogOpen] = useState(false);
+  const [shiftStart, setShiftStart] = useState("09:00");
+  const [shiftEnd, setShiftEnd] = useState("17:00");
+
   const { data: users, isLoading } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
@@ -63,6 +67,83 @@ const UserManagement = () => {
       if (error) throw error;
       return data || [];
     },
+  });
+
+  const { data: shiftConfig } = useQuery({
+    queryKey: ["shift-config"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("leave_balances")
+        .select("*")
+        .eq("leave_type", "system_config_shift")
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        setShiftStart(data.total_days.toString().padStart(2, '0') + ":00");
+        setShiftEnd(data.used_days.toString().padStart(2, '0') + ":00");
+      }
+      return data;
+    },
+  });
+
+  const saveShiftConfigMutation = useMutation({
+    mutationFn: async () => {
+      const startHour = parseInt(shiftStart.split(":")[0]);
+      const endHour = parseInt(shiftEnd.split(":")[0]);
+      
+      const payload = {
+        user_id: currentProfile?.id,
+        leave_type: "system_config_shift",
+        total_days: startHour,
+        used_days: endHour,
+        year: new Date().getFullYear() // Required column
+      };
+
+      if (shiftConfig) {
+        const { error } = await supabase.from("leave_balances").update(payload).eq("id", shiftConfig.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("leave_balances").insert([payload]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["shift-config"] });
+      setShiftDialogOpen(false);
+      
+      // Admin Shift Change Bulletin - Broadcast to all active staff
+      const { data: activeUsers } = await supabase.from('profiles').select('email, full_name').neq('is_active', false);
+      
+      if (activeUsers && activeUsers.length > 0) {
+        const emailPromises = activeUsers.map((user: any) => {
+          if (!user.email) return Promise.resolve();
+          return sendNotificationEmail({
+            to: user.email,
+            subject: "🕒 Important: Company Shift Timings Update",
+            html: brandedEmailTemplate({
+              recipientName: user.full_name,
+              heading: "Shift Timings Update",
+              body: `
+                <p>Please be advised that the official company work hours have been updated by Management.</p>
+                <div style="background:#fefce8; border-left:4px solid #eab308; padding:12px 16px; margin:16px 0;">
+                  <p style="margin:0 0 8px 0;"><strong>New Start Time:</strong> ${shiftStart}</p>
+                  <p style="margin:0;"><strong>New End Time:</strong> ${shiftEnd}</p>
+                </div>
+                <p>These changes take effect immediately and apply to the Attendance point deduction system.</p>
+              `,
+              ctaText: "Acknowledge Update",
+              ctaUrl: "https://ractools.vercel.app/attendance"
+            })
+          });
+        });
+        
+        // Fire and forget so we don't block the UI
+        Promise.allSettled(emailPromises);
+      }
+
+      toast.success("Global shift timings updated! Notifications sent safely.");
+    },
+    onError: (err: any) => toast.error("Failed to save shift config: " + err.message)
   });
 
   const updateUserMutation = useMutation({
@@ -245,6 +326,59 @@ const UserManagement = () => {
             </PopoverContent>
           </Popover>
 
+          {/* Shift Settings Config */}
+          <Dialog open={shiftDialogOpen} onOpenChange={setShiftDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-[#bc7e57] text-[#bc7e57] hover:bg-[#bc7e57]/10">
+                <Clock className="h-4 w-4 mr-2" /> Shift Settings
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md shadow-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-xl font-bold bg-gradient-to-r from-[#bc7e57] to-[#eab308] bg-clip-text text-transparent">
+                  <Clock className="h-5 w-5 text-[#bc7e57]" /> Global Shift Configuration
+                </DialogTitle>
+              </DialogHeader>
+              <div className="py-4 space-y-6">
+                <div className="p-4 rounded-xl bg-orange-50 border border-orange-100 text-sm text-orange-800 dark:bg-orange-900/20 dark:border-orange-800/30 dark:text-orange-300">
+                  <span className="font-bold">Important:</span> Changing these times updates the "Late" and "Early Departure" penalities for <strong>all staff</strong> globally.
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="font-bold text-foreground">Official Start Time</Label>
+                    <Input 
+                      type="time" 
+                      className="text-lg py-6 font-mono" 
+                      value={shiftStart}
+                      onChange={(e) => setShiftStart(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1 text-center">Arrivals after this lose 2 pts.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-bold text-foreground">Official End Time</Label>
+                    <Input 
+                      type="time" 
+                      className="text-lg py-6 font-mono"
+                      value={shiftEnd}
+                      onChange={(e) => setShiftEnd(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1 text-center">Early leavers lose 2 pts.</p>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={() => saveShiftConfigMutation.mutate()}
+                  className="w-full py-6 text-lg font-bold shadow-lg gap-2 mt-4"
+                  style={{ backgroundColor: '#bc7e57', color: 'white' }}
+                  disabled={saveShiftConfigMutation.isPending}
+                >
+                  {saveShiftConfigMutation.isPending ? "Syncing to Cloud..." : "Save Global Rules"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           {/* Admin Broadcast Button */}
           <Dialog open={broadcastDialogOpen} onOpenChange={setBroadcastDialogOpen}>
             <DialogTrigger asChild>
@@ -426,7 +560,7 @@ const UserManagement = () => {
                           <DropdownMenuItem onClick={() => handleEdit(user)} className="cursor-pointer gap-2">
                             <Edit className="h-4 w-4" /> Edit Profile
                           </DropdownMenuItem>
-                          {user.is_active && user.id !== currentProfile?.id && (
+                          {user.is_active && (
                             <DropdownMenuItem 
                               onClick={() => {
                                 setUserToRemove(user);

@@ -121,7 +121,7 @@ const Attendance = () => {
   const { data: allProfiles } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").eq("is_active", true);
+      const { data, error } = await supabase.from("profiles").select("*").neq("is_active", false);
       if (error) throw error;
       return data || [];
     },
