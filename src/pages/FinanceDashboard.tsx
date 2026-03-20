@@ -699,7 +699,7 @@ const FinanceDashboard = () => {
                       <TableCell className="text-right font-medium">{formatCurrency(req.amount)}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}
-                          className={req.status === 'approved' ? 'bg-green-100 text-green-800' : ''}>
+                          className={req.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : ''}>
                           {req.status}
                         </Badge>
                         {req.approver && <p className="text-[10px] text-muted-foreground mt-1">by {req.approver.full_name}</p>}
@@ -707,11 +707,11 @@ const FinanceDashboard = () => {
                       <TableCell className="text-right flex items-center justify-end gap-1">
                         {req.status === 'pending' && (isAdmin || isSuperAdmin) ? (
                           <>
-                            <Button size="icon" variant="outline" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50" title="Approve & Post to Ledger"
+                            <Button size="icon" variant="outline" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20" title="Approve & Post to Ledger"
                               onClick={() => resolveRequestMutation.mutate({ id: req.id, status: 'approved', requestData: req })}>
                               <CheckCircle2 className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" variant="outline" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" title="Reject"
+                            <Button size="icon" variant="outline" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20" title="Reject"
                               onClick={() => resolveRequestMutation.mutate({ id: req.id, status: 'rejected', requestData: req })}>
                               <XCircle className="h-4 w-4" />
                             </Button>

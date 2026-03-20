@@ -79,12 +79,12 @@ const dealStatuses = [
 ];
 
 const statusColors: Record<string, string> = {
-  lead: "bg-slate-100 text-slate-800",
-  contacted: "bg-blue-100 text-blue-800",
-  proposal: "bg-yellow-100 text-yellow-800",
-  negotiation: "bg-orange-100 text-orange-800",
-  won: "bg-green-100 text-green-800",
-  lost: "bg-red-100 text-red-800",
+  lead: "bg-slate-100 text-slate-800 dark:bg-slate-800/50 dark:text-slate-300",
+  contacted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  proposal: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+  negotiation: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  won: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  lost: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
 
 const Clients = () => {
@@ -484,7 +484,7 @@ const Clients = () => {
                       </TableCell>
                       <TableCell>
                         <Select disabled={!canEdit} value={client.deal_status} onValueChange={(v) => handleStatusChange(client.id, v)}>
-                          <SelectTrigger className={`w-[140px] h-8 text-xs font-semibold ${statusColors[client.deal_status] || 'bg-gray-100'} border-0`}>
+                          <SelectTrigger className={`w-[140px] h-8 text-xs font-semibold ${statusColors[client.deal_status] || 'bg-muted'} border-0`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

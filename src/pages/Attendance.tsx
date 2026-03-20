@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, LogIn, LogOut, CalendarDays, Users, AlertTriangle, CheckCircle2, UserCheck, ShieldAlert, Star, TrendingUp, Building2, Home, Laptop, MapPin, Zap, Eye, Send, Mail } from "lucide-react";
+import { Clock, LogIn, LogOut, CalendarDays, Users, AlertTriangle, CheckCircle2, UserCheck, ShieldAlert, Star, TrendingUp, Building2, Home, Laptop, MapPin, Zap, Eye, Send, Mail, Download, Filter } from "lucide-react";
 import companyLogo from "@/assets/company-logo.png";
 
 const WORK_MODES = [
@@ -50,6 +50,11 @@ const Attendance = () => {
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
   const [cumulativePreviewOpen, setCumulativePreviewOpen] = useState(false);
   const [cumulativePreviewType, setCumulativePreviewType] = useState<"week" | "month">("week");
+  const [reportRangeType, setReportRangeType] = useState<string>("week");
+  const [reportDateFrom, setReportDateFrom] = useState(format(new Date(new Date().setDate(new Date().getDate() - 7)), "yyyy-MM-dd"));
+  const [reportDateTo, setReportDateTo] = useState(today);
+  const [reportSelectedStaff, setReportSelectedStaff] = useState<Set<string>>(new Set());
+  const [reportPreviewOpen, setReportPreviewOpen] = useState(false);
 
 
   const isFriday = new Date().getDay() === 5;
@@ -263,6 +268,122 @@ const Attendance = () => {
       `,
       ctaText: "View Full System Ledger",
       ctaUrl: "https://ractools.vercel.app/attendance"
+    });
+  };
+
+  // ═══════ ARCHIVAL REPORT ENGINE ═══════
+  const applyReportRange = (rangeType: string) => {
+    setReportRangeType(rangeType);
+    const now = new Date();
+    let from = new Date();
+    switch (rangeType) {
+      case "week": from.setDate(now.getDate() - 7); break;
+      case "30": from.setDate(now.getDate() - 30); break;
+      case "60": from.setDate(now.getDate() - 60); break;
+      case "90": from.setDate(now.getDate() - 90); break;
+      case "180": from.setDate(now.getDate() - 180); break;
+      default: return; // custom — user sets dates manually
+    }
+    setReportDateFrom(format(from, "yyyy-MM-dd"));
+    setReportDateTo(format(now, "yyyy-MM-dd"));
+  };
+
+  const { data: archivalRecords } = useQuery({
+    queryKey: ["archival-attendance", reportDateFrom, reportDateTo],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .select("*")
+        .gte("date", reportDateFrom)
+        .lte("date", reportDateTo);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isSuperAdmin && !!reportDateFrom && !!reportDateTo,
+  });
+
+  const generateArchivalSummary = () => {
+    if (!allProfiles || !archivalRecords) return [];
+    const staffFilter = reportSelectedStaff.size > 0 ? reportSelectedStaff : null;
+    
+    return allProfiles
+      .filter(user => !staffFilter || staffFilter.has(user.id))
+      .map(user => {
+        const userRecords = archivalRecords.filter(r => r.user_id === user.id);
+        const daysPresent = userRecords.filter(r => r.status === "present").length;
+        const daysLate = userRecords.filter(r => r.status === "late").length;
+        const totalDays = daysPresent + daysLate;
+        return { ...user, daysPresent, daysLate, totalDays };
+      })
+      .sort((a: any, b: any) => b.totalDays - a.totalDays);
+  };
+
+  const generateArchivalHtml = () => {
+    if (!profile) return "";
+    const summary = generateArchivalSummary();
+    if (summary.length === 0) return "";
+
+    const rangeLabel = reportDateFrom === reportDateTo
+      ? format(new Date(reportDateFrom), "MMM d, yyyy")
+      : `${format(new Date(reportDateFrom), "MMM d, yyyy")} — ${format(new Date(reportDateTo), "MMM d, yyyy")}`;
+
+    let htmlRows = summary.map((s: any) => `
+      <tr>
+        <td style="padding:10px 12px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">${s.full_name}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid #f0ece7; text-align:center; color:#1a1a2e; font-weight:700;">${s.totalDays}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid #f0ece7; text-align:center; color:#16a34a; font-weight:600;">${s.daysPresent}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid #f0ece7; text-align:center; color:#ea580c; font-weight:600;">${s.daysLate}</td>
+      </tr>
+    `).join("");
+
+    return brandedEmailTemplate({
+      recipientName: profile.full_name,
+      heading: "Attendance Report",
+      body: `
+        <p style="color:#888; font-size:13px; margin-bottom:4px;">Report Period</p>
+        <p style="color:#1a1a2e; font-size:16px; font-weight:700; margin-top:0;">${rangeLabel}</p>
+        <p style="color:#888; font-size:13px; margin-top:16px;">${summary.length} staff member${summary.length !== 1 ? 's' : ''} included in this report.</p>
+        <table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;">
+          <thead>
+            <tr style="border-bottom:2px solid #bc7e57;">
+              <th style="padding:10px 12px; text-align:left; color:#bc7e57; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">Staff Member</th>
+              <th style="padding:10px 12px; text-align:center; color:#bc7e57; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">Logged</th>
+              <th style="padding:10px 12px; text-align:center; color:#bc7e57; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">On Time</th>
+              <th style="padding:10px 12px; text-align:center; color:#bc7e57; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">Late</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${htmlRows}
+          </tbody>
+        </table>
+      `,
+      ctaText: "View Full System Ledger",
+      ctaUrl: "https://ractools.vercel.app/attendance"
+    });
+  };
+
+  const sendArchivalReportMutation = useMutation({
+    mutationFn: async () => {
+      if (!profile?.email) throw new Error("Your profile does not have an email.");
+      const html = generateArchivalHtml();
+      if (!html) throw new Error("No data available for this report.");
+      
+      const rangeLabel = `${format(new Date(reportDateFrom), "MMM d")} — ${format(new Date(reportDateTo), "MMM d, yyyy")}`;
+      return sendNotificationEmail({
+        to: profile.email,
+        subject: `📋 Attendance Report: ${rangeLabel}`,
+        html,
+      });
+    },
+    onSuccess: () => { toast.success("Report delivered to your inbox!"); setReportPreviewOpen(false); },
+    onError: (err) => toast.error("Delivery failed: " + err.message)
+  });
+
+  const toggleReportStaff = (userId: string) => {
+    setReportSelectedStaff(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId); else next.add(userId);
+      return next;
     });
   };
 
@@ -883,85 +1004,124 @@ const Attendance = () => {
                         </div>
                       </div>
 
-                      {/* ═══════ SUPER ADMIN REPORTS SECTION ═══════ */}
+                      {/* ═══════ EXECUTIVE REPORT BUILDER ═══════ */}
                       {isSuperAdmin && (
                         <div className="rounded-2xl border border-border/60 overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow duration-300 mt-6 mb-6">
-                          <div className="bg-[#bc7e57]/5 dark:bg-[#bc7e57]/10 px-6 py-5 border-b border-border/40 flex items-center justify-between">
+                          <div className="bg-muted/30 dark:bg-muted/10 px-6 py-5 border-b border-border/40 flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                              <div className="h-11 w-11 rounded-xl bg-[#bc7e57]/15 flex items-center justify-center transition-transform duration-300 hover:scale-105">
+                              <div className="h-11 w-11 rounded-xl bg-[#bc7e57]/15 flex items-center justify-center">
                                 <TrendingUp className="h-5 w-5 text-[#bc7e57]" />
                               </div>
                               <div>
-                                <h4 className="font-bold text-foreground">Cumulative Reports</h4>
-                                <p className="text-xs text-muted-foreground mt-0.5">Executive summaries dispatched to your inbox</p>
+                                <h4 className="font-bold text-foreground">Executive Report Builder</h4>
+                                <p className="text-xs text-muted-foreground mt-0.5">Filter by date range & staff, preview, then deliver</p>
                               </div>
                             </div>
                           </div>
-                          <div className="p-6">
-                            <Tabs defaultValue="week" className="w-full">
-                              <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1 rounded-xl mb-4">
-                                <TabsTrigger value="week" className="rounded-lg data-[state=active]:bg-[#bc7e57] data-[state=active]:text-white transition-all">This Week</TabsTrigger>
-                                <TabsTrigger value="month" className="rounded-lg data-[state=active]:bg-[#bc7e57] data-[state=active]:text-white transition-all">This Month</TabsTrigger>
-                              </TabsList>
-                              
-                              <TabsContent value="week" className="space-y-4">
-                                <ScrollArea className="h-[200px] rounded-xl border border-border/40 bg-muted/10 p-4">
-                                  {generateWeeklySummary().map(user => (
-                                    <div key={user.id} className="flex justify-between items-center py-2.5 border-b border-border/40 last:border-0 hover:bg-muted/30 px-2 rounded-lg transition-colors">
-                                      <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">{getInitials(user.full_name)}</div>
-                                        <span className="text-sm font-medium">{user.full_name}</span>
-                                      </div>
-                                      <div className="text-right flex gap-3 text-xs shrink-0 pl-4">
-                                        <span className="text-muted-foreground"><strong className="text-emerald-600 dark:text-emerald-400">{user.daysPresent}</strong> on-time</span>
-                                        <span className="text-muted-foreground"><strong className="text-orange-600 dark:text-orange-400">{user.daysLate}</strong> late</span>
-                                      </div>
-                                    </div>
-                                  ))}
-                                  {generateWeeklySummary().length === 0 && (
-                                    <p className="text-center text-sm text-muted-foreground mt-16">No recorded attendance yet this week.</p>
-                                  )}
-                                </ScrollArea>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => { setCumulativePreviewType("week"); setCumulativePreviewOpen(true); }}
-                                  disabled={generateWeeklySummary().length === 0}
-                                  className="w-full gap-2.5 h-12 text-sm font-semibold border-[#bc7e57]/30 text-[#bc7e57] hover:bg-[#bc7e57]/10 dark:border-[#bc7e57]/40 dark:text-[#d4a574] dark:hover:bg-[#bc7e57]/20 transition-all duration-300"
+                          <div className="p-5 space-y-5">
+                            {/* Date Range Presets */}
+                            <div>
+                              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">Time Period</Label>
+                              <div className="flex flex-wrap gap-1.5">
+                                {[
+                                  { key: "week", label: "7 Days" },
+                                  { key: "30", label: "30 Days" },
+                                  { key: "60", label: "60 Days" },
+                                  { key: "90", label: "3 Months" },
+                                  { key: "180", label: "6 Months" },
+                                  { key: "custom", label: "Custom" },
+                                ].map(opt => (
+                                  <button
+                                    key={opt.key}
+                                    onClick={() => applyReportRange(opt.key)}
+                                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 border ${
+                                      reportRangeType === opt.key
+                                        ? 'bg-[#bc7e57] text-white border-[#bc7e57] shadow-sm'
+                                        : 'bg-muted/30 text-muted-foreground border-border/40 hover:bg-muted/50'
+                                    }`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Custom Date Range Inputs */}
+                            {reportRangeType === "custom" && (
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-[11px] text-muted-foreground mb-1 block">From</Label>
+                                  <Input type="date" value={reportDateFrom} onChange={e => setReportDateFrom(e.target.value)} className="h-9 text-xs" />
+                                </div>
+                                <div>
+                                  <Label className="text-[11px] text-muted-foreground mb-1 block">To</Label>
+                                  <Input type="date" value={reportDateTo} onChange={e => setReportDateTo(e.target.value)} className="h-9 text-xs" />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Staff Selection */}
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                                  <Filter className="h-3 w-3" /> Staff Filter
+                                </Label>
+                                <button 
+                                  onClick={() => setReportSelectedStaff(new Set())}
+                                  className="text-[11px] text-[#bc7e57] hover:underline font-medium"
                                 >
-                                  <Eye className="h-4 w-4" /> 
-                                  Preview Executive Weekly Report
-                                </Button>
-                              </TabsContent>
-                              
-                              <TabsContent value="month" className="space-y-4">
-                                <ScrollArea className="h-[200px] rounded-xl border border-border/40 bg-muted/10 p-4">
-                                  {generateMonthlySummary().map(user => (
-                                    <div key={user.id} className="flex justify-between items-center py-2.5 border-b border-border/40 last:border-0 hover:bg-muted/30 px-2 rounded-lg transition-colors">
-                                      <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">{getInitials(user.full_name)}</div>
-                                        <span className="text-sm font-medium">{user.full_name}</span>
-                                      </div>
-                                      <div className="text-right flex gap-3 text-xs shrink-0 pl-4">
-                                        <span className="text-muted-foreground"><strong className="text-emerald-600 dark:text-emerald-400">{user.daysPresent}</strong> on-time</span>
-                                        <span className="text-muted-foreground"><strong className="text-orange-600 dark:text-orange-400">{user.daysLate}</strong> late</span>
-                                      </div>
+                                  {reportSelectedStaff.size > 0 ? `Clear (${reportSelectedStaff.size})` : 'All staff included'}
+                                </button>
+                              </div>
+                              <ScrollArea className="h-[140px] rounded-xl border border-border/40 bg-muted/10 p-2">
+                                {(allProfiles || []).map(user => (
+                                  <label
+                                    key={user.id}
+                                    className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                                      reportSelectedStaff.has(user.id) ? 'bg-[#bc7e57]/5' : 'hover:bg-muted/30'
+                                    }`}
+                                  >
+                                    <Checkbox
+                                      checked={reportSelectedStaff.size === 0 || reportSelectedStaff.has(user.id)}
+                                      onCheckedChange={() => toggleReportStaff(user.id)}
+                                    />
+                                    <span className="text-sm font-medium truncate">{user.full_name}</span>
+                                  </label>
+                                ))}
+                              </ScrollArea>
+                            </div>
+
+                            {/* Live Summary Preview */}
+                            <div className="rounded-xl border border-border/40 bg-muted/10 p-3">
+                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">
+                                Live Summary • {generateArchivalSummary().length} staff
+                              </p>
+                              <ScrollArea className="h-[120px]">
+                                {generateArchivalSummary().map(user => (
+                                  <div key={user.id} className="flex justify-between items-center py-1.5 border-b border-border/30 last:border-0 px-1">
+                                    <span className="text-xs font-medium truncate">{user.full_name}</span>
+                                    <div className="flex gap-2.5 text-[11px] shrink-0 pl-3">
+                                      <span><strong className="text-emerald-600 dark:text-emerald-400">{user.daysPresent}</strong> <span className="text-muted-foreground">on-time</span></span>
+                                      <span><strong className="text-orange-600 dark:text-orange-400">{user.daysLate}</strong> <span className="text-muted-foreground">late</span></span>
                                     </div>
-                                  ))}
-                                  {generateMonthlySummary().length === 0 && (
-                                    <p className="text-center text-sm text-muted-foreground mt-16">No recorded attendance yet this month.</p>
-                                  )}
-                                </ScrollArea>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => { setCumulativePreviewType("month"); setCumulativePreviewOpen(true); }}
-                                  disabled={generateMonthlySummary().length === 0}
-                                  className="w-full gap-2.5 h-12 text-sm font-semibold border-[#bc7e57]/30 text-[#bc7e57] hover:bg-[#bc7e57]/10 dark:border-[#bc7e57]/40 dark:text-[#d4a574] dark:hover:bg-[#bc7e57]/20 transition-all duration-300"
-                                >
-                                  <Eye className="h-4 w-4" /> 
-                                  Preview Executive Monthly Report
-                                </Button>
-                              </TabsContent>
-                            </Tabs>
+                                  </div>
+                                ))}
+                                {generateArchivalSummary().length === 0 && (
+                                  <p className="text-center text-xs text-muted-foreground mt-8">No attendance data for this period.</p>
+                                )}
+                              </ScrollArea>
+                            </div>
+
+                            {/* Action Button */}
+                            <Button
+                              variant="outline"
+                              onClick={() => setReportPreviewOpen(true)}
+                              disabled={generateArchivalSummary().length === 0}
+                              className="w-full gap-2.5 h-12 text-sm font-semibold border-[#bc7e57]/30 text-[#bc7e57] hover:bg-[#bc7e57]/10 dark:border-[#bc7e57]/40 dark:text-[#d4a574] dark:hover:bg-[#bc7e57]/20 transition-all duration-300"
+                            >
+                              <Eye className="h-4 w-4" /> 
+                              Preview Report
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -972,38 +1132,38 @@ const Attendance = () => {
               </Sheet>
             )}
 
-            {/* ═══════ CUMULATIVE REPORT PREVIEW MODAL ═══════ */}
+            {/* ═══════ ARCHIVAL REPORT PREVIEW MODAL ═══════ */}
             {isSuperAdmin && (
-              <Dialog open={cumulativePreviewOpen} onOpenChange={setCumulativePreviewOpen}>
-                <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden bg-white/50 backdrop-blur-md">
-                  <div className="px-8 py-5 border-b border-border/50 bg-[#bc7e57]/5 shrink-0 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <Dialog open={reportPreviewOpen} onOpenChange={setReportPreviewOpen}>
+                <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+                  <div className="px-8 py-5 border-b border-border/50 bg-muted/20 shrink-0 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                     <div>
                       <DialogHeader>
                         <DialogTitle className="flex items-center gap-3 text-xl">
                           <div className="h-9 w-9 rounded-lg bg-[#bc7e57]/15 flex items-center justify-center">
                             <TrendingUp className="h-5 w-5 text-[#bc7e57]" />
                           </div>
-                          Executive {cumulativePreviewType === 'week' ? 'Weekly' : 'Monthly'} Report Preview
+                          Executive Report Preview
                         </DialogTitle>
                       </DialogHeader>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Review the generated email layout and aggregated data below before delivering it to your inbox.
+                        Review the email below, then deliver it to your inbox.
                       </p>
                     </div>
-                    <Button 
-                      onClick={() => {
-                        cumulativePreviewType === "week" ? sendWeeklyReportMutation.mutate() : sendMonthlyReportMutation.mutate();
-                      }}
-                      disabled={sendWeeklyReportMutation.isPending || sendMonthlyReportMutation.isPending}
-                      className="bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-lg gap-2 h-11 px-6 shrink-0"
-                    >
-                      <Send className="h-4 w-4" />
-                      {sendWeeklyReportMutation.isPending || sendMonthlyReportMutation.isPending ? "Delivering..." : "Deliver to Inbox"}
-                    </Button>
+                    <div className="flex gap-2 shrink-0">
+                      <Button 
+                        onClick={() => sendArchivalReportMutation.mutate()}
+                        disabled={sendArchivalReportMutation.isPending}
+                        className="bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-lg gap-2 h-11 px-6"
+                      >
+                        <Send className="h-4 w-4" />
+                        {sendArchivalReportMutation.isPending ? "Delivering..." : "Deliver to Inbox"}
+                      </Button>
+                    </div>
                   </div>
                   
-                  <ScrollArea className="flex-1 p-6 sm:p-10 bg-muted/20">
-                    <div className="mx-auto max-w-2xl bg-white border border-border/40 rounded-xl shadow-sm overflow-hidden p-8" dangerouslySetInnerHTML={{ __html: generateCumulativeHtml(cumulativePreviewType) }} />
+                  <ScrollArea className="flex-1 p-6 sm:p-10 bg-muted/10">
+                    <div className="mx-auto max-w-2xl bg-white border border-border/40 rounded-xl shadow-sm overflow-hidden" dangerouslySetInnerHTML={{ __html: generateArchivalHtml() }} />
                   </ScrollArea>
                 </DialogContent>
               </Dialog>

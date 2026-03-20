@@ -253,6 +253,7 @@ export type Database = {
           full_name: string
           id: string
           role: string
+          performance_score: number
           updated_at: string
         }
         Insert: {
@@ -263,6 +264,7 @@ export type Database = {
           full_name?: string
           id: string
           role?: string
+          performance_score?: number
           updated_at?: string
         }
         Update: {
@@ -273,6 +275,7 @@ export type Database = {
           full_name?: string
           id?: string
           role?: string
+          performance_score?: number
           updated_at?: string
         }
         Relationships: []

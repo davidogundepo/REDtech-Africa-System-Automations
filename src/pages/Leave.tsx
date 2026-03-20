@@ -243,9 +243,10 @@ const Leave = () => {
       }
     }
 
-    // Send in-app notification to the requesting user
+    // Send the "Leave Request Resolutions" Automated Email
     const currentReq = requests.find(r => r.id === id);
     if (currentReq && currentReq.user_id) {
+      // Send in-app notification to the requesting user
       (supabase as any).from("notifications").insert({
         user_id: currentReq.user_id,
         title: `Leave Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
@@ -253,35 +254,58 @@ const Leave = () => {
         type: status === "approved" ? "success" : "alert",
         link: "/leave"
       }).then();
-    }
 
-    // Send reminder email to the employee when approved
-    if (status === "approved") {
-      const approvedReq = requests.find(r => r.id === id);
-      if (approvedReq) {
-        const startDate = new Date(approvedReq.start_date);
-        const daysUntilLeave = Math.ceil((startDate.getTime() - Date.now()) / (1000 * 3600 * 24));
-        const reminderNote = daysUntilLeave <= 3
-          ? `⚠️ Your leave starts in ${daysUntilLeave} day${daysUntilLeave !== 1 ? 's' : ''}!`
-          : `Your leave starts on ${approvedReq.start_date}. A reminder will be sent 3 days before.`;
+      // Fetch the employee's email for the automation
+      const { data: userData } = await (supabase as any)
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', currentReq.user_id)
+        .maybeSingle();
 
-        sendNotificationEmail({
-          to: 'management@redtechafrica.com',
-          subject: `Leave Approved: ${approvedReq.employee_id} — ${approvedReq.start_date}`,
-          html: brandedEmailTemplate({
-            recipientName: approvedReq.employee_id,
-            heading: 'Your Leave Request Has Been Approved ✅',
-            body: `
-              <table style="width:100%; border-collapse:collapse; margin:16px 0;">
-                <tr><td style="padding:8px 12px; background:#f8f6f3;"><strong>Leave Type</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${approvedReq.leave_type}</td></tr>
-                <tr><td style="padding:8px 12px;"><strong>Period</strong></td><td style="padding:8px 12px;">${approvedReq.start_date} → ${approvedReq.end_date}</td></tr>
-                <tr><td style="padding:8px 12px; background:#f8f6f3;"><strong>Reminder</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${reminderNote}</td></tr>
-              </table>
-            `,
-            ctaText: 'View My Leave',
-            ctaUrl: 'https://ractools.vercel.app/leave',
-          })
-        });
+      if (userData?.email) {
+        const startDate = new Date(currentReq.start_date);
+        
+        if (status === "approved") {
+          const daysUntilLeave = Math.ceil((startDate.getTime() - Date.now()) / (1000 * 3600 * 24));
+          const reminderNote = daysUntilLeave <= 3
+            ? `⚠️ Your leave starts in ${daysUntilLeave} day${daysUntilLeave !== 1 ? 's' : ''}!`
+            : `Your leave starts on ${currentReq.start_date}. Have a great time!`;
+
+          sendNotificationEmail({
+            to: userData.email,
+            subject: `Leave Request Approved! 🎉`,
+            html: brandedEmailTemplate({
+              recipientName: userData.full_name,
+              heading: 'Your Leave Request Has Been Approved ✅',
+              body: `
+                <p>Great news! Your recent leave request has been reviewed and <strong>approved</strong> by management.</p>
+                <table style="width:100%; border-collapse:collapse; margin:24px 0; border: 1px solid #eaeaea; border-radius: 8px; overflow: hidden;">
+                  <tr><td style="padding:12px 16px; background:#f8f6f3; font-weight:600; border-bottom: 1px solid #eaeaea;">Leave Type</td><td style="padding:12px 16px; background:#f8f6f3; border-bottom: 1px solid #eaeaea;">${currentReq.leave_type}</td></tr>
+                  <tr><td style="padding:12px 16px; font-weight:600; border-bottom: 1px solid #eaeaea;">Period</td><td style="padding:12px 16px; border-bottom: 1px solid #eaeaea;">${currentReq.start_date} → ${currentReq.end_date}</td></tr>
+                  <tr><td style="padding:12px 16px; background:#f8f6f3; font-weight:600;">Status Note</td><td style="padding:12px 16px; background:#f8f6f3;">${reminderNote}</td></tr>
+                </table>
+                <p>Enjoy your time off!</p>
+              `,
+              ctaText: 'View on System',
+              ctaUrl: 'https://ractools.vercel.app/leave',
+            })
+          });
+        } else if (status === "rejected") {
+          sendNotificationEmail({
+            to: userData.email,
+            subject: `Update on Your Leave Request`,
+            html: brandedEmailTemplate({
+              recipientName: userData.full_name,
+              heading: 'Leave Request Status Update',
+              body: `
+                <p>Your recent leave request for the period of <strong>${currentReq.start_date}</strong> to <strong>${currentReq.end_date}</strong> has unfortunately been <strong>declined</strong> at this time.</p>
+                <p>If you have any questions or would like to discuss alternative dates, please reach out to your line manager or HR directly.</p>
+              `,
+              ctaText: 'Review Leave Balance',
+              ctaUrl: 'https://ractools.vercel.app/leave',
+            })
+          });
+        }
       }
     }
 

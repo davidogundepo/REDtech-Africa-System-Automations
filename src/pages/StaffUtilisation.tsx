@@ -540,7 +540,7 @@ const StaffUtilisation = () => {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {(profiles||[]).filter((p:any)=>(p.performance_score??100)>=90).map((p:any)=>(
-                      <div key={p.id} className="flex items-center gap-2 bg-white dark:bg-green-950/20 rounded-full px-3 py-1.5 border border-green-200 dark:border-green-900/30">
+                      <div key={p.id} className="flex items-center gap-2 bg-white dark:bg-green-900/20 rounded-full px-3 py-1.5 border border-green-200 dark:border-green-800/30">
                         <span className="text-xs font-medium">{p.full_name}</span>
                         <span className="text-xs font-bold text-green-600">{p.performance_score??100}/100</span>
                       </div>
