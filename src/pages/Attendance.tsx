@@ -161,6 +161,48 @@ const Attendance = () => {
     enabled: isAdmin || isSuperAdmin,
   });
 
+  const { data: weeklyRecords } = useQuery({
+    queryKey: ["weekly-attendance", selectedDate],
+    queryFn: async () => {
+      const dateObj = new Date(selectedDate);
+      const day = dateObj.getDay();
+      const diff = dateObj.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(dateObj.setDate(diff));
+      const startOfWeek = format(monday, "yyyy-MM-dd");
+      
+      const res = new Date(monday);
+      res.setDate(res.getDate() + 6);
+      const endOfWeek = format(res, "yyyy-MM-dd");
+
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .select("*")
+        .gte("date", startOfWeek)
+        .lte("date", endOfWeek);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin || isSuperAdmin,
+  });
+
+  const generateWeeklySummary = () => {
+    if (!allProfiles || !weeklyRecords) return [];
+    
+    return allProfiles.map(user => {
+      const userRecords = weeklyRecords.filter(r => r.user_id === user.id);
+      const daysPresent = userRecords.filter(r => r.status === "present").length;
+      const daysLate = userRecords.filter(r => r.status === "late").length;
+      const totalDays = daysPresent + daysLate;
+      
+      return {
+        ...user,
+        daysPresent,
+        daysLate,
+        totalDays
+      };
+    }).sort((a: any, b: any) => b.totalDays - a.totalDays);
+  };
+
   const generateMonthlySummary = () => {
     if (!allProfiles || !monthlyRecords) return [];
     
@@ -456,6 +498,100 @@ const Attendance = () => {
     onError: (err) => toast.error("Failed to compile digests: " + err.message)
   });
 
+  const sendWeeklyReportMutation = useMutation({
+    mutationFn: async () => {
+      const summary = generateWeeklySummary();
+      if (summary.length === 0) throw new Error("No attendance data available for this week.");
+      if (!profile?.email) throw new Error("Your profile does not have an email address.");
+
+      let htmlRows = summary.map((s: any) => `
+        <tr>
+          <td style="padding:10px; border-bottom:1px solid #eee; font-weight:600;">${s.full_name}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee; text-align:center;">${s.totalDays}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee; text-align:center; color:#16a34a;">${s.daysPresent}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee; text-align:center; color:#ea580c;">${s.daysLate}</td>
+        </tr>
+      `).join("");
+
+      return sendNotificationEmail({
+        to: profile.email,
+        subject: `📈 Executive Weekly Attendance Report`,
+        html: brandedEmailTemplate({
+          recipientName: profile.full_name,
+          heading: "Weekly Executive Report",
+          body: `
+            <p>Here is your automated aggregated weekly summary of the company's attendance metrics.</p>
+            <table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;">
+              <thead>
+                <tr style="background-color:#f8f6f3; color:#bc7e57; text-align:left;">
+                  <th style="padding:12px 10px; border-bottom:2px solid #bc7e57;">Staff Member</th>
+                  <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">Days Logged</th>
+                  <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">On Time</th>
+                  <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">Late</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${htmlRows}
+              </tbody>
+            </table>
+          `,
+          ctaText: "View Full System Ledger",
+          ctaUrl: "https://ractools.vercel.app/attendance"
+        })
+      });
+    },
+    onSuccess: () => toast.success("Weekly executive report sent to your inbox!"),
+    onError: (err) => toast.error("Report failed: " + err.message)
+  });
+
+  const sendMonthlyReportMutation = useMutation({
+    mutationFn: async () => {
+      const summary = generateMonthlySummary();
+      if (summary.length === 0) throw new Error("No data available for this month.");
+      if (!profile?.email) throw new Error("Your profile does not have an email address.");
+
+      const monthLabel = format(new Date(selectedDate), "MMMM yyyy");
+      
+      let htmlRows = summary.map((s: any) => `
+        <tr>
+          <td style="padding:10px; border-bottom:1px solid #eee; font-weight:600;">${s.full_name}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee; text-align:center;">${s.totalDays}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee; text-align:center; color:#16a34a;">${s.daysPresent}</td>
+          <td style="padding:10px; border-bottom:1px solid #eee; text-align:center; color:#ea580c;">${s.daysLate}</td>
+        </tr>
+      `).join("");
+
+      return sendNotificationEmail({
+        to: profile.email,
+        subject: `📊 Executive Monthly Attendance Report: ${monthLabel}`,
+        html: brandedEmailTemplate({
+          recipientName: profile.full_name,
+          heading: "Monthly Executive Report",
+          body: `
+            <p>Here is your automated aggregated monthly summary of the company's attendance metrics for <strong>${monthLabel}</strong>.</p>
+            <table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;">
+              <thead>
+                <tr style="background-color:#f8f6f3; color:#bc7e57; text-align:left;">
+                  <th style="padding:12px 10px; border-bottom:2px solid #bc7e57;">Staff Member</th>
+                  <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">Days Logged</th>
+                  <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">On Time</th>
+                  <th style="padding:12px 10px; border-bottom:2px solid #bc7e57; text-align:center;">Late</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${htmlRows}
+              </tbody>
+            </table>
+          `,
+          ctaText: "View Full System Ledger",
+          ctaUrl: "https://ractools.vercel.app/attendance"
+        })
+      });
+    },
+    onSuccess: () => toast.success("Monthly executive report sent to your inbox!"),
+    onError: (err) => toast.error("Report failed: " + err.message)
+  });
+
   // Auto-select all MIA users when they change
   const toggleMiaUser = (userId: string) => {
     setSelectedMiaIds(prev => {
@@ -476,7 +612,9 @@ const Attendance = () => {
   };
 
   // Sync selectedMiaIds when miaUsers change
-  if (miaUsers.length > 0 && selectedMiaIds.size === 0 && miaSelectAll) {
+  const validSelectedCount = miaUsers.filter(u => selectedMiaIds.has(u.id)).length;
+
+  if (miaUsers.length > 0 && validSelectedCount === 0 && miaSelectAll) {
     const allIds = new Set(miaUsers.map(u => u.id));
     if (allIds.size > 0 && selectedMiaIds.size !== allIds.size) {
       // Will auto-select on next render
@@ -584,12 +722,12 @@ const Attendance = () => {
                               <div className="flex items-center justify-between pb-3 border-b border-border/40">
                                 <label className="flex items-center gap-2.5 cursor-pointer">
                                   <Checkbox
-                                    checked={selectedMiaIds.size === miaUsers.length}
+                                    checked={miaUsers.length > 0 && validSelectedCount === miaUsers.length}
                                     onCheckedChange={(checked) => toggleAllMia(!!checked)}
                                   />
                                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Select All ({miaUsers.length})</span>
                                 </label>
-                                <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">{selectedMiaIds.size} selected</span>
+                                <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">{validSelectedCount} selected</span>
                               </div>
 
                               {/* Staff Cards */}
@@ -634,13 +772,13 @@ const Attendance = () => {
                               {/* Send Button */}
                               <Button
                                 onClick={() => sendMIAMutation.mutate()}
-                                disabled={sendMIAMutation.isPending || selectedMiaIds.size === 0}
+                                disabled={sendMIAMutation.isPending || validSelectedCount === 0}
                                 className="w-full h-12 mt-3 gap-2.5 text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 bg-[#bc7e57] hover:bg-[#a56d49] text-white"
                               >
                                 <Send className="h-4 w-4" />
                                 {sendMIAMutation.isPending
                                   ? "Dispatching..."
-                                  : `Send Gentle Reminder to ${selectedMiaIds.size} User${selectedMiaIds.size !== 1 ? 's' : ''}`
+                                  : `Send Gentle Reminder to ${validSelectedCount} User${validSelectedCount !== 1 ? 's' : ''}`
                                 }
                               </Button>
                             </div>
@@ -699,6 +837,89 @@ const Attendance = () => {
                           )}
                         </div>
                       </div>
+
+                      {/* ═══════ SUPER ADMIN REPORTS SECTION ═══════ */}
+                      {isSuperAdmin && (
+                        <div className="rounded-2xl border border-border/60 overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow duration-300 mt-6 mb-6">
+                          <div className="bg-[#bc7e57]/5 dark:bg-[#bc7e57]/10 px-6 py-5 border-b border-border/40 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="h-11 w-11 rounded-xl bg-[#bc7e57]/15 flex items-center justify-center transition-transform duration-300 hover:scale-105">
+                                <TrendingUp className="h-5 w-5 text-[#bc7e57]" />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-foreground">Cumulative Reports</h4>
+                                <p className="text-xs text-muted-foreground mt-0.5">Executive summaries dispatched to your inbox</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-6">
+                            <Tabs defaultValue="week" className="w-full">
+                              <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1 rounded-xl mb-4">
+                                <TabsTrigger value="week" className="rounded-lg data-[state=active]:bg-[#bc7e57] data-[state=active]:text-white transition-all">This Week</TabsTrigger>
+                                <TabsTrigger value="month" className="rounded-lg data-[state=active]:bg-[#bc7e57] data-[state=active]:text-white transition-all">This Month</TabsTrigger>
+                              </TabsList>
+                              
+                              <TabsContent value="week" className="space-y-4">
+                                <ScrollArea className="h-[200px] rounded-xl border border-border/40 bg-muted/10 p-4">
+                                  {generateWeeklySummary().map(user => (
+                                    <div key={user.id} className="flex justify-between items-center py-2.5 border-b border-border/40 last:border-0 hover:bg-muted/30 px-2 rounded-lg transition-colors">
+                                      <div className="flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">{getInitials(user.full_name)}</div>
+                                        <span className="text-sm font-medium">{user.full_name}</span>
+                                      </div>
+                                      <div className="text-right flex gap-3 text-xs shrink-0 pl-4">
+                                        <span className="text-muted-foreground"><strong className="text-emerald-600 dark:text-emerald-400">{user.daysPresent}</strong> on-time</span>
+                                        <span className="text-muted-foreground"><strong className="text-orange-600 dark:text-orange-400">{user.daysLate}</strong> late</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {generateWeeklySummary().length === 0 && (
+                                    <p className="text-center text-sm text-muted-foreground mt-16">No recorded attendance yet this week.</p>
+                                  )}
+                                </ScrollArea>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => sendWeeklyReportMutation.mutate()}
+                                  disabled={sendWeeklyReportMutation.isPending || generateWeeklySummary().length === 0}
+                                  className="w-full gap-2.5 h-12 text-sm font-semibold border-[#bc7e57]/30 text-[#bc7e57] hover:bg-[#bc7e57]/10 dark:border-[#bc7e57]/40 dark:text-[#d4a574] dark:hover:bg-[#bc7e57]/20 transition-all duration-300"
+                                >
+                                  <Mail className="h-4 w-4" /> 
+                                  {sendWeeklyReportMutation.isPending ? "Sending..." : "Email Executive Weekly Report"}
+                                </Button>
+                              </TabsContent>
+                              
+                              <TabsContent value="month" className="space-y-4">
+                                <ScrollArea className="h-[200px] rounded-xl border border-border/40 bg-muted/10 p-4">
+                                  {generateMonthlySummary().map(user => (
+                                    <div key={user.id} className="flex justify-between items-center py-2.5 border-b border-border/40 last:border-0 hover:bg-muted/30 px-2 rounded-lg transition-colors">
+                                      <div className="flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">{getInitials(user.full_name)}</div>
+                                        <span className="text-sm font-medium">{user.full_name}</span>
+                                      </div>
+                                      <div className="text-right flex gap-3 text-xs shrink-0 pl-4">
+                                        <span className="text-muted-foreground"><strong className="text-emerald-600 dark:text-emerald-400">{user.daysPresent}</strong> on-time</span>
+                                        <span className="text-muted-foreground"><strong className="text-orange-600 dark:text-orange-400">{user.daysLate}</strong> late</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {generateMonthlySummary().length === 0 && (
+                                    <p className="text-center text-sm text-muted-foreground mt-16">No recorded attendance yet this month.</p>
+                                  )}
+                                </ScrollArea>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => sendMonthlyReportMutation.mutate()}
+                                  disabled={sendMonthlyReportMutation.isPending || generateMonthlySummary().length === 0}
+                                  className="w-full gap-2.5 h-12 text-sm font-semibold border-[#bc7e57]/30 text-[#bc7e57] hover:bg-[#bc7e57]/10 dark:border-[#bc7e57]/40 dark:text-[#d4a574] dark:hover:bg-[#bc7e57]/20 transition-all duration-300"
+                                >
+                                  <Mail className="h-4 w-4" /> 
+                                  {sendMonthlyReportMutation.isPending ? "Sending..." : "Email Executive Monthly Report"}
+                                </Button>
+                              </TabsContent>
+                            </Tabs>
+                          </div>
+                        </div>
+                      )}
 
                     </div>
                   </ScrollArea>
