@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -463,61 +463,104 @@ const DocumentRepository = () => {
         </div>
       </Tabs>
 
-      {/* Extreme Premium File Previewer Modal */}
-      <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
-        <DialogContent className="max-w-6xl max-h-[90vh] p-0 overflow-hidden border-border bg-background shadow-2xl flex flex-col">
-          <div className="bg-muted/30 border-b border-border/50 p-4 px-6 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-4">
-               <div className="p-2.5 rounded-xl bg-background border border-border/50 shadow-sm">
-                 <TypeIcon type={previewDoc?.type || 'file'} className="h-6 w-6" />
-               </div>
-               <div>
-                 <h2 className="text-lg font-bold text-foreground leading-tight">{previewDoc?.name}</h2>
-                 <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-4">
-                   <span>{previewDoc?.size}</span>
-                   <span className="flex items-center"><Clock className="w-3.5 h-3.5 mr-1" /> {previewDoc ? format(parseISO(previewDoc.created_at), 'PPP') : ''}</span>
-                 </p>
-               </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" className="hidden sm:flex border-border/50 bg-background hover:bg-muted" onClick={() => window.open(previewDoc?.url, '_blank')}>
-                <ExternalLink className="h-4 w-4 mr-2" /> Open Native
-              </Button>
-              <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 bg-muted hover:bg-muted/80 text-muted-foreground" onClick={() => setPreviewDoc(null)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+      {/* File Previewer Modal — uses a completely custom overlay to bypass shadcn grid */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-50" onClick={() => setPreviewDoc(null)}>
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/80 animate-in fade-in-0" />
           
-          <div className="flex-1 overflow-hidden bg-black/5 dark:bg-black/20 flex flex-col relative w-full h-[80vh]">
-            {previewDoc?.type === 'pdf' ? (
-              <iframe src={previewDoc.url} className="w-full h-full border-0 absolute inset-0" title={previewDoc.name} />
-            ) : previewDoc?.type === 'image' || /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(previewDoc?.url || '') ? (
-              <div className="absolute inset-0 flex items-center justify-center p-8 bg-[url('/checkers.png')] dark:bg-[url('/dark-checkers.png')] bg-repeat bg-[length:24px_24px]">
-                <img src={previewDoc?.url} alt={previewDoc?.name} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl drop-shadow-2xl ring-1 ring-white/10" />
-              </div>
-            ) : previewDoc?.type === 'link' ? (
-              <iframe src={previewDoc.url} className="w-full h-full border-0 absolute inset-0 bg-background" title={previewDoc.name} />
-            ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center bg-background/50">
-                <div className="h-32 w-32 rounded-3xl bg-muted border border-border flex items-center justify-center mb-6 shadow-sm">
-                   <TypeIcon type={previewDoc?.type || 'file'} className="h-16 w-16 opacity-50" />
+          {/* Modal Panel */}
+          <div 
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] md:w-[85vw] lg:w-[75vw] bg-background rounded-xl shadow-2xl border border-border overflow-hidden flex flex-col animate-in zoom-in-95 fade-in-0 duration-200"
+            style={{ height: '85vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-muted/30 border-b border-border/50 p-4 px-6 shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2.5 rounded-xl bg-background border border-border/50 shadow-sm">
+                    <TypeIcon type={previewDoc.type || 'file'} className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground leading-tight">{previewDoc.name}</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-4">
+                      <span>{previewDoc.size}</span>
+                      <span className="flex items-center"><Clock className="w-3.5 h-3.5 mr-1" /> {format(parseISO(previewDoc.created_at), 'PPP')}</span>
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-2xl font-bold mb-2 tracking-tight">Preview Engine Unavailable</h3>
-                <p className="text-muted-foreground max-w-md mx-auto mb-8 leading-relaxed">
-                   The browser's native renderer cannot process `{previewDoc?.type.toUpperCase()}` formats securely. You can still access this file externally.
-                </p>
-                <div className="flex gap-4">
-                  <Button onClick={() => window.open(previewDoc?.url, '_blank')} className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white rounded-full px-8 h-12 shadow-md hover:shadow-lg transition-all">
-                    <ExternalLink className="h-5 w-5 mr-2" /> Safely Download & Open
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="border-border/50 bg-background hover:bg-muted" onClick={() => window.open(previewDoc.url, '_blank')}>
+                    <ExternalLink className="h-4 w-4 mr-2" /> Open in New Tab
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setPreviewDoc(null)}>
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-            )}
+            </div>
+            
+            {/* Content - flex-1 fills all remaining vertical space */}
+            <div className="flex-1 min-h-0 bg-black/5 dark:bg-black/20 relative overflow-hidden">
+              {previewDoc.type === 'pdf' ? (
+                <iframe 
+                  src={previewDoc.url} 
+                  className="absolute inset-0 w-full h-full" 
+                  style={{ border: 'none' }} 
+                  title={previewDoc.name} 
+                />
+              ) : previewDoc.type === 'image' || /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(previewDoc.url || '') ? (
+                <div className="absolute inset-0 flex items-center justify-center p-8">
+                  <img 
+                    src={previewDoc.url} 
+                    alt={previewDoc.name} 
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" 
+                    onError={(e) => {
+                      const el = e.target as HTMLImageElement;
+                      el.style.display = 'none';
+                      el.parentElement!.innerHTML = '<div class="text-center p-8"><p class="text-lg font-semibold mb-2">Image failed to load</p><p class="text-sm opacity-60">Try the "Open in New Tab" button above.</p></div>';
+                    }}
+                  />
+                </div>
+              ) : previewDoc.type === 'link' ? (
+                <iframe 
+                  src={previewDoc.url} 
+                  className="absolute inset-0 w-full h-full" 
+                  style={{ border: 'none' }} 
+                  title={previewDoc.name} 
+                />
+              ) : previewDoc.type === 'csv' || previewDoc.type === 'excel' ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center">
+                  <div className="h-24 w-24 rounded-2xl bg-muted border border-border flex items-center justify-center mb-6">
+                     <TypeIcon type={previewDoc.type} className="h-12 w-12 opacity-40" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">Spreadsheet File</h3>
+                  <p className="text-muted-foreground max-w-sm mx-auto mb-6 text-sm">
+                     CSV and Excel files cannot be previewed inline. Click below to download.
+                  </p>
+                  <Button onClick={() => window.open(previewDoc.url, '_blank')} className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white px-6">
+                    <ExternalLink className="h-4 w-4 mr-2" /> Download File
+                  </Button>
+                </div>
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center">
+                  <div className="h-24 w-24 rounded-2xl bg-muted border border-border flex items-center justify-center mb-6">
+                     <TypeIcon type={previewDoc.type || 'file'} className="h-12 w-12 opacity-40" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">Preview Not Available</h3>
+                  <p className="text-muted-foreground max-w-sm mx-auto mb-6 text-sm">
+                     This file type cannot be previewed in the browser. Click below to open it externally.
+                  </p>
+                  <Button onClick={() => window.open(previewDoc.url, '_blank')} className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white px-6">
+                    <ExternalLink className="h-4 w-4 mr-2" /> Download / Open File
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
     </div>
   );
