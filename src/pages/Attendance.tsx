@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Clock, LogIn, LogOut, CalendarDays, Users, AlertTriangle, CheckCircle2, UserCheck, ShieldAlert, Star, TrendingUp, Building2, Home, Laptop, MapPin, Zap, Eye, Send, Mail } from "lucide-react";
+import companyLogo from "@/assets/company-logo.png";
 
 const WORK_MODES = [
   { id: "office", label: "HQ Office", icon: Building2 },
@@ -145,10 +146,15 @@ const Attendance = () => {
     queryKey: ["monthly-attendance", selectedDate.substring(0, 7)],
     queryFn: async () => {
       const monthPrefix = selectedDate.substring(0, 7);
+      const [year, month] = monthPrefix.split("-");
+      const startOfMonth = `${monthPrefix}-01`;
+      const endOfMonth = new Date(parseInt(year), parseInt(month), 0).toISOString().split("T")[0];
+      
       const { data, error } = await supabase
         .from("attendance_records")
         .select("*")
-        .like("date", `${monthPrefix}%`);
+        .gte("date", startOfMonth)
+        .lte("date", endOfMonth);
       if (error) throw error;
       return data || [];
     },
@@ -520,12 +526,12 @@ const Attendance = () => {
                     ) : null}
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[90vw] sm:w-[700px] p-0 flex flex-col border-l border-border/50">
+                <SheetContent side="right" className="w-[90vw] sm:w-[550px] sm:!max-w-[550px] p-0 flex flex-col border-l border-border/50 shadow-2xl">
                   {/* Sidebar Header */}
                   <div className="px-8 pt-8 pb-6 border-b border-border/50 bg-gradient-to-br from-[#bc7e57]/5 via-background to-background">
                     <SheetTitle className="text-2xl font-bold flex items-center gap-3 text-foreground">
-                      <div className="h-10 w-10 rounded-xl bg-[#bc7e57]/15 flex items-center justify-center">
-                        <Zap className="h-5 w-5 text-[#bc7e57]" />
+                      <div className="flex items-center justify-center shrink-0">
+                        <img src={companyLogo} alt="REDtech" className="h-[38px] w-auto object-contain" />
                       </div>
                       Actionable HR Hub
                     </SheetTitle>
