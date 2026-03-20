@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSpreadsheet, FileImage, Link as LinkIcon, ExternalLink, Trash2, Clock, Eye, AlertCircle, Building2, Globe, X } from "lucide-react";
+import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSpreadsheet, FileImage, Link as LinkIcon, ExternalLink, Trash2, Clock, Eye, AlertCircle, Building2, Globe, X, Download } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useTheme } from "@/components/ThemeProvider";
@@ -64,6 +64,16 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onPreview(file); }}>
                  <Eye className="h-4 w-4 mr-2" /> In-App Preview
                </DropdownMenuItem>
+               <DropdownMenuItem onClick={(e) => {
+                 e.stopPropagation();
+                 const a = document.createElement('a');
+                 a.href = file.url;
+                 a.download = file.name;
+                 a.target = '_blank';
+                 a.click();
+               }}>
+                 <Download className="h-4 w-4 mr-2" /> Download
+               </DropdownMenuItem>
                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); window.open(file.url, '_blank'); }}>
                  <ExternalLink className="h-4 w-4 mr-2" /> Open External
                </DropdownMenuItem>
@@ -102,18 +112,34 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
            </div>
          </div>
 
-         <div className="mt-5 flex items-center justify-between border-t border-border/50 pt-3">
-           <div className="flex items-center gap-2">
-             <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0 border border-border/50">
-               {(file.created_by || "").substring(0, 2).toUpperCase() || 'SYS'}
-             </div>
-             <span className="text-xs font-medium text-muted-foreground">{file.created_by || 'System'}</span>
-           </div>
-           <span className="text-[10px] text-muted-foreground flex items-center">
-             <Clock className="w-3 h-3 mr-1" />
-             {format(parseISO(file.created_at), 'MMM dd')}
-           </span>
-         </div>
+          <div className="mt-5 flex items-center justify-between border-t border-border/50 pt-3">
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0 border border-border/50">
+                {(file.created_by || "").substring(0, 2).toUpperCase() || 'SYS'}
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">{file.created_by || 'System'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className="h-7 w-7 rounded-full flex items-center justify-center bg-muted/50 hover:bg-[#bc7e57]/20 text-muted-foreground hover:text-[#bc7e57] transition-all opacity-0 group-hover:opacity-100"
+                title="Download"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const a = document.createElement('a');
+                  a.href = file.url;
+                  a.download = file.name;
+                  a.target = '_blank';
+                  a.click();
+                }}
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] text-muted-foreground flex items-center">
+                <Clock className="w-3 h-3 mr-1" />
+                {format(parseISO(file.created_at), 'MMM dd')}
+              </span>
+            </div>
+          </div>
        </CardContent>
     </Card>
   );
@@ -491,6 +517,15 @@ const DocumentRepository = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="border-border/50 bg-background hover:bg-muted" onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = previewDoc.url;
+                    a.download = previewDoc.name;
+                    a.target = '_blank';
+                    a.click();
+                  }}>
+                    <Download className="h-4 w-4 mr-2" /> Download
+                  </Button>
                   <Button variant="outline" size="sm" className="border-border/50 bg-background hover:bg-muted" onClick={() => window.open(previewDoc.url, '_blank')}>
                     <ExternalLink className="h-4 w-4 mr-2" /> Open in New Tab
                   </Button>
