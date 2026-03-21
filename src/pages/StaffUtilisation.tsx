@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Component, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -16,7 +16,27 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { runPerformanceEngine } from "@/lib/performance-engine";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Navigate } from "react-router-dom";
+
+// Error Boundary: if ANYTHING crashes, redirect to dashboard
+class StaffUtilisationErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.error("StaffUtilisation crashed:", error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return <Navigate to="/" replace />;
+    }
+    return this.props.children;
+  }
+}
 
 const StaffUtilisation = () => {
   const { isSuperAdmin, isAdmin, profile: currentProfile, loading } = useAuth();
@@ -87,18 +107,9 @@ const StaffUtilisation = () => {
     );
   }
 
+  // If not admin, silently redirect to dashboard
   if (!isSuperAdmin && !isAdmin) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <Card className="max-w-md w-full text-center">
-          <CardContent className="pt-8 pb-8">
-            <Shield className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-xl font-bold mb-2">Access Restricted</h2>
-            <p className="text-muted-foreground">Only Admins and Super Admins can view analytic data.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <Navigate to="/" replace />;  
   }
 
   const filteredProfiles = selectedDept === "all"
@@ -180,6 +191,7 @@ const StaffUtilisation = () => {
            return;
          }
 
+         const { GoogleGenerativeAI } = await import("@google/generative-ai");
          const genAI = new GoogleGenerativeAI(apiKey);
          const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
          
@@ -602,4 +614,10 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
   );
 };
 
-export default StaffUtilisation;
+export default function StaffUtilisationPage() {
+  return (
+    <StaffUtilisationErrorBoundary>
+      <StaffUtilisation />
+    </StaffUtilisationErrorBoundary>
+  );
+}
