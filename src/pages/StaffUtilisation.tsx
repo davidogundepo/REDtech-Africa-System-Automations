@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { runPerformanceEngine } from "@/lib/performance-engine";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const StaffUtilisation = () => {
   const { isSuperAdmin, isAdmin, profile: currentProfile } = useAuth();
@@ -59,7 +59,7 @@ const StaffUtilisation = () => {
   const { data: profiles } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("profiles").select("*").eq("is_active", true);
+      const { data, error } = await (supabase as any).from("profiles").select("*");
       if (error) throw error;
       return (data as any[]) || [];
     },
@@ -149,12 +149,15 @@ const StaffUtilisation = () => {
     return { name: dept, totalTasks: total, completionRate };
   }).sort((a, b) => b.completionRate - a.completionRate); // sort by efficiency
 
-  // Auto-generate AI Summary Text via Gemini 2.5
+  // Auto-generate AI Summary Text via Gemini 2.5 (STABLE — runs once)
+  const hasGeneratedRef = useRef(false);
   useEffect(() => {
+    if (hasGeneratedRef.current) return;
     if (userMetrics.length === 0) {
       setAiSummary("Insufficient data to generate workforce insights.");
       return;
     }
+    hasGeneratedRef.current = true;
 
     const generateAIInsight = async () => {
        setIsGeneratingAI(true);
@@ -165,7 +168,8 @@ const StaffUtilisation = () => {
            return;
          }
 
-         const ai = new GoogleGenAI({ apiKey });
+         const genAI = new GoogleGenerativeAI(apiKey);
+         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
          
          const dataPayload = {
            totalStaff: userMetrics.length,
@@ -181,12 +185,8 @@ const StaffUtilisation = () => {
 
 Write a sophisticated, 2-2 sentence executive brief analyzing this performance. Keep it strictly professional, highly analytical, and immediately actionable. Focus on efficiency, burnout risk, and top performance. Do not use any markdown formatting like bolding or asterisks. Make it sound like an elite management consultant report. Ensure the response is no more than 280 characters.`;
 
-         const response = await ai.models.generateContent({
-             model: 'gemini-2.5-flash',
-             contents: prompt,
-         });
-         
-         const cleanedText = (response.text || "Insight generation failed.").replace(/\*\*/g, '').replace(/\*/g, '');
+         const result = await model.generateContent(prompt);
+         const cleanedText = (result.response.text() || "Insight generation failed.").replace(/\*\*/g, '').replace(/\*/g, '');
          setAiSummary(cleanedText);
        } catch (error: any) {
          console.error("AI Generation Error:", error);
@@ -198,7 +198,8 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
 
     const timeout = setTimeout(generateAIInsight, 1500);
     return () => clearTimeout(timeout);
-  }, [userMetrics, avgCompletion, departmentMetrics]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userMetrics.length]);
 
   return (
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background/50 p-4 md:p-8 overflow-y-auto">

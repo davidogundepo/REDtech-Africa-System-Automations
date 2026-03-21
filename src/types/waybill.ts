@@ -53,13 +53,13 @@ export interface WaybillData {
 }
 
 export const defaultWaybillInfo: Partial<WaybillData> = {
-  companyName: "REDtech Africa",
+  companyName: "REDtech Africa Consulting",
   companyAddress: "Trocadero Square, The Rock Drive, Lekki Phase 1",
   companyPhone: "+234 818 969 6614",
-  companyEmail: "olu@redtechafrica.com",
+  companyEmail: "hello@redtechafrica.com",
   companyWebsite: "www.redtechafrica.com",
   supplierName: "REDtech Africa Consulting LTD",
-  supplierEmail: "olu@redtechafrica.com",
+  supplierEmail: "hello@redtechafrica.com",
   supplierPhone: "+234 818 969 6614",
   supplierPhone2: "+234 703 298 0038",
   deliveryMethod: 'Vehicle',

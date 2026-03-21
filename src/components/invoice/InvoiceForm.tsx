@@ -146,6 +146,18 @@ export const InvoiceForm = ({ invoiceData, setInvoiceData }: InvoiceFormProps) =
                   className="flex-1"
                 />
               </div>
+              <div className="flex gap-1.5 mt-2 flex-wrap">
+                {['#bc7e57', '#1a1a2e', '#16213e', '#0f3460', '#e94560', '#533483', '#2b9348', '#d4a373', '#264653', '#2a9d8f', '#e76f51', '#606c38'].map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => updateField('accentColor', c)}
+                    className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${invoiceData.accentColor === c ? 'border-foreground scale-110' : 'border-transparent'}`}
+                    style={{ backgroundColor: c }}
+                    title={c}
+                  />
+                ))}
+              </div>
             </div>
           </div>
           <LogoUpload
