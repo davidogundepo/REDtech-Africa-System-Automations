@@ -448,27 +448,20 @@ const Clients = () => {
                       column.items.map(client => {
                         const assignee = profiles.find(p => p.id === client.assigned_to);
                         return (
-                          <div key={client.id} className="group relative bg-card rounded-lg border border-border/60 p-3.5 shadow-sm hover:shadow-md hover:border-border/90 transition-all cursor-move">
-                            <div className="flex items-start justify-between mb-2 gap-2">
+                          <div key={client.id} className="group relative bg-card rounded-lg border border-border/60 p-3.5 shadow-sm hover:shadow-md hover:border-[#bc7e57]/50 transition-all">
+                            <div className="flex items-start justify-between mb-2">
                               {client.company ? (
-                                <div className="min-w-0">
+                                <div className="min-w-0 pr-2">
                                   <h4 className="font-bold text-sm text-foreground truncate">{client.company}</h4>
                                   <p className="text-xs text-muted-foreground truncate">{client.name}</p>
                                 </div>
                               ) : (
-                                <h4 className="font-bold text-sm text-foreground truncate">{client.name}</h4>
-                              )}
-                              
-                              {/* Edit shortcut (hidden until hover) */}
-                              {canEdit && (
-                                <button onClick={() => handleEdit(client)} className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-[#bc7e57] shrink-0 transition-opacity">
-                                  <Edit className="h-3 w-3" />
-                                </button>
+                                <h4 className="font-bold text-sm text-foreground truncate pr-2">{client.name}</h4>
                               )}
                             </div>
 
                             {client.industry && (
-                              <Badge variant="secondary" className="text-[9px] uppercase tracking-wider px-1.5 py-0 mb-3 bg-muted/60 absolute top-3.5 right-3">{client.industry}</Badge>
+                              <Badge variant="secondary" className="text-[9px] uppercase tracking-wider px-1.5 py-0 mb-3 bg-muted/60">{client.industry}</Badge>
                             )}
                             
                             {client.notes && (
@@ -479,21 +472,28 @@ const Clients = () => {
                             
                             <div className="flex items-center justify-between mt-auto pt-3 border-t border-border/40">
                               {client.last_contact_date ? (
-                                <p className="text-[10px] text-muted-foreground font-medium flex left items-center gap-1" title="Last contact">
+                                <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1" title="Last contact">
                                   <Calendar className="h-2.5 w-2.5" /> {formatDate(client.last_contact_date)}
                                 </p>
                               ) : (
                                 <p className="text-[10px] text-muted-foreground/50 font-medium italic">No contact yet</p>
                               )}
                               
-                              {assignee && (
-                                <div className="h-5 w-5 rounded-full bg-[#bc7e57]/15 flex items-center justify-center text-[8px] font-bold text-[#bc7e57]" title={assignee.full_name}>
-                                  {getInitials(assignee.full_name)}
-                                </div>
-                              )}
+                              <div className="flex items-center gap-2">
+                                {canEdit && (
+                                  <button onClick={() => handleEdit(client)} className="text-muted-foreground/70 hover:text-[#bc7e57] transition-colors p-1" title="Edit Deal">
+                                    <Edit className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                                {assignee && (
+                                  <div className="h-5 w-5 rounded-full bg-[#bc7e57]/15 flex items-center justify-center text-[8px] font-bold text-[#bc7e57]" title={assignee.full_name}>
+                                    {getInitials(assignee.full_name)}
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
-                            {/* Status mover buttons (miniature UI for changing column) */}
+                            {/* Status mover buttons */}
                             {canEdit && (
                               <div className="absolute -right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background border border-border/80 shadow-md rounded-[4px] p-0.5 z-10">
                                 {dealStatuses.map((s, i) => {
