@@ -391,6 +391,11 @@ const Attendance = () => {
     mutationFn: async () => {
       if (!profile) throw new Error("Not logged in");
       const now = new Date();
+      
+      if (now.getDay() === 0 || now.getDay() === 6) {
+        throw new Error("Whoa there trailblazer! 🛑 It's the weekend. Put the laptop down, grab a drink, and go enjoy life! 🌴🍹");
+      }
+      
       const hour = now.getHours();
       const startHour = shiftConfig?.total_days ?? 9;
       const isLate = hour >= startHour;
