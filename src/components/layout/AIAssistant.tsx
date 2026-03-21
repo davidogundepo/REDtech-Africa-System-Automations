@@ -34,6 +34,9 @@ interface AIAssistantProps {
 function renderFormattedText(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
     return <span key={i}>{part}</span>;
   });
 }
@@ -250,10 +253,16 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
     const roleText = profile?.role === 'super_admin' ? 'Super Admin - Full Access' : profile?.role === 'admin' ? 'Admin - Elevated Access' : 'Team Member - Restricted Access';
     
     // ⚡ HOT CONTEXT INJECTION (Prevents slow ReAct DB loops for common queries)
-    const [tasksRes, leavesRes] = await Promise.all([
-      (supabase as any).from('tasks').select('title, status, priority').eq('user_id', profile?.id).in('status', ['todo', 'in_progress']).limit(5),
-      (supabase as any).from('leave_requests').select('status, leave_type').eq('user_id', profile?.id).eq('status', 'pending').limit(1)
-    ]);
+    let tasksRes = { data: [] };
+    let leavesRes = { data: [] };
+    try {
+      [tasksRes, leavesRes] = await Promise.all([
+        (supabase as any).from('tasks').select('title, status, priority').eq('user_id', profile?.id).in('status', ['todo', 'in_progress']).limit(5),
+        (supabase as any).from('leave_requests').select('status, leave_type').eq('user_id', profile?.id).eq('status', 'pending').limit(1)
+      ]);
+    } catch (dbErr) {
+      console.warn("Failed to fetch hot context for AI, proceeding without it", dbErr);
+    }
 
     const systemPrompt = `You are REDtech AI Assistance, an elite Fortune 500 internal ERP Agent.
 Current User: ${profile?.full_name || 'User'}
@@ -434,8 +443,8 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
       await saveChatToDb(visibleHistory, chatTitle);
 
     } catch (err: any) {
-      console.error(err);
-      toast.error("Error connecting to AI Copilot.");
+      console.error("AI Copilot Error:", err);
+      toast.error(`Error connecting to AI Copilot: ${err.message || 'Unknown error'}`);
     } finally {
       setIsTyping(false);
       isProcessingClick.current = false;
