@@ -112,7 +112,7 @@ const UserManagement = () => {
       setShiftDialogOpen(false);
       
       // Admin Shift Change Bulletin - Broadcast to all active staff
-      const { data: activeUsers } = await supabase.from('profiles').select('email, full_name').neq('is_active', false);
+      const { data: activeUsers } = await (supabase as any).from('profiles').select('email, full_name');
       
       if (activeUsers && activeUsers.length > 0) {
         const emailPromises = activeUsers.map((user: any) => {
