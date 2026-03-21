@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { LogIn, Clock, AlertTriangle, Building2, Home, Laptop, MapPin } from "lucide-react";
+import { LogIn, Clock, AlertTriangle, Building2, Home, Laptop, MapPin, X } from "lucide-react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -16,13 +16,18 @@ const WORK_MODES = [
   { id: "field", label: "Field Ops", icon: MapPin },
 ] as const;
 
+const DISMISS_KEY_PREFIX = "clockin-dismiss-count-";
+
 export function GlobalAttendancePopup() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [workMode, setWorkMode] = useState<string>("office");
+  const [dismissCount, setDismissCount] = useState(0);
+  const [showFinalWarning, setShowFinalWarning] = useState(false);
   const today = format(new Date(), "yyyy-MM-dd");
+  const dismissKey = `${DISMISS_KEY_PREFIX}${today}`;
 
   const { data: myRecord, isLoading } = useQuery({
     queryKey: ["my-attendance", today],
@@ -34,20 +39,47 @@ export function GlobalAttendancePopup() {
         .eq("user_id", profile.id)
         .eq("date", today)
         .maybeSingle();
-      if (error && error.code !== "PGRST116") throw error; // PGRST116 is 0 rows returned
+      if (error && error.code !== "PGRST116") throw error;
       return data || null;
     },
     enabled: !!profile,
   });
 
   useEffect(() => {
-    // Only show if we've loaded the record, it doesn't exist, and the user is logged in
-    if (!isLoading && profile && myRecord === null && !isOpen) {
-      // Small timeout to allow the rest of the UI to render first
-      const timer = setTimeout(() => setIsOpen(true), 1500);
-      return () => clearTimeout(timer);
+    if (!isLoading && profile && myRecord === null) {
+      const stored = parseInt(localStorage.getItem(dismissKey) || "0", 10);
+      setDismissCount(stored);
+
+      // Only show if dismissed fewer than 2 times today
+      if (stored < 2) {
+        const timer = setTimeout(() => setIsOpen(true), 1500);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [isLoading, profile, myRecord, isOpen]);
+  }, [isLoading, profile, myRecord, dismissKey]);
+
+  const handleDismiss = () => {
+    const newCount = dismissCount + 1;
+
+    if (newCount === 1) {
+      // First dismiss: close it, but it will return on next page load
+      setDismissCount(newCount);
+      localStorage.setItem(dismissKey, newCount.toString());
+      setIsOpen(false);
+      toast.info("Reminder: You haven't clocked in yet today.", { duration: 4000 });
+    } else {
+      // Second dismiss: show the final warning first, then hide permanently
+      if (!showFinalWarning) {
+        setShowFinalWarning(true);
+        return; // Don't close yet — let user see the warning and dismiss again
+      }
+      // User confirmed the final warning
+      setDismissCount(newCount);
+      localStorage.setItem(dismissKey, newCount.toString());
+      setIsOpen(false);
+      setShowFinalWarning(false);
+    }
+  };
 
   const { data: shiftConfig } = useQuery({
     queryKey: ["shift-config"],
@@ -69,7 +101,6 @@ export function GlobalAttendancePopup() {
       const tag = modeObj ? `[📍 ${modeObj.label}] ` : '';
       const finalNotes = notes.trim() ? `${tag}- ${notes}` : tag.trim();
 
-      // 1. Insert Attendance Record
       const { error: attError } = await supabase.from("attendance_records").insert([{
         user_id: profile.id,
         clock_in: now.toISOString(),
@@ -79,7 +110,6 @@ export function GlobalAttendancePopup() {
       }]);
       if (attError) throw attError;
 
-      // 2. If Late, deduct 2 points from profile to reflect gamification
       if (isLate) {
         const { data: currentProfile } = await supabase
           .from("profiles")
@@ -108,11 +138,10 @@ export function GlobalAttendancePopup() {
     onError: (error) => toast.error(error.message),
   });
 
-  // If no profile or still loading, don't render anything
   if (!profile || isLoading) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleDismiss(); }}>
       <DialogContent className="sm:max-w-md border-border/40 bg-background/95 backdrop-blur-xl shadow-2xl rounded-2xl" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
@@ -124,6 +153,16 @@ export function GlobalAttendancePopup() {
         </DialogHeader>
         
         <div className="space-y-6 py-2">
+          {/* Final Warning Banner */}
+          {showFinalWarning && (
+            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <p className="text-xs font-medium leading-relaxed">
+                This reminder <strong>will not appear again today</strong> if you close it now. Are you sure you don't want to clock in?
+              </p>
+            </div>
+          )}
+
           <div className="p-4 rounded-xl bg-muted/30 border border-border/40 text-left">
             <h4 className="font-medium text-foreground tracking-tight mb-1 text-md">Register Attendance</h4>
             <p className="text-sm text-muted-foreground leading-relaxed">Please clock in to register your attendance for today. Your performance score tracks your punctuality automatically.</p>
@@ -162,7 +201,7 @@ export function GlobalAttendancePopup() {
             />
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 space-y-3">
             <Button
               onClick={() => clockInMutation.mutate()}
               className="w-full py-6 text-base font-medium rounded-xl shadow-lg hover:shadow-xl transition-all gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
@@ -172,8 +211,16 @@ export function GlobalAttendancePopup() {
               {clockInMutation.isPending ? "Connecting..." : "Confirm Clock In"}
             </Button>
 
+            {/* Dismiss with context */}
+            <button
+              onClick={handleDismiss}
+              className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-2 font-medium"
+            >
+              {dismissCount === 0 ? "Remind me later" : "I'll clock in later — dismiss permanently"}
+            </button>
+
             {new Date().getHours() >= (shiftConfig?.total_days ?? 9) && (
-              <div className="flex items-center justify-center gap-2 text-rose-500 text-xs font-medium mt-4 bg-rose-500/10 py-2.5 px-3 rounded-lg border border-rose-500/20">
+              <div className="flex items-center justify-center gap-2 text-rose-500 text-xs font-medium bg-rose-500/10 py-2.5 px-3 rounded-lg border border-rose-500/20">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 <span>Late Arrival: {(shiftConfig?.total_days ?? 9).toString().padStart(2, '0')}:00 Time Limit Exceeded (-2 pts)</span>
               </div>
