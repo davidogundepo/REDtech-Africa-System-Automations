@@ -68,29 +68,39 @@ export function AppSidebar() {
     navigate("/auth");
   };
 
-  const renderNavGroup = (items: typeof coreModules, label: string) => (
-    <SidebarGroup>
-      <SidebarGroupLabel>{label}</SidebarGroupLabel>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton 
-                asChild 
-                isActive={location.pathname === item.path}
-                tooltip={item.title}
-              >
-                <NavLink to={item.path}>
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.title}</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
+  const renderNavGroup = (items: typeof coreModules, label: string) => {
+    return (
+      <SidebarGroup>
+        <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] font-semibold text-muted-foreground/60 px-3">{label}</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu className="space-y-0.5 px-2">
+            {items.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive}
+                    tooltip={item.title}
+                    className={
+                      isActive
+                        ? "relative h-10 bg-[#bc7e57]/15 text-[#bc7e57] font-semibold rounded-xl shadow-[0_1px_3px_rgba(188,126,87,0.15)] border border-[#bc7e57]/20 before:absolute before:left-0 before:top-[20%] before:bottom-[20%] before:w-[3px] before:rounded-full before:bg-[#bc7e57] before:shadow-[0_0_8px_rgba(188,126,87,0.5)] transition-all duration-200"
+                        : "h-9 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl transition-all duration-200 hover:translate-x-0.5"
+                    }
+                  >
+                    <NavLink to={item.path} className="flex items-center gap-2.5">
+                      <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
+                      <span className="truncate">{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  };
 
   return (
     <Sidebar collapsible="icon">

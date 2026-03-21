@@ -112,6 +112,62 @@ All colors MUST be HSL.
   }
 }
 
+/* ═══════════════════════════════════════════════════════════ */
+/* PREMIUM MICRO-INTERACTIONS & FINISHING DETAILS             */
+/* ═══════════════════════════════════════════════════════════ */
+
+/* Smooth card hover lift — applies globally to all Card components */
+[data-slot="card"] {
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
+}
+[data-slot="card"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+/* Premium button press micro-feedback */
+button:not(:disabled):active,
+[role="button"]:not(:disabled):active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Subtle custom scrollbar (WebKit) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.35);
+}
+
+/* Badge / pill micro-hover */
+[data-slot="badge"] {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+[data-slot="badge"]:hover {
+  transform: scale(1.03);
+}
+
+/* Focus ring glow for interactive elements */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  transition: outline-offset 0.15s ease;
+}
+
+/* Smooth page content entrance */
+main, [role="main"] {
+  animation: page-enter 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
 @keyframes fade-in-up {
   0% {
     opacity: 0;
@@ -120,6 +176,17 @@ All colors MUST be HSL.
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes page-enter {
+  0% {
+    opacity: 0.85;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
