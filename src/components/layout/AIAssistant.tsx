@@ -297,10 +297,23 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
 
     let historyString = messageHistory.map(m => `${m.role === 'system' ? 'SYSTEM' : m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`).join("\n");
     
-    const result = await model.generateContent(`${systemPrompt}\n\n--- Chat History ---\n${historyString}`);
-    const text = result.response.text();
+    // Add a strict 15-second timeout to the AI call so it never hangs indefinitely
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("AI Copilot request timed out after 15 seconds.")), 15000);
+    });
 
-    return text || "I was unable to process that request.";
+    try {
+      const result = await Promise.race([
+        model.generateContent(`${systemPrompt}\n\n--- Chat History ---\n${historyString}`),
+        timeoutPromise
+      ]) as any;
+      
+      const text = result.response.text();
+      return text || "I was unable to process that request.";
+    } catch (apiError) {
+      console.error("Gemini API Invocation Error:", apiError);
+      throw apiError;
+    }
   };
 
   const handleSend = async (e?: React.FormEvent, OverrideInput?: string) => {
@@ -412,10 +425,12 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
               if (queryResults.length > 0) {
                  const systemFeedback = queryResults.join("\n");
                  // Only push assistant text if there is conversational text alongside the JSON block
-                 const intermediateText = cleanText.replace(actionRegex, '').trim();
-                 if (intermediateText) {
-                   currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: intermediateText });
+                 let intermediateText = cleanText.replace(actionRegex, '').trim();
+                 if (!intermediateText) {
+                    intermediateText = "Processing data based on your request...";
                  }
+                 currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: intermediateText });
+                 
                  // Always push system feedback so Gemini can read it next loop
                  currentHistory.push({ id: crypto.randomUUID(), role: "system", content: systemFeedback });
                  requiresAnotherPass = true;
