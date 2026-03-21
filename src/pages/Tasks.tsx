@@ -1,5 +1,4 @@
-import { ViewerBanner } from "@/components/ViewerBanner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -10,12 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, CheckSquare, Clock, AlertTriangle, Circle, User, MessageSquare, Filter } from "lucide-react";
+import { Plus, Search, CheckSquare, Clock, AlertTriangle, Circle, User, MessageSquare, Filter, ListTodo, TrendingUp, CalendarDays, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -48,18 +48,18 @@ const departments = ["Finance", "Operations", "Delivery Ops", "Resourcing", "HR"
 const priorities = ["low", "medium", "high", "urgent"];
 const statuses = ["pending", "in-progress", "completed", "overdue"];
 
-const priorityColors: Record<string, string> = {
-  low: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  medium: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-  high: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
-  urgent: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
+const priorityConfig: Record<string, { bg: string; text: string; border: string }> = {
+  low: { bg: "bg-slate-50 dark:bg-slate-800/30", text: "text-slate-600 dark:text-slate-400", border: "border-l-slate-300" },
+  medium: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-600 dark:text-blue-400", border: "border-l-blue-400" },
+  high: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-600 dark:text-orange-400", border: "border-l-orange-400" },
+  urgent: { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-600 dark:text-red-400", border: "border-l-red-500" },
 };
 
-const statusIcons: Record<string, React.ElementType> = {
-  pending: Circle,
-  "in-progress": Clock,
-  completed: CheckSquare,
-  overdue: AlertTriangle,
+const statusConfig: Record<string, { icon: React.ElementType; color: string; dot: string; bg: string }> = {
+  pending: { icon: Circle, color: "text-muted-foreground", dot: "bg-zinc-400", bg: "bg-zinc-100 dark:bg-zinc-800/30" },
+  "in-progress": { icon: Clock, color: "text-blue-600 dark:text-blue-400", dot: "bg-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
+  completed: { icon: CheckSquare, color: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
+  overdue: { icon: AlertTriangle, color: "text-red-600 dark:text-red-400", dot: "bg-red-400", bg: "bg-red-50 dark:bg-red-900/20" },
 };
 
 const emptyTask = { title: "", description: "", due_date: "", priority: "medium", department: "", status: "pending", assigned_to_user_id: "", blocker_note: "" };
@@ -92,6 +92,8 @@ const Tasks = () => {
 
   useEffect(() => { fetchTasks(); fetchProfiles(); }, []);
 
+  const getInitials = (name: string) => (name || "").split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+
   const handleSubmit = async () => {
     if (!formData.title.trim()) { toast.error("Task title is required"); return; }
 
@@ -113,7 +115,6 @@ const Tasks = () => {
       if (error) { toast.error("Failed to update task"); return; }
       toast.success(`Task updated, ${(profile?.full_name || "").split(" ")[0]}!`);
     } else {
-      // Add initial blocker note if provided
       if (formData.blocker_note) {
         payload.blocker_notes = [{
           note: formData.blocker_note,
@@ -126,9 +127,7 @@ const Tasks = () => {
       if (error) { toast.error("Failed to create task"); return; }
       toast.success(`Task created! You're on it, ${(profile?.full_name || "").split(" ")[0]} 💪`);
 
-      // Send email if assigned to someone
       if (assignedProfile) {
-        // Fire an in-app global notification
         (supabase as any).from("notifications").insert({
           user_id: assignedProfile.id,
           title: "New Task Assigned",
@@ -142,15 +141,15 @@ const Tasks = () => {
           subject: `New Task Assigned: ${formData.title}`,
           html: brandedEmailTemplate({
             recipientName: assignedProfile.full_name,
-            heading: "You've Been Assigned a New Task 📋",
+            heading: "You've Been Assigned a New Task",
             body: `
               <table style="width:100%; border-collapse:collapse; margin:16px 0;">
-                <tr><td style="padding:8px 12px; background:#f8f6f3; border-radius:6px 6px 0 0;"><strong>Task</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${formData.title}</td></tr>
-                <tr><td style="padding:8px 12px;"><strong>Priority</strong></td><td style="padding:8px 12px;"><span style="color:${formData.priority === 'high' ? '#dc2626' : formData.priority === 'medium' ? '#f59e0b' : '#22c55e'}; font-weight:600;">${formData.priority.toUpperCase()}</span></td></tr>
-                <tr><td style="padding:8px 12px; background:#f8f6f3;"><strong>Department</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${formData.department || 'General'}</td></tr>
-                <tr><td style="padding:8px 12px; border-radius:0 0 6px 6px;"><strong>Due Date</strong></td><td style="padding:8px 12px;">${formData.due_date || 'No deadline'}</td></tr>
+                <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Task</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${formData.title}</td></tr>
+                <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Priority</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;"><span style="color:${formData.priority === 'urgent' || formData.priority === 'high' ? '#dc2626' : formData.priority === 'medium' ? '#f59e0b' : '#64748b'}; font-weight:600;">${formData.priority.toUpperCase()}</span></td></tr>
+                <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Department</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${formData.department || 'General'}</td></tr>
+                <tr><td style="padding:10px 14px; font-weight:600; color:#1a1a2e;">Due Date</td><td style="padding:10px 14px;">${formData.due_date || 'No deadline'}</td></tr>
               </table>
-              <p>Log in to view the full details and get started.</p>
+              <p>Log in to view details and get started.</p>
             `,
             ctaText: "View Task",
             ctaUrl: "https://ractools.vercel.app/tasks",
@@ -169,7 +168,6 @@ const Tasks = () => {
     const { error } = await (supabase as any).from("tasks").update({ status: newStatus }).eq("id", id);
     if (error) { toast.error("Failed to update status"); return; }
     
-    // Log the status change in task_updates
     await (supabase as any).from("task_updates").insert({
       task_id: id,
       user_id: profile?.id,
@@ -218,7 +216,7 @@ const Tasks = () => {
     
     if (error) { toast.error("Failed to add note"); return; }
     
-    toast.success(`Note added, ${(profile?.full_name || "").split(" ")[0]}! Great documentation 📝`);
+    toast.success(`Note added, ${(profile?.full_name || "").split(" ")[0]}! 📝`);
     setNewBlockerNote("");
     setBlockerDialogTask(null);
     fetchTasks();
@@ -237,42 +235,76 @@ const Tasks = () => {
     overdue: tasks.filter((t) => t.status === "overdue").length,
   };
 
+  // Stats
+  const myTaskCount = tasks.filter(t => t.assigned_to_user_id === profile?.id || t.assigned_to === profile?.full_name).length;
+  const completionRate = counts.all > 0 ? Math.round((counts.completed / counts.all) * 100) : 0;
+  const overdueTasks = tasks.filter(t => {
+    if (t.status === 'completed' || t.status === 'overdue') return false;
+    if (!t.due_date) return false;
+    return new Date(t.due_date) < new Date();
+  });
+
+  const formatDate = (d: string) => {
+    try { return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); } catch { return d; }
+  };
+
+  const formatDateFull = (d: string) => {
+    try { return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return d; }
+  };
+
+  const getDueDateLabel = (dueDate: string) => {
+    const diff = Math.ceil((new Date(dueDate).getTime() - Date.now()) / (1000 * 3600 * 24));
+    if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, color: "text-red-500" };
+    if (diff === 0) return { label: "Due today", color: "text-amber-500" };
+    if (diff <= 3) return { label: `${diff}d left`, color: "text-amber-500" };
+    return { label: formatDate(dueDate), color: "text-muted-foreground" };
+  };
+
   return (
     <div className="flex-1 min-h-screen bg-background">
-      <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+      {/* ═══════ HEADER ═══════ */}
+      <header className="bg-card/80 backdrop-blur-md border-b border-border/50 sticky top-0 z-10">
+        <div className="px-6 md:px-8 py-5">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: '#bc7e57' }}>Task Tracker</h1>
-              <p className="text-sm text-muted-foreground">{filtered.length} tasks{showMyTasks ? " (My Tasks)" : ""}</p>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Task Tracker</h1>
+              <p className="text-sm text-muted-foreground mt-1">{filtered.length} task{filtered.length !== 1 ? 's' : ''}{showMyTasks ? " assigned to you" : ""}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button 
                 variant={showMyTasks ? "default" : "outline"} 
                 size="sm" 
                 onClick={() => setShowMyTasks(!showMyTasks)}
-                style={showMyTasks ? { backgroundColor: '#bc7e57' } : {}}
-                className={showMyTasks ? "text-white" : ""}
+                className={showMyTasks 
+                  ? "bg-[#bc7e57] hover:bg-[#a56d49] text-white" 
+                  : "border-border/50 text-muted-foreground"
+                }
               >
-                <Filter className="h-4 w-4 mr-1" /> My Tasks
+                <Filter className="h-3.5 w-3.5 mr-1.5" /> My Tasks
               </Button>
               {canEdit && (
                 <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setFormData(emptyTask); setEditingId(null); } }}>
                   <DialogTrigger asChild>
-                    <Button style={{ backgroundColor: '#bc7e57' }} className="text-white hover:opacity-90">
-                      <Plus className="h-4 w-4 mr-2" /> New Task
+                    <Button className="bg-[#bc7e57] hover:bg-[#a56d49] text-white h-9 gap-1.5">
+                      <Plus className="h-4 w-4" /> New Task
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-lg">
-                    <DialogHeader><DialogTitle>{editingId ? "Edit Task" : "Create Task"}</DialogTitle></DialogHeader>
-                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4 py-4">
-                      <div><Label>Title *</Label><Input required value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Task title" /></div>
-                      <div><Label>Description</Label><Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Details..." rows={3} /></div>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader><DialogTitle className="text-lg">{editingId ? "Edit Task" : "Create New Task"}</DialogTitle></DialogHeader>
+                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-5 py-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Title *</Label>
+                        <Input required value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Task title" className="h-11" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Description</Label>
+                        <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Details, context, or requirements..." rows={3} className="resize-none" />
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Assign To</Label>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Assign To</Label>
                           <Select value={formData.assigned_to_user_id} onValueChange={(v) => setFormData({ ...formData, assigned_to_user_id: v })}>
-                            <SelectTrigger><SelectValue placeholder="Select user" /></SelectTrigger>
+                            <SelectTrigger className="h-11"><SelectValue placeholder="Select user" /></SelectTrigger>
                             <SelectContent>
                               {profiles.map((p) => (
                                 <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>
@@ -280,38 +312,41 @@ const Tasks = () => {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div><Label>Due Date</Label><Input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} /></div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Due Date</Label>
+                          <Input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} className="h-11" />
+                        </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <Label>Priority</Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Priority</Label>
                           <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                             <SelectContent>{priorities.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
-                        <div>
-                          <Label>Department</Label>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Department</Label>
                           <Select value={formData.department} onValueChange={(v) => setFormData({ ...formData, department: v })}>
-                            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectTrigger className="h-11"><SelectValue placeholder="Select" /></SelectTrigger>
                             <SelectContent>{departments.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
-                        <div>
-                          <Label>Status</Label>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Status</Label>
                           <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                             <SelectContent>{statuses.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                       </div>
                       {!editingId && (
-                        <div>
-                          <Label>Initial Note (optional)</Label>
-                          <Textarea value={formData.blocker_note} onChange={(e) => setFormData({ ...formData, blocker_note: e.target.value })} placeholder="Add context, blockers, or dependencies..." rows={2} />
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Initial Note <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                          <Textarea value={formData.blocker_note} onChange={(e) => setFormData({ ...formData, blocker_note: e.target.value })} placeholder="Context, blockers, or dependencies..." rows={2} className="resize-none" />
                         </div>
                       )}
-                      <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }}>
+                      <Button type="submit" className="w-full h-11 bg-[#bc7e57] hover:bg-[#a56d49] text-white font-medium">
                         {editingId ? "Update Task" : "Create Task"}
                       </Button>
                     </form>
@@ -323,28 +358,85 @@ const Tasks = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6">
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search tasks..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
+      <div className="px-6 md:px-8 py-6 space-y-6">
+        {/* ═══════ STAT CARDS ═══════ */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-border/50 bg-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Total</p>
+              <ListTodo className="h-4 w-4 text-muted-foreground/50" />
+            </div>
+            <p className="text-2xl font-bold tracking-tight text-foreground">{counts.all}</p>
+            <p className="text-[11px] text-muted-foreground mt-1">{myTaskCount} assigned to you</p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {(["all", ...statuses] as const).map((s) => (
-              <Button key={s} variant={filterStatus === s ? "default" : "outline"} size="sm" onClick={() => setFilterStatus(s)}
-                style={filterStatus === s ? { backgroundColor: '#bc7e57' } : {}} className={filterStatus === s ? "text-white" : ""}>
-                <span className="capitalize">{s}</span>
-                <Badge variant="secondary" className="ml-1 text-xs">{counts[s as keyof typeof counts]}</Badge>
-              </Button>
-            ))}
+          <div className="rounded-xl border border-border/50 bg-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">In Progress</p>
+              <Clock className="h-4 w-4 text-blue-400/60" />
+            </div>
+            <p className="text-2xl font-bold tracking-tight text-blue-600 dark:text-blue-400">{counts["in-progress"]}</p>
+            <p className="text-[11px] text-muted-foreground mt-1">actively being worked</p>
+          </div>
+          <div className="rounded-xl border border-border/50 bg-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Completed</p>
+              <TrendingUp className="h-4 w-4 text-emerald-400/60" />
+            </div>
+            <p className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{completionRate}%</p>
+            <p className="text-[11px] text-muted-foreground mt-1">{counts.completed} of {counts.all} tasks done</p>
+          </div>
+          <div className="rounded-xl border border-border/50 bg-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Overdue</p>
+              <AlertTriangle className="h-4 w-4 text-red-400/60" />
+            </div>
+            <p className={`text-2xl font-bold tracking-tight ${counts.overdue + overdueTasks.length > 0 ? 'text-red-500' : 'text-foreground'}`}>{counts.overdue + overdueTasks.length}</p>
+            <p className="text-[11px] text-muted-foreground mt-1">require attention</p>
           </div>
         </div>
 
-        {/* Task cards */}
-        <div className="space-y-3">
+        {/* ═══════ FILTER BAR ═══════ */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+            <Input 
+              placeholder="Search tasks..." 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              className="pl-9 h-10 bg-muted/20 border-border/40"
+            />
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            {(["all", ...statuses] as const).map((s) => {
+              const isActive = filterStatus === s;
+              const count = counts[s as keyof typeof counts];
+              return (
+                <button
+                  key={s}
+                  onClick={() => setFilterStatus(s)}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 border capitalize ${
+                    isActive 
+                      ? 'bg-[#bc7e57] text-white border-[#bc7e57] shadow-sm' 
+                      : 'bg-card text-muted-foreground border-border/40 hover:bg-muted/30'
+                  }`}
+                >
+                  {s}
+                  <span className={`text-[10px] min-w-[18px] h-[18px] rounded-full flex items-center justify-center ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-muted/50 text-muted-foreground'
+                  }`}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ═══════ TASK CARDS ═══════ */}
+        <div className="space-y-2.5">
           {loading ? (
-            <p className="text-center text-muted-foreground py-8">Loading...</p>
+            <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
+              <span className="animate-spin rounded-full h-5 w-5 border-2 border-[#bc7e57] border-t-transparent"/>
+              <span className="text-sm">Loading tasks...</span>
+            </div>
           ) : filtered.length === 0 ? (
             <EmptyState
               illustration="tasks"
@@ -355,107 +447,153 @@ const Tasks = () => {
             />
           ) : (
             filtered.map((task) => {
-              const StatusIcon = statusIcons[task.status] || Circle;
+              const pc = priorityConfig[task.priority] || priorityConfig.medium;
+              const sc = statusConfig[task.status] || statusConfig.pending;
+              const StatusIcon = sc.icon;
               const blockerCount = (task.blocker_notes || []).length;
+              const dueInfo = task.due_date ? getDueDateLabel(task.due_date) : null;
+
               return (
-                <Card key={task.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 flex items-start gap-4">
+                <div key={task.id} className={`group rounded-xl border border-border/50 border-l-[3px] ${pc.border} bg-card hover:shadow-md transition-all duration-200 overflow-hidden`}>
+                  <div className="flex items-start gap-4 p-4 sm:p-5">
+                    {/* Status Toggle */}
                     <Select value={task.status} onValueChange={(v) => handleStatusChange(task.id, v)}>
-                      <SelectTrigger className="w-auto border-0 p-0 h-auto shadow-none">
-                        <StatusIcon className={`h-5 w-5 ${task.status === 'completed' ? 'text-green-600' : task.status === 'overdue' ? 'text-red-600' : task.status === 'in-progress' ? 'text-blue-600' : 'text-muted-foreground'}`} />
+                      <SelectTrigger className="w-auto border-0 p-0 h-auto shadow-none focus:ring-0 mt-0.5">
+                        <div className={`h-8 w-8 rounded-lg ${sc.bg} flex items-center justify-center transition-transform hover:scale-110`}>
+                          <StatusIcon className={`h-4 w-4 ${sc.color}`} />
+                        </div>
                       </SelectTrigger>
                       <SelectContent>{statuses.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                     </Select>
+
+                    {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>{task.title}</h3>
-                        <Badge className={priorityColors[task.priority]} variant="secondary">{task.priority}</Badge>
-                        {task.department && <Badge variant="outline" className="text-xs">{task.department}</Badge>}
+                        <h3 className={`font-semibold text-sm ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</h3>
+                        <Badge className={`${pc.bg} ${pc.text} border-0 text-[10px] uppercase font-bold tracking-wider px-2 py-0`} variant="secondary">{task.priority}</Badge>
+                        {task.department && <Badge variant="outline" className="text-[10px] font-medium border-border/40 text-muted-foreground">{task.department}</Badge>}
                       </div>
-                      {task.description && <p className="text-sm text-muted-foreground mt-1 truncate">{task.description}</p>}
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                      {task.description && (
+                        <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 max-w-lg leading-relaxed">{task.description}</p>
+                      )}
+                      <div className="flex items-center gap-4 mt-3 flex-wrap">
                         {task.assigned_to && (
-                          <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" /> {task.assigned_to}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <div className="h-5 w-5 rounded-full bg-muted/50 flex items-center justify-center text-[8px] font-bold text-muted-foreground">
+                              {getInitials(task.assigned_to)}
+                            </div>
+                            <span className="text-[11px] text-muted-foreground font-medium">{task.assigned_to}</span>
+                          </div>
                         )}
-                        {task.due_date && (
-                          <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
+                        {dueInfo && (
+                          <span className={`text-[11px] font-medium flex items-center gap-1 ${dueInfo.color}`}>
+                            <CalendarDays className="h-3 w-3" /> {dueInfo.label}
+                          </span>
                         )}
                         {blockerCount > 0 && (
-                          <span className="flex items-center gap-1 text-yellow-600">
+                          <button 
+                            onClick={() => setBlockerDialogTask(task)}
+                            className="text-[11px] font-medium flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:underline"
+                          >
                             <MessageSquare className="h-3 w-3" /> {blockerCount} note{blockerCount > 1 ? 's' : ''}
-                          </span>
+                          </button>
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => setBlockerDialogTask(task)} title="Notes">
-                        <MessageSquare className="h-4 w-4" />
+
+                    {/* Actions */}
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-[#bc7e57]" onClick={() => setBlockerDialogTask(task)} title="Notes">
+                        <MessageSquare className="h-3.5 w-3.5" />
                       </Button>
                       {canEdit && (
                         <>
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(task)}>Edit</Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => handleEdit(task)} title="Edit">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="text-destructive">Delete</Button>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500" title="Delete">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>This will permanently delete this task.</AlertDialogDescription>
+                                <AlertDialogTitle>Delete this task?</AlertDialogTitle>
+                                <AlertDialogDescription>This will permanently delete "{task.title}". This action cannot be undone.</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(task.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                <AlertDialogAction onClick={() => handleDelete(task.id)} className="bg-red-600 hover:bg-red-700 text-white">Delete</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
                         </>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })
           )}
         </div>
       </div>
 
-      {/* Blocker Notes Dialog */}
+      {/* ═══════ NOTES DIALOG ═══════ */}
       <Dialog open={!!blockerDialogTask} onOpenChange={(o) => { if (!o) setBlockerDialogTask(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" /> Notes: {blockerDialogTask?.title}
+            <DialogTitle className="flex items-center gap-2.5 text-lg">
+              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <MessageSquare className="h-4 w-4 text-amber-500" />
+              </div>
+              Notes & Updates
             </DialogTitle>
+            {blockerDialogTask && (
+              <p className="text-xs text-muted-foreground mt-1 truncate">{blockerDialogTask.title}</p>
+            )}
           </DialogHeader>
           <div className="space-y-4 py-2">
-            {/* Existing notes */}
-            <div className="max-h-60 overflow-y-auto space-y-3">
+            {/* Existing notes — timeline style */}
+            <ScrollArea className="max-h-64">
               {(blockerDialogTask?.blocker_notes || []).length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No notes yet. Add one below.</p>
+                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <MessageSquare className="h-8 w-8 mb-2 opacity-30" />
+                  <p className="text-sm">No notes yet</p>
+                  <p className="text-xs mt-0.5">Add context, blockers, or progress updates below.</p>
+                </div>
               ) : (
-                (blockerDialogTask?.blocker_notes || []).map((note: any, i: number) => (
-                  <div key={i} className="bg-muted p-3 rounded-lg">
-                    <p className="text-sm">{note.note}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      — {note.by}, {format(new Date(note.at), "MMM d, yyyy 'at' HH:mm")}
-                    </p>
-                  </div>
-                ))
+                <div className="space-y-3">
+                  {(blockerDialogTask?.blocker_notes || []).map((note: any, i: number) => (
+                    <div key={i} className="relative pl-6">
+                      {/* Timeline dot */}
+                      <div className="absolute left-0 top-2.5 h-2 w-2 rounded-full bg-[#bc7e57]" />
+                      {i < (blockerDialogTask?.blocker_notes || []).length - 1 && (
+                        <div className="absolute left-[3px] top-5 bottom-0 w-0.5 bg-border/40" />
+                      )}
+                      <div className="bg-muted/30 rounded-xl p-3.5 border border-border/30">
+                        <p className="text-sm text-foreground leading-relaxed">{note.note}</p>
+                        <p className="text-[11px] text-muted-foreground mt-2 font-medium">
+                          {note.by} • {format(new Date(note.at), "MMM d, yyyy 'at' HH:mm")}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-            </div>
+            </ScrollArea>
+            
             {/* Add new note */}
             {canEdit && (
-              <form onSubmit={(e) => { e.preventDefault(); handleAddBlockerNote(); }} className="space-y-2">
+              <form onSubmit={(e) => { e.preventDefault(); handleAddBlockerNote(); }} className="space-y-3 pt-2 border-t border-border/40">
                 <Textarea
                   value={newBlockerNote}
                   onChange={(e) => setNewBlockerNote(e.target.value)}
-                  placeholder="Add a progress update, blocker, or dependency note..."
+                  placeholder="Add a progress update, blocker, or note..."
                   rows={2}
+                  className="resize-none"
                 />
-                <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }} disabled={!newBlockerNote.trim()}>
+                <Button type="submit" className="w-full h-10 bg-[#bc7e57] hover:bg-[#a56d49] text-white font-medium" disabled={!newBlockerNote.trim()}>
                   Add Note
                 </Button>
               </form>
