@@ -245,11 +245,21 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
     const ai = new GoogleGenAI({ apiKey });
     const roleText = profile?.role === 'super_admin' ? 'Super Admin - Full Access' : profile?.role === 'admin' ? 'Admin - Elevated Access' : 'Team Member - Restricted Access';
     
+    // ⚡ HOT CONTEXT INJECTION (Prevents slow ReAct DB loops for common queries)
+    const [tasksRes, leavesRes] = await Promise.all([
+      (supabase as any).from('tasks').select('title, status, priority').eq('user_id', profile?.id).in('status', ['todo', 'in_progress']).limit(5),
+      (supabase as any).from('leaves').select('status, type').eq('user_id', profile?.id).eq('status', 'pending').limit(1)
+    ]);
+
     const systemPrompt = `You are REDtech AI Assistance, an elite Fortune 500 internal ERP Agent.
 Current User: ${profile?.full_name || 'User'}
 Role: ${profile?.role || 'user'} (${roleText})
 Department: ${profile?.department || 'no department'}
 Current Page URL: ${location.pathname}
+
+⚡ HOT CONTEXT (Use this LIVE DATA instantly to answer questions. Do NOT use query_database for tasks or leaves unless they need more than the last 5):
+- User's Active Tasks: ${JSON.stringify(tasksRes.data || [])}
+- User's Pending Leaves: ${JSON.stringify(leavesRes.data || [])}
 
 SECURITY & STRICT RBAC ENFORCEMENT:
 If the user's Role is 'team-member', you MUST legally and strictly refuse to summarize global company analytics, staff utilisation stats of other users, or finance data. Act politely to deny. If they are 'super-admin' or 'admin', provide any requested global insights.
@@ -293,6 +303,34 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
     setIsTyping(true);
     
     const chatTitle = currentChatId ? undefined : messageText.substring(0, 30) + "...";
+
+    // ⚡ HYBRID KEYWORD-ROUTING (0ms Latency Navigation Bypass)
+    const lowerInput = messageText.toLowerCase();
+    if (lowerInput.includes('navigate to') || lowerInput.includes('go to') || lowerInput.includes('take me to') || lowerInput.includes('open')) {
+      const routes: Record<string, string> = {
+        'attendance': '/attendance',
+        'task': '/tasks',
+        'utilisation': '/staff-utilisation',
+        'finance': '/finance',
+        'social': '/social',
+        'leave': '/leave',
+        'dashboard': '/dashboard',
+        'profile': '/profile',
+        'client': '/clients'
+      };
+      
+      for (const [key, path] of Object.entries(routes)) {
+        if (lowerInput.includes(key)) {
+          navigate(path);
+          toast.success(`Navigating to ${path}...`);
+          currentHistory.push({ id: Date.now().toString(), role: "assistant", content: `I have instantly navigated you to the **${key.charAt(0).toUpperCase() + key.slice(1)}** module. \n\nHow else can I help?` });
+          setMessages(currentHistory);
+          setIsTyping(false);
+          await saveChatToDb(currentHistory, chatTitle);
+          return; // Exit instantly. 0ms Gemini latency.
+        }
+      }
+    }
 
     try {
       let requiresAnotherPass = true;
@@ -342,7 +380,8 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
         }
         
         if (!requiresAnotherPass) {
-          const finalAssistantReply = cleanText.replace(actionRegex, '').trim();
+          let finalAssistantReply = cleanText.replace(actionRegex, '').trim();
+          if (!finalAssistantReply) finalAssistantReply = "Done.";
           currentHistory.push({ id: Date.now().toString(), role: "assistant", content: finalAssistantReply });
         }
       }
