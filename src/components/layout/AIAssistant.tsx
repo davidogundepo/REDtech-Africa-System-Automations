@@ -63,6 +63,36 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
   const isSuperAdmin = profile?.role === 'super_admin';
   const isAdmin = profile?.role === 'admin' || isSuperAdmin;
 
+  // Panel Resizing Logic
+  const [panelWidth, setPanelWidth] = useState(380);
+  const isDragging = useRef(false);
+  const [isDraggingState, setIsDraggingState] = useState(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth >= 320 && newWidth <= 800) {
+        setPanelWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging.current) {
+        isDragging.current = false;
+        setIsDraggingState(false);
+        document.body.style.cursor = 'default';
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   // Collapse left sidebar when AI panel opens, restore on close
   useEffect(() => {
     if (isOpen) {
@@ -343,9 +373,32 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
 
   return (
     <div 
-      className={`shrink-0 h-screen flex flex-col bg-background transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'w-[380px] border-l border-border/50 opacity-100' : 'w-0 border-none opacity-0'}`}
-      style={isOpen ? { boxShadow: '-4px 0 20px rgba(0,0,0,0.03)' } : {}}
+      className="relative shrink-0 flex flex-col bg-background overflow-hidden border-border/50"
+      style={{
+        width: isOpen ? `${panelWidth}px` : '0px',
+        opacity: isOpen ? 1 : 0,
+        borderLeftWidth: isOpen ? '1px' : '0px',
+        boxShadow: isOpen ? '-4px 0 20px rgba(0,0,0,0.03)' : 'none',
+        transition: isDraggingState ? 'none' : 'width 300ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 300ms ease'
+      }}
     >
+      {/* Drag Handle */}
+      {isOpen && (
+        <div 
+          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-[#bc7e57] active:bg-[#bc7e57] z-[100] transition-colors"
+          style={{ cursor: 'ew-resize' }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            isDragging.current = true;
+            setIsDraggingState(true);
+            document.body.style.cursor = 'ew-resize';
+          }}
+          title="Drag to resize panel"
+        />
+      )}
+
+      {/* Wrapper prevents text squishing during close animation */}
+      <div className="flex flex-col h-screen" style={{ width: `${panelWidth}px` }}>
       {/* VIEW: CHAT HISTORY */}
       {view === 'history' && (
         <div className="w-full h-full flex flex-col">
@@ -490,6 +543,7 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

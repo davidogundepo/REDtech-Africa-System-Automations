@@ -18,6 +18,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,8 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { profile, signOut, isSuperAdmin, isAdmin } = useAuth();
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
 
   const handleLogout = async () => {
     await signOut();
@@ -131,28 +134,37 @@ export function AppSidebar() {
         <Button 
           variant="outline" 
           size="sm" 
-          className="w-full justify-start text-muted-foreground" 
+          className="w-full justify-start text-muted-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-0" 
           onClick={() => setTheme(theme === "light" ? "dark" : "light")}
         >
-          {theme === "light" ? <Moon className="h-4 w-4 mr-2" /> : <Sun className="h-4 w-4 mr-2" />}
-          {theme === "light" ? "Dark Mode" : "Light Mode"}
+          {theme === "light" ? <Moon className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} /> : <Sun className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} />}
+          {!isCollapsed && <span>{theme === "light" ? "Dark Mode" : "Light Mode"}</span>}
         </Button>
-        <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground hover:text-red-500" onClick={handleLogout}>
-          <LogOut className="h-4 w-4 mr-2" />
-          Log Out
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="w-full justify-start text-muted-foreground hover:text-red-500 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-0" 
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} />
+          {!isCollapsed && <span>Log Out</span>}
         </Button>
-        <p className="text-xs text-muted-foreground text-center">
-          Made with ❤️ by{" "}
-          <a href="https://www.linkedin.com/in/davidogundepo/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">David</a>
-          {" "}&{" "}
-          <a href="https://www.linkedin.com/in/olu-sowunmi/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Dolamu</a>
-        </p>
-        <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/50 mt-1">
-          <kbd className="px-1.5 py-0.5 rounded border border-border/50 bg-muted/40 text-[10px]">
-            {typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘K' : 'Ctrl+K'}
-          </kbd>
-          <span>to search</span>
-        </div>
+        {!isCollapsed && (
+          <>
+            <p className="text-xs text-muted-foreground text-center">
+              Made with ❤️ by{" "}
+              <a href="https://www.linkedin.com/in/davidogundepo/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">David</a>
+              {" "}&{" "}
+              <a href="https://www.linkedin.com/in/olu-sowunmi/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Dolamu</a>
+            </p>
+            <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/50 mt-1">
+              <kbd className="px-1.5 py-0.5 rounded border border-border/50 bg-muted/40 text-[10px]">
+                {typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘K' : 'Ctrl+K'}
+              </kbd>
+              <span>to search</span>
+            </div>
+          </>
+        )}
       </SidebarFooter>
     </Sidebar>
   );
