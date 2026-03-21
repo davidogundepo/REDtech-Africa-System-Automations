@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Header } from "./Header";
@@ -10,19 +11,21 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const [aiOpen, setAiOpen] = useState(false);
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
-        <SidebarInset className="flex-1 flex flex-col">
-          <Header />
+        <SidebarInset className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
+          <Header aiOpen={aiOpen} setAiOpen={setAiOpen} />
           <main className="flex-1 overflow-y-auto h-[calc(100vh-4rem)]">
             {children}
             <GlobalAttendancePopup />
             <CommandMenu />
-            <AIAssistant />
           </main>
         </SidebarInset>
+        <AIAssistant isOpen={aiOpen} setIsOpen={setAiOpen} />
       </div>
     </SidebarProvider>
   );

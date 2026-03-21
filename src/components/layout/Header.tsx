@@ -11,7 +11,12 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useNavigate } from "react-router-dom";
 import { CommandPalette } from "@/components/shared/CommandPalette";
 
-export function Header() {
+interface HeaderProps {
+  aiOpen: boolean;
+  setAiOpen: (open: boolean) => void;
+}
+
+export function Header({ aiOpen, setAiOpen }: HeaderProps) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -129,8 +134,8 @@ export function Header() {
         <Button 
           variant="outline" 
           size="sm" 
-          className="hidden md:flex gap-1.5 border-[#bc7e57]/30 bg-[#bc7e57]/5 hover:bg-[#bc7e57]/15 hover:border-[#bc7e57]/60 text-[#bc7e57] transition-all rounded-full px-3 h-8 shadow-sm"
-          onClick={() => window.dispatchEvent(new CustomEvent('rac-open-ai-assistant', { detail: { open: true } }))}
+          className={`hidden md:flex gap-1.5 border-[#bc7e57]/30 bg-[#bc7e57]/5 hover:bg-[#bc7e57]/15 hover:border-[#bc7e57]/60 text-[#bc7e57] transition-all rounded-full px-3 h-8 shadow-sm ${aiOpen ? 'ring-2 ring-[#bc7e57]/30 bg-[#bc7e57]/15' : ''}`}
+          onClick={() => setAiOpen(!aiOpen)}
         >
           <Sparkles className="h-3.5 w-3.5" />
           <span>AI Assistance</span>
@@ -138,8 +143,8 @@ export function Header() {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="md:hidden h-9 w-9 text-[#bc7e57] hover:bg-[#bc7e57]/10 rounded-full"
-          onClick={() => window.dispatchEvent(new CustomEvent('rac-open-ai-assistant', { detail: { open: true } }))}
+          className={`md:hidden h-9 w-9 text-[#bc7e57] hover:bg-[#bc7e57]/10 rounded-full ${aiOpen ? 'bg-[#bc7e57]/10' : ''}`}
+          onClick={() => setAiOpen(!aiOpen)}
         >
           <Sparkles className="h-5 w-5" />
         </Button>
