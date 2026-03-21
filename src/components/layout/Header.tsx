@@ -10,6 +10,11 @@ import { Bell, Check, Info, ShieldAlert, CheckCircle2, AlertTriangle, ArrowRight
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useNavigate } from "react-router-dom";
 import { CommandPalette } from "@/components/shared/CommandPalette";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Bug, Send as SendIcon, MessageSquareDashed } from "lucide-react";
+import { toast } from "sonner";
 
 interface HeaderProps {
   aiOpen: boolean;
@@ -22,6 +27,12 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  
+  // Bug Report State
+  const [bugOpen, setBugOpen] = useState(false);
+  const [bugType, setBugType] = useState('ui-bug');
+  const [bugText, setBugText] = useState('');
+  const [submittingBug, setSubmittingBug] = useState(false);
 
   // Global Cmd+K / Ctrl+K shortcut
   useEffect(() => {
@@ -61,6 +72,9 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
       if (!profile) return;
+      queryClient.setQueryData(["notifications", profile.id], (old: any) => 
+        old?.map((n: any) => ({ ...n, is_read: true })) || []
+      );
       const { error } = await (supabase as any)
         .from("notifications")
         .update({ is_read: true })
@@ -70,12 +84,17 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications", profile?.id] });
+      toast.success("All notifications marked as read", { style: { background: '#bc7e57', color: 'white', border: 'none' } });
+      setIsOpen(false);
     }
   });
 
   // Mark single as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
+      queryClient.setQueryData(["notifications", profile?.id], (old: any) => 
+        old?.map((n: any) => n.id === id ? { ...n, is_read: true } : n) || []
+      );
       const { error } = await (supabase as any)
         .from("notifications")
         .update({ is_read: true })
@@ -103,6 +122,29 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
       case 'warning': return <AlertTriangle className="h-5 w-5 text-amber-500" />;
       case 'error': return <ShieldAlert className="h-5 w-5 text-red-500" />;
       default: return <Info className="h-5 w-5" style={{ color: '#bc7e57' }} />;
+    }
+  };
+
+  const submitBug = async () => {
+    if (!bugText.trim()) return toast.error("Please describe what needs improvement.");
+    setSubmittingBug(true);
+    try {
+      const { error } = await (supabase as any).from("tasks").insert({
+        title: `[SYSTEM FEEDBACK] ${bugType.toUpperCase().replace('-', ' ')}`,
+        description: `Submitted by ${profile?.full_name}:\n\n${bugText}`,
+        priority: 'high',
+        status: 'todo',
+        department: 'IT',
+      });
+      if (error) throw error;
+      toast.success("Feedback submitted successfully. Thank you!", { style: { background: '#bc7e57', color: 'white', border: 'none' } });
+      setBugOpen(false);
+      setBugText("");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to submit feedback.");
+    } finally {
+      setSubmittingBug(false);
     }
   };
 
@@ -148,6 +190,58 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
         >
           <Sparkles className="h-5 w-5" />
         </Button>
+
+        {/* System Feedback / Bug Report Button */}
+        <Dialog open={bugOpen} onOpenChange={setBugOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="hidden md:flex gap-1.5 border-border hover:bg-muted/50 transition-all rounded-full h-8 px-3 shadow-none text-muted-foreground hover:text-foreground"
+            >
+              <MessageSquareDashed className="h-3.5 w-3.5" />
+              <span>Feedback</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-[#bc7e57]"><Bug className="h-5 w-5" /> Help us improve!</DialogTitle>
+              <DialogDescription>
+                Spotted a discrepancy, UI issue, or have a suggestion? Let the dev team know directly.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Select value={bugType} onValueChange={setBugType}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select issue type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ui-bug">UI/Visual Bug</SelectItem>
+                    <SelectItem value="data-discrepancy">Data Discrepancy (Wrong values)</SelectItem>
+                    <SelectItem value="feature-suggestion">New Feature Suggestion</SelectItem>
+                    <SelectItem value="performance-issue">Performance/Speed Issue</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Textarea 
+                  placeholder="Please describe the issue or suggestion in detail..."
+                  className="min-h-[120px] resize-none"
+                  value={bugText}
+                  onChange={(e) => setBugText(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setBugOpen(false)}>Cancel</Button>
+              <Button onClick={submitBug} disabled={submittingBug || !bugText.trim()} className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white">
+                {submittingBug ? "Submitting..." : <><SendIcon className="h-4 w-4 mr-2" /> Submit Feedback</>}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>

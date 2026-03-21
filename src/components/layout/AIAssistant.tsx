@@ -34,12 +34,14 @@ interface AIAssistantProps {
 function renderFormattedText(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
-    }
     return <span key={i}>{part}</span>;
   });
 }
+
+const getInitials = (name?: string) => {
+  if (!name) return 'U';
+  return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+};
 
 export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
   const [view, setView] = useState<'chat' | 'history'>('chat');
@@ -549,10 +551,10 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
                   
                   <Avatar className="h-7 w-7 shrink-0 border border-border/40 shadow-sm mt-0.5">
                     {msg.role === 'user' ? (
-                      <AvatarFallback className="bg-[#bc7e57]/10 text-[#bc7e57] text-[9px] font-bold">{(profile?.full_name || 'U').substring(0, 2).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="bg-[#bc7e57]/10 text-[#bc7e57] text-[9px] font-bold">{getInitials(profile?.full_name)}</AvatarFallback>
                     ) : (
                       <div className="bg-[#bc7e57] h-full w-full flex items-center justify-center">
-                        <Bot className="h-3.5 w-3.5 text-white" />
+                        <Sparkles className="h-3.5 w-3.5 text-white" />
                       </div>
                     )}
                   </Avatar>
@@ -569,7 +571,7 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
               {isTyping && (
                 <div className="flex gap-2.5 self-start max-w-[85%]">
                   <Avatar className="h-7 w-7 shrink-0 mt-0.5">
-                    <div className="bg-[#bc7e57] h-full w-full flex items-center justify-center rounded-full"><Bot className="h-3.5 w-3.5 text-white" /></div>
+                    <div className="bg-[#bc7e57] h-full w-full flex items-center justify-center rounded-full"><Sparkles className="h-3.5 w-3.5 text-white" /></div>
                   </Avatar>
                   <div className="px-4 py-3 rounded-2xl bg-muted/50 border border-border/40 rounded-tl-sm flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#bc7e57] animate-bounce" style={{ animationDelay: '0ms' }} />
