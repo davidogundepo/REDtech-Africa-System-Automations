@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sparkles, Send, Bot, Clock, Plus, ChevronLeft, MessageSquare, Trash2, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -243,7 +243,8 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!apiKey) throw new Error("Gemini API Key missing");
 
-    const ai = new GoogleGenAI({ apiKey });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const roleText = profile?.role === 'super_admin' ? 'Super Admin - Full Access' : profile?.role === 'admin' ? 'Admin - Elevated Access' : 'Team Member - Restricted Access';
     
     // ⚡ HOT CONTEXT INJECTION (Prevents slow ReAct DB loops for common queries)
@@ -285,12 +286,10 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
 
     let historyString = messageHistory.map(m => `${m.role === 'system' ? 'SYSTEM' : m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`).join("\n");
     
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `${systemPrompt}\n\n--- Chat History ---\n${historyString}`,
-    });
+    const result = await model.generateContent(`${systemPrompt}\n\n--- Chat History ---\n${historyString}`);
+    const text = result.response.text();
 
-    return response.text || "I was unable to process that request.";
+    return text || "I was unable to process that request.";
   };
 
   const handleSend = async (e?: React.FormEvent, OverrideInput?: string) => {
