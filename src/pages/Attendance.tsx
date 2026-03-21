@@ -781,7 +781,7 @@ const Attendance = () => {
   const validSelectedCount = miaUsers.filter(u => selectedMiaIds.has(u.id)).length;
 
   if (miaUsers.length > 0 && validSelectedCount === 0 && miaSelectAll) {
-    const allIds = new Set(miaUsers.map(u => u.id));
+    const allIds = new Set<string>(miaUsers.map(u => u.id));
     if (allIds.size > 0 && selectedMiaIds.size !== allIds.size) {
       // Will auto-select on next render
       setTimeout(() => setSelectedMiaIds(allIds), 0);
