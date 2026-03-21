@@ -197,7 +197,7 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
 
   // Generic Execution & Retrieval Switch
   const executeDatabaseAction = async (actionObj: any) => {
-    const restrictedTables = ['finance', 'global_metrics', 'salaries', 'invoices', 'profiles', 'users'];
+    const restrictedTables = ['transactions', 'budgets', 'payment_requests', 'profiles'];
     if (!isAdmin && restrictedTables.includes(actionObj.target)) {
       return `SYSTEM OBLIGATION: PERMISSION DENIED. Active user lacks Admin clearance to manipulate or query '${actionObj.target}'.`;
     }
@@ -215,7 +215,7 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
 
       if (actionObj.action === 'insert_database') {
         let payload = { ...actionObj.payload };
-        if (!payload.user_id && ['tasks', 'leaves', 'attendance'].includes(actionObj.target)) {
+        if (!payload.user_id && ['tasks', 'leave_requests', 'attendance_records'].includes(actionObj.target)) {
            payload.user_id = profile?.id;
         }
         const { data, error } = await (supabase as any).from(actionObj.target).insert(payload).select().single();
@@ -250,7 +250,7 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
     // ⚡ HOT CONTEXT INJECTION (Prevents slow ReAct DB loops for common queries)
     const [tasksRes, leavesRes] = await Promise.all([
       (supabase as any).from('tasks').select('title, status, priority').eq('user_id', profile?.id).in('status', ['todo', 'in_progress']).limit(5),
-      (supabase as any).from('leaves').select('status, type').eq('user_id', profile?.id).eq('status', 'pending').limit(1)
+      (supabase as any).from('leave_requests').select('status, leave_type').eq('user_id', profile?.id).eq('status', 'pending').limit(1)
     ]);
 
     const systemPrompt = `You are REDtech AI Assistance, an elite Fortune 500 internal ERP Agent.
@@ -277,7 +277,7 @@ Format:
   { "action": "update_database", "target": "invoices", "id_to_update": "uuid-here", "payload": { "status": "Paid" } }
 ]
 \`\`\`
-Valid tables for targets: 'profiles', 'tasks', 'clients', 'attendance', 'leaves', 'invoices', 'waybills', 'documents', 'finance_entries'.
+Valid tables for targets: 'profiles', 'tasks', 'clients', 'attendance_records', 'leave_requests', 'transactions', 'budgets', 'documents', 'ops_metrics', 'payment_requests', 'notifications', 'social_posts'.
 
 IMPORTANT ReAct LOOP: If you need information to answer OR execute a modification, output ONLY the action command (e.g. 'query_database' or 'insert_database'). The system will intercept it, run it on Supabase, and feed the raw JSON result back to you in a SYSTEM MESSAGE. You will then automatically process that data and provide the conversational answer to the user in your NEXT turn. Do not ask the user to wait, just output the json block to let the loop spin.
 
@@ -349,8 +349,9 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
        return;
     }
 
-    if (lowerInput === 'show active users') {
-       const { data } = await (supabase as any).from('attendance').select('user_id, status').eq('status', 'in').limit(10);
+    if (lowerInput === 'show active users' || lowerInput === 'who is active') {
+       const today = new Date().toISOString().split('T')[0];
+       const { data } = await (supabase as any).from('attendance_records').select('user_id').eq('date', today).is('clock_out', null).limit(10);
        const activeText = data?.length 
             ? `There are currently ${data.length} users clocked in right now.`
             : "No users are currently clocked in.";
