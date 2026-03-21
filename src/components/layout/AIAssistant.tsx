@@ -50,6 +50,7 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
   
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const isProcessingClick = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const { profile } = useAuth();
@@ -295,9 +296,10 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
   const handleSend = async (e?: React.FormEvent, OverrideInput?: string) => {
     if (e) e.preventDefault();
     const messageText = OverrideInput || input;
-    if (!messageText.trim() || isTyping) return;
+    if (!messageText.trim() || isProcessingClick.current) return;
 
-    let currentHistory = [...messages, { id: Date.now().toString(), role: "user" as const, content: messageText.trim() }];
+    isProcessingClick.current = true;
+    let currentHistory = [...messages, { id: crypto.randomUUID(), role: "user" as const, content: messageText.trim() }];
     setMessages(currentHistory);
     setInput("");
     setIsTyping(true);
@@ -323,11 +325,12 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
         if (lowerInput.includes(key)) {
           navigate(path);
           toast.success(`Navigating to ${path}...`);
-          currentHistory.push({ id: Date.now().toString(), role: "assistant", content: `I have instantly navigated you to the **${key.charAt(0).toUpperCase() + key.slice(1)}** module. \n\nHow else can I help?` });
+          currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: `I have instantly navigated you to the **${key.charAt(0).toUpperCase() + key.slice(1)}** module. \n\nHow else can I help?` });
           setMessages(currentHistory);
           setIsTyping(false);
+          isProcessingClick.current = false;
           await saveChatToDb(currentHistory, chatTitle);
-          return; // Exit instantly. 0ms Gemini latency.
+          return;
         }
       }
     }
@@ -368,8 +371,13 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
               
               if (queryResults.length > 0) {
                  const systemFeedback = queryResults.join("\n");
-                 currentHistory.push({ id: Date.now().toString(), role: "assistant", content: cleanText.replace(actionRegex, '').trim() || "(Thinking... fetching data)" });
-                 currentHistory.push({ id: Date.now().toString(), role: "system", content: systemFeedback });
+                 // Only push assistant text if there is conversational text alongside the JSON block
+                 const intermediateText = cleanText.replace(actionRegex, '').trim();
+                 if (intermediateText) {
+                   currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: intermediateText });
+                 }
+                 // Always push system feedback so Gemini can read it next loop
+                 currentHistory.push({ id: crypto.randomUUID(), role: "system", content: systemFeedback });
                  requiresAnotherPass = true;
               }
               
@@ -381,8 +389,12 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
         
         if (!requiresAnotherPass) {
           let finalAssistantReply = cleanText.replace(actionRegex, '').trim();
-          if (!finalAssistantReply) finalAssistantReply = "Done.";
-          currentHistory.push({ id: Date.now().toString(), role: "assistant", content: finalAssistantReply });
+          if (!finalAssistantReply && loopCount >= maximumLoops) {
+             finalAssistantReply = "I have executed the requested actions.";
+          }
+          if (finalAssistantReply) {
+             currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: finalAssistantReply });
+          }
         }
       }
 
@@ -395,6 +407,7 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
       toast.error("Error connecting to AI Copilot.");
     } finally {
       setIsTyping(false);
+      isProcessingClick.current = false;
     }
   };
 
