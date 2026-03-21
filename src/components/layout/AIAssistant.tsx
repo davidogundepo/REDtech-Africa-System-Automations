@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sparkles, Send, Bot, Clock, Plus, ChevronLeft, MessageSquare, Trash2, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -551,7 +551,10 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
                   
                   <Avatar className="h-7 w-7 shrink-0 border border-border/40 shadow-sm mt-0.5">
                     {msg.role === 'user' ? (
-                      <AvatarFallback className="bg-[#bc7e57]/10 text-[#bc7e57] text-[9px] font-bold">{getInitials(profile?.full_name)}</AvatarFallback>
+                      <>
+                        {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.full_name} className="object-cover" />}
+                        <AvatarFallback className="bg-[#bc7e57]/10 text-[#bc7e57] text-[9px] font-bold">{getInitials(profile?.full_name)}</AvatarFallback>
+                      </>
                     ) : (
                       <div className="bg-[#bc7e57] h-full w-full flex items-center justify-center">
                         <Sparkles className="h-3.5 w-3.5 text-white" />
