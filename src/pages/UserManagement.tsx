@@ -36,7 +36,7 @@ const roleLabels: Record<string, string> = {
 const departments = ["Finance", "Operations", "Delivery Ops", "Resourcing", "HR", "Business Dev", "Marketing", "Executive"];
 
 const UserManagement = () => {
-  const { isSuperAdmin, profile: currentProfile } = useAuth();
+  const { isSuperAdmin, profile: currentProfile, loading } = useAuth();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -271,6 +271,18 @@ const UserManagement = () => {
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
     return matchesSearch && matchesRole;
   }) || [];
+
+  // WAIT for auth to finish loading before checking roles
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-2 border-[#bc7e57] border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading user management…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isSuperAdmin) {
     return (

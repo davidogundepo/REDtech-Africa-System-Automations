@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const StaffUtilisation = () => {
-  const { isSuperAdmin, isAdmin, profile: currentProfile } = useAuth();
+  const { isSuperAdmin, isAdmin, profile: currentProfile, loading } = useAuth();
   const [selectedDept, setSelectedDept] = useState("all");
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [engineRunning, setEngineRunning] = useState(false);
@@ -74,6 +74,18 @@ const StaffUtilisation = () => {
       return (data as any[]) || [];
     },
   });
+
+  // WAIT for auth to finish loading before checking roles
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-2 border-[#bc7e57] border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading workforce data…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isSuperAdmin && !isAdmin) {
     return (
