@@ -246,10 +246,9 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
   // Main LLM Interaction Loop
   const invokeAgentLoop = async (messageHistory: Message[]) => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Gemini API Key missing");
+    if (!apiKey) throw new Error("Gemini API Key missing. Please add VITE_GEMINI_API_KEY to your .env file.");
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const roleText = profile?.role === 'super_admin' ? 'Super Admin - Full Access' : profile?.role === 'admin' ? 'Admin - Elevated Access' : 'Team Member - Restricted Access';
     
     // ⚡ HOT CONTEXT INJECTION (Prevents slow ReAct DB loops for common queries)
@@ -272,51 +271,71 @@ Role: ${profile?.role || 'user'} (${roleText})
 Department: ${profile?.department || 'no department'}
 Current Page URL: ${location.pathname}
 
-⚡ HOT CONTEXT (Use this LIVE DATA instantly to answer questions. Do NOT use query_database for tasks or leaves unless they need more than the last 5):
+⚡ HOT CONTEXT (PRELOADED LIVE DATA — answer from this data DIRECTLY, do NOT use query_database for profiles, tasks, or leaves):
 - User's Active Tasks: ${JSON.stringify(tasksRes.data || [])}
 - User's Pending Leaves: ${JSON.stringify(leavesRes.data || [])}
-- Company Staff Directory: ${JSON.stringify(staffRes.data || [])}
+- Company Staff Directory (ALL STAFF): ${JSON.stringify(staffRes.data || [])}
+
+CRITICAL: The Company Staff Directory above contains ALL employees. When the user asks about staff in a department, who works here, show users in X, etc., answer DIRECTLY from the data above. Do NOT use query_database for profiles — it is already preloaded. Only use query_database for tables NOT in the hot context (e.g. clients, attendance_records, transactions, etc.).
 
 SECURITY & STRICT RBAC ENFORCEMENT:
 If the user's Role is 'team-member', you MUST legally and strictly refuse to summarize global company analytics, staff utilisation stats of other users, or finance data. Act politely to deny. If they are 'super-admin' or 'admin', provide any requested global insights.
 
 ABILITIES (JSON ACTION BLOCKS):
-You have powerful agent capabilities. You can navigate the UI or manipulate the entire Supabase database by appending a JSON block (or array) EXACTLY at the end of your response.
+You can navigate the UI or query/manipulate Supabase by appending a JSON block at the end of your response.
 Format:
 \`\`\`json
 [
   { "action": "navigate", "path": "/attendance" },
-  { "action": "query_database", "target": "profiles", "filters": {"department": "Marketing"} },
+  { "action": "query_database", "target": "clients", "filters": {"status": "active"} },
   { "action": "insert_database", "target": "tasks", "payload": { "title": "Buy hardware", "priority": "high", "status": "todo" } },
   { "action": "update_database", "target": "invoices", "id_to_update": "uuid-here", "payload": { "status": "Paid" } }
 ]
 \`\`\`
-Valid tables for targets: 'profiles', 'tasks', 'clients', 'attendance_records', 'leave_requests', 'transactions', 'budgets', 'documents', 'ops_metrics', 'payment_requests', 'notifications', 'social_posts'.
+Valid tables: 'clients', 'attendance_records', 'leave_requests', 'transactions', 'budgets', 'documents', 'ops_metrics', 'payment_requests', 'notifications', 'social_posts', 'tasks'.
 
-IMPORTANT ReAct LOOP: If you need information to answer OR execute a modification, output ONLY the action command (e.g. 'query_database' or 'insert_database'). The system will intercept it, run it on Supabase, and feed the raw JSON result back to you in a SYSTEM MESSAGE. You will then automatically process that data and provide the conversational answer to the user in your NEXT turn. Do not ask the user to wait, just output the json block to let the loop spin.
+IMPORTANT: If you need DB data NOT in the hot context, output the JSON action block. The system will run it and feed results back as a SYSTEM message. You then answer using that data in your next turn.
 
-Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points and clear line breaks when listing multiple items or explaining steps. Use **bold** for emphasis.
+Style & Formatting: Highly professional, warm, concise. Use bullet points and clear line breaks. Use **bold** for emphasis.
 `;
 
     let historyString = messageHistory.map(m => `${m.role === 'system' ? 'SYSTEM' : m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`).join("\n");
+    const prompt = `${systemPrompt}\n\n--- Chat History ---\n${historyString}`;
     
-    // Add a strict 15-second timeout to the AI call so it never hangs indefinitely
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("AI Copilot request timed out after 15 seconds.")), 15000);
-    });
+    // Model fallback chain: try gemini-2.0-flash first, fallback to gemini-1.5-flash on quota errors
+    const modelNames = ["gemini-2.0-flash", "gemini-1.5-flash"];
+    
+    for (const modelName of modelNames) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        
+        // Add a strict 20-second timeout so it never hangs indefinitely
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("AI Copilot request timed out. Please try again.")), 20000);
+        });
 
-    try {
-      const result = await Promise.race([
-        model.generateContent(`${systemPrompt}\n\n--- Chat History ---\n${historyString}`),
-        timeoutPromise
-      ]) as any;
-      
-      const text = result.response.text();
-      return text || "I was unable to process that request.";
-    } catch (apiError) {
-      console.error("Gemini API Invocation Error:", apiError);
-      throw apiError;
+        const result = await Promise.race([
+          model.generateContent(prompt),
+          timeoutPromise
+        ]) as any;
+        
+        const text = result.response.text();
+        return text || "I was unable to process that request.";
+      } catch (apiError: any) {
+        const errorMsg = apiError?.message || '';
+        const isQuotaError = errorMsg.includes('429') || errorMsg.includes('quota') || errorMsg.includes('rate');
+        
+        if (isQuotaError && modelName !== modelNames[modelNames.length - 1]) {
+          console.warn(`Model ${modelName} hit rate limit, falling back to next model...`);
+          continue; // Try next model in the chain
+        }
+        
+        console.error(`Gemini API Error (${modelName}):`, apiError);
+        throw apiError;
+      }
     }
+    
+    throw new Error("All AI models are currently unavailable. Please try again in a few minutes.");
   };
 
   const handleSend = async (e?: React.FormEvent, OverrideInput?: string) => {
