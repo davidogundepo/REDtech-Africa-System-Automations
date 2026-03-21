@@ -67,38 +67,6 @@ const dealStatuses = [
   { id: "lost", label: "Closed Lost", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300", border: "border-red-200 dark:border-red-900/50" },
 ];
 
-const generateMockData = async (profiles: Profile[]) => {
-  const adminProfile = profiles[0]?.id || null;
-  const now = new Date();
-  
-  const mockClients = [
-    { name: "Sarah Jenkins", company: "Acme Corp", email: "sarah@acmecorp.com", industry: "Technology", deal_status: "lead", notes: "Interested in enterprise migration tools.", source: "website", assigned_to: adminProfile },
-    { name: "David Chen", company: "Starlight Investments", email: "d.chen@starlight.io", industry: "Finance", deal_status: "contacted", notes: "Sent intro deck. Follow up next week.", source: "referral", last_contact_date: new Date(now.getTime() - 2*86400000).toISOString(), assigned_to: adminProfile },
-    { name: "Marcus Reed", company: "Titan Manufacturing", email: "mreed@titan.com", industry: "Manufacturing", deal_status: "proposal", notes: "Proposal reviewing Q3 timelines.", source: "event", last_contact_date: new Date(now.getTime() - 5*86400000).toISOString(), assigned_to: adminProfile },
-    { name: "Elena Rostova", company: "Global Logistics", email: "elena.r@glogistics.net", industry: "Operations", deal_status: "negotiation", notes: "Discussing final pricing tier 2 vs 3.", source: "direct", last_contact_date: new Date(now.getTime() - 1*86400000).toISOString(), assigned_to: adminProfile },
-    { name: "James Wilson", company: "Wilson Associates", email: "jwilson@wa-law.com", industry: "Consulting", deal_status: "won", notes: "Signed annual contract. Onboarding next week.", source: "referral", last_contact_date: new Date(now.getTime() - 14*86400000).toISOString(), assigned_to: adminProfile },
-    { name: "Aisha Patel", company: "Nexus Health", email: "apatel@nexushealth.org", industry: "Healthcare", deal_status: "lost", notes: "Went with competitor due to budget.", source: "website", last_contact_date: new Date(now.getTime() - 30*86400000).toISOString(), assigned_to: adminProfile },
-    { name: "Michael Chang", company: "Chang Real Estate", email: "mchang@changre.com", industry: "Real Estate", deal_status: "lead", notes: "Downloaded whitepaper on CRM automation.", source: "social", assigned_to: adminProfile },
-    { name: "Sophia Lewis", company: "EcoEnergy Systems", email: "sophia@ecoenergy.com", industry: "Energy", deal_status: "proposal", notes: "Reviewing sustainability dashboard proposal.", source: "direct", last_contact_date: new Date(now.getTime() - 3*86400000).toISOString(), assigned_to: adminProfile },
-    { name: "Oliver Grant", company: "Grant Media Group", email: "ogrant@gmg.tv", industry: "Media", deal_status: "contacted", notes: "Left voicemail. Will try again Friday.", source: "direct", last_contact_date: new Date(now.getTime() - 1*86400000).toISOString(), assigned_to: adminProfile },
-    { name: "Isabella Martinez", company: "Martinez Retail", email: "isa@martinezretail.com", industry: "Retail", deal_status: "negotiation", notes: "Awaiting legal signoff on SLAs.", source: "referral", last_contact_date: new Date(now.getTime() - 4*86400000).toISOString(), assigned_to: adminProfile },
-    { name: "Thomas Brooks", company: "Brooks Education", email: "tom@brooksed.edu", industry: "Education", deal_status: "won", notes: "Implementation complete. Quarterly review set.", source: "event", last_contact_date: new Date(now.getTime() - 45*86400000).toISOString(), assigned_to: adminProfile },
-    { name: "Chloe Adams", company: "Adams Tech Solutions", email: "cadams@adamstech.com", industry: "Technology", deal_status: "lead", notes: "Requested demo via contact form.", source: "website", assigned_to: adminProfile },
-    { name: "William Moore", company: "Moore Finance", email: "william@moorefin.com", industry: "Finance", deal_status: "proposal", notes: "Sent revised quote with Q4 discounts.", source: "direct", last_contact_date: new Date(now.getTime() - 2*86400000).toISOString(), assigned_to: adminProfile },
-    { name: "Mia Taylor", company: "Taylor Health Clinic", email: "mia@taylorhealth.com", industry: "Healthcare", deal_status: "contacted", notes: "Had introductory call. Good fit.", source: "social", last_contact_date: new Date(now.getTime() - 7*86400000).toISOString(), assigned_to: adminProfile },
-    { name: "Alexander White", company: "White & Co Logistics", email: "alex@whiteco.com", industry: "Operations", deal_status: "lost", notes: "Timing isn't right. Follow up in 6 months.", source: "referral", last_contact_date: new Date(now.getTime() - 60*86400000).toISOString(), assigned_to: adminProfile }
-  ];
-
-  toast.promise(
-    (supabase as any).from("clients").insert(mockClients),
-    {
-      loading: 'Super Admin: Generating Fortune-500 Mock Pipeline...',
-      success: '15 High-Value Deals Injected into Pipeline! 📈',
-      error: 'Failed to generate mock data.'
-    }
-  );
-};
-
 const Clients = () => {
   const { profile, canEdit, isSuperAdmin } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
@@ -116,14 +84,7 @@ const Clients = () => {
     const { data, error } = await (supabase as any).from("clients").select("*").order("created_at", { ascending: false });
     if (error) { toast.error("Failed to load clients"); setLoading(false); return; }
     
-    // Auto-seed mock data if empty
-    if ((!data || data.length === 0) && profiles.length > 0) {
-      await generateMockData(profiles);
-      const { data: newData } = await (supabase as any).from("clients").select("*").order("created_at", { ascending: false });
-      setClients(newData || []);
-    } else {
-      setClients(data || []);
-    }
+    setClients(data || []);
     setLoading(false);
   };
 
@@ -133,12 +94,9 @@ const Clients = () => {
   };
 
   useEffect(() => { 
-    if (profiles.length === 0) {
-      fetchProfiles(); 
-    } else {
-      fetchClients();
-    }
-  }, [profiles.length]);
+    fetchProfiles(); 
+    fetchClients();
+  }, []);
 
   const getInitials = (name: string) => (name || "").split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
 
