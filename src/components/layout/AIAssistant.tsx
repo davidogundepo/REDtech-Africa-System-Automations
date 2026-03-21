@@ -335,6 +335,35 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
       }
     }
 
+    // ⚡ 0ms LATENCY SUGESTION BYPASS (Skips Google Gemini's 2-second LLM processing time)
+    if (lowerInput === 'list my tasks' || lowerInput === 'what are my tasks') {
+       const { data } = await (supabase as any).from('tasks').select('title, status, priority').eq('user_id', profile?.id).in('status', ['todo', 'in_progress']).limit(10);
+       const tasksText = data?.length 
+            ? `Here are your current active tasks:\n\n${data.map((t: any) => `- **${t.title}** (${t.priority})`).join('\n')}\n`
+            : "You have no active tasks currently.";
+            
+       currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: tasksText });
+       setMessages(currentHistory);
+       setIsTyping(false);
+       isProcessingClick.current = false;
+       await saveChatToDb(currentHistory, chatTitle);
+       return;
+    }
+
+    if (lowerInput === 'show active users') {
+       const { data } = await (supabase as any).from('attendance').select('user_id, status').eq('status', 'in').limit(10);
+       const activeText = data?.length 
+            ? `There are currently ${data.length} users clocked in right now.`
+            : "No users are currently clocked in.";
+            
+       currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: activeText });
+       setMessages(currentHistory);
+       setIsTyping(false);
+       isProcessingClick.current = false;
+       await saveChatToDb(currentHistory, chatTitle);
+       return;
+    }
+
     try {
       let requiresAnotherPass = true;
       let maximumLoops = 3;
