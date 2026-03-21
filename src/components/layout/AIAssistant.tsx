@@ -103,7 +103,7 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
   const startNewChat = () => {
     setCurrentChatId(null);
     setMessages([
-      { id: Date.now().toString(), role: "assistant", content: "Hello! I am REDtech AI Assistance, your internal ERP Copilot.\n\nHere is what I can do for you:\n\n\ud83d\udccd **Navigation** — Take you anywhere in the system instantly.\n\ud83d\udcca **Data Intelligence** — Query any module (Attendance, Tasks, Profiles, Finance, etc.).\n\ud83d\udcdd **System Actions** — Create, log, or update live records.\n\ud83e\udde0 **Analysis** — Answer operational questions using live data.\n\nHow can I supercharge your workflow today?" }
+      { id: Date.now().toString(), role: "assistant", content: "Hello! I am REDtech AI Assistance, your internal ERP Copilot.\n\nHere is what I can do for you:\n\n**Navigation** — Take you anywhere in the system instantly.\n**Data Intelligence** — Query any module (Attendance, Tasks, Profiles, Finance, etc.).\n**System Actions** — Create, log, or update live records.\n**Analysis** — Answer operational questions using live data.\n\nHow can I supercharge your workflow today?" }
     ]);
     setView('chat');
   };
@@ -330,23 +330,21 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
   };
 
   const SUGGESTIONS = [
-    "Navigate to Attendance \ud83d\udccd",
-    "List my tasks \ud83d\udccb",
-    "Any active users right now? \ud83d\udc65"
+    "Navigate to Attendance",
+    "List my tasks",
+    "Show active users"
   ];
   
   const ADMIN_SUGGESTIONS = [
-    "Navigate to Staff Utilisation \ud83d\udcca",
-    "Who is at risk of burnout? \ud83d\udea8",
-    "Show me users in Finance \ud83d\udcb0"
+    "Staff Utilisation overview",
+    "Who is at risk of burnout?",
+    "Show users in Finance"
   ];
-
-  if (!isOpen) return null;
 
   return (
     <div 
-      className="w-[380px] shrink-0 border-l border-border/50 h-screen flex flex-col bg-background transition-all duration-300 ease-in-out overflow-hidden"
-      style={{ boxShadow: '-4px 0 20px rgba(0,0,0,0.03)' }}
+      className={`shrink-0 h-screen flex flex-col bg-background transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'w-[380px] border-l border-border/50 opacity-100' : 'w-0 border-none opacity-0'}`}
+      style={isOpen ? { boxShadow: '-4px 0 20px rgba(0,0,0,0.03)' } : {}}
     >
       {/* VIEW: CHAT HISTORY */}
       {view === 'history' && (

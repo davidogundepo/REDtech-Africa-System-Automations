@@ -15,9 +15,8 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar />
-        <SidebarInset className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
+      <AppSidebar />
+      <SidebarInset className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
           <Header aiOpen={aiOpen} setAiOpen={setAiOpen} />
           <main className="flex-1 overflow-y-auto h-[calc(100vh-4rem)]">
             {children}
@@ -26,7 +25,6 @@ export function AppLayout({ children }: AppLayoutProps) {
           </main>
         </SidebarInset>
         <AIAssistant isOpen={aiOpen} setIsOpen={setAiOpen} />
-      </div>
     </SidebarProvider>
   );
 }

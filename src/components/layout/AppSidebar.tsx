@@ -90,11 +90,11 @@ export function AppSidebar() {
   );
 
   return (
-    <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
-          <img src={companyLogo} alt="REDtech Africa" className="h-8 w-auto" />
-          <div>
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="border-b border-sidebar-border p-4 group-data-[collapsible=icon]:p-0">
+        <div className="flex items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:h-16">
+          <img src={companyLogo} alt="REDtech Africa" className="h-8 w-auto shrink-0 group-data-[collapsible=icon]:h-6" />
+          <div className="group-data-[collapsible=icon]:hidden">
             <h2 className="font-bold text-sm" style={{ color: '#bc7e57' }}>REDtech Africa</h2>
             <p className="text-xs text-muted-foreground">RAC Automations Dashboard</p>
           </div>
@@ -107,22 +107,22 @@ export function AppSidebar() {
         {(isSuperAdmin || isAdmin) && renderNavGroup(adminModules, "Administration")}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
+      <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center">
         {/* Current User Info */}
         {profile && (
           <div 
-            className="flex items-center gap-2 px-1 cursor-pointer rounded-lg hover:bg-muted/50 transition-colors p-2 -m-1"
+            className="flex items-center gap-2 px-1 cursor-pointer rounded-lg hover:bg-muted/50 transition-colors p-2 -m-1 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:m-0"
             onClick={() => navigate("/profile")}
             title="View your profile"
           >
-            <div className="h-8 w-8 rounded-full bg-[#bc7e57]/20 flex items-center justify-center text-xs font-bold overflow-hidden" style={{ color: '#bc7e57' }}>
+            <div className="h-8 w-8 shrink-0 rounded-full bg-[#bc7e57]/20 flex items-center justify-center text-xs font-bold overflow-hidden" style={{ color: '#bc7e57' }}>
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
               ) : (
                 profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
               )}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
               <p className="text-sm font-medium truncate">{profile.full_name}</p>
               <p className="text-xs text-muted-foreground">{roleLabels[profile.role]}</p>
             </div>
