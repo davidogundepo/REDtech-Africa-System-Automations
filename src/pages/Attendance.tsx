@@ -593,27 +593,46 @@ const Attendance = () => {
       const usersToWarn = miaUsers.filter(u => selectedMiaIds.has(u.id));
       if (usersToWarn.length === 0) throw new Error("No users selected.");
       
-      const emailPromises = usersToWarn.map(user => {
-        if (!user.email) return Promise.resolve();
-        return sendNotificationEmail({
-          to: user.email,
-          subject: "⚠️ Missing In Action Warning",
-          html: brandedEmailTemplate({
-            recipientName: user.full_name,
-            heading: "Clock-In Missing Today",
-            body: `<p>We noticed you haven't clocked in today nor submitted a prior leave request.</p>
-                   <p>Please clock in immediately or contact HR directly if you are experiencing technical difficulties.</p>`,
-            ctaText: "Clock In Now",
-            ctaUrl: "https://ractools.vercel.app/attendance"
-          })
-        });
+      const emailPromises = usersToWarn.map(async (user) => {
+        // 1. Send Warning Email
+        let emailPromise = Promise.resolve();
+        if (user.email) {
+          emailPromise = sendNotificationEmail({
+            to: user.email,
+            subject: "⚠️ Missing In Action Warning & Penalty",
+            html: brandedEmailTemplate({
+              recipientName: user.full_name,
+              heading: "Clock-In Missing Today",
+              body: `<p>We noticed you haven't clocked in today nor submitted a prior leave request.</p>
+                     <p>Because of this, an <strong>absent record</strong> has been assigned and your performance score has been <strong>deducted by 2 points</strong>.</p>
+                     <p>Please log in to your dashboard to review your status, or contact HR immediately if this is an error.</p>`,
+              ctaText: "Go to Dashboard",
+              ctaUrl: "https://ractools.vercel.app/attendance"
+            })
+          });
+        }
+        
+        // 2. Automatically Deduct 2 Points
+        const currentScore = user.performance_score ?? 100;
+        await supabase.from("profiles").update({ performance_score: currentScore - 2 }).eq("id", user.id);
+        
+        // 3. Insert 'Absent' Record for Today
+        await supabase.from("attendance_records").insert([{
+          user_id: user.id,
+          date: new Date().toISOString().split('T')[0],
+          status: "absent",
+          notes: "System Auto-Flagged: Absent (No clock-in record)"
+        }]);
+
+        return emailPromise;
       });
+
       await Promise.allSettled(emailPromises);
 
       await supabase.from("notifications").insert([{
         user_id: profile?.id,
         title: "Missing In Action Alert",
-        message: `MIA alerts dispatched to ${usersToWarn.length} of ${miaUsers.length} flagged users.`,
+        message: `MIA alerts dispatched and 2-point absenteeism penalties applied to ${usersToWarn.length} flagged users.`,
         type: "info",
         link: "/attendance"
       }]);

@@ -15,7 +15,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Users, Mail, Phone, Building2, Trash2, Edit, User, Calendar, Briefcase, ChevronRight, Download, Filter, Target, ArrowRight, TrendingUp } from "lucide-react";
+import { Plus, Search, Filter, MoreVertical, Edit, Edit2, Trash2, Mail, Phone, ExternalLink, Calendar, MapPin, Building2, TrendingUp, Users, Target, Activity, CheckCircle2, XCircle, Clock, AlertCircle, MessageSquare, ChevronRight, BarChart3, Database, Briefcase, ChevronDown, Rocket, ShieldAlert, Award } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { sendNotificationEmail } from "@/lib/email";
@@ -68,7 +68,7 @@ const dealStatuses = [
 ];
 
 const Clients = () => {
-  const { profile, canEdit, isSuperAdmin } = useAuth();
+  const { profile, canEdit, isSuperAdmin, isAdmin } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -336,51 +336,51 @@ const Clients = () => {
 
       {/* ═══════ EXECUTIVE DASHBOARD (STAT CARDS) ═══════ */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Card className="bg-card shadow-sm border-border/60">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Total Network</p>
-              <p className="text-2xl font-bold tracking-tight text-foreground">{pipelineValue.total}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card shadow-sm border-border/60">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-              <Target className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Active Pipeline</p>
-              <p className="text-2xl font-bold tracking-tight text-foreground">{pipelineValue.active}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card shadow-sm border-border/60">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-              <Briefcase className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Closed Won</p>
-              <p className="text-2xl font-bold tracking-tight text-foreground">{pipelineValue.won}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card shadow-sm border-border/60">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-[#bc7e57]/10 flex items-center justify-center shrink-0">
-              <TrendingUp className="h-6 w-6 text-[#bc7e57]" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Win Rate</p>
-              <p className="text-2xl font-bold tracking-tight text-foreground">{pipelineValue.winRate}%</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="bg-card shadow-sm border-border/60">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Total Network</p>
+                <p className="text-2xl font-bold tracking-tight text-foreground">{pipelineValue.total}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-card shadow-sm border-border/60">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                <Target className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Active Pipeline</p>
+                <p className="text-2xl font-bold tracking-tight text-foreground">{pipelineValue.active}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-card shadow-sm border-border/60">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-[#bc7e57]/10 flex items-center justify-center shrink-0">
+                <Award className="h-6 w-6 text-[#bc7e57] dark:text-[#d4a574]" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Closed Won</p>
+                <p className="text-2xl font-bold tracking-tight text-foreground">{pipelineValue.won}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-card shadow-sm border-border/60">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                <TrendingUp className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Win Rate</p>
+                <p className="text-2xl font-bold tracking-tight text-foreground">{pipelineValue.winRate}%</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
       {/* ═══════ VIEW CONTROLS & SEARCH ═══════ */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">

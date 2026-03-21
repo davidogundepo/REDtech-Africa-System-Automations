@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -7,16 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format } from "date-fns";
-import { Shield, BarChart3, Users, TrendingUp, AlertTriangle, Award, Building2, ChevronRight, Star, Zap, TrendingDown, RefreshCw } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, LineChart, Line, ReferenceLine } from "recharts";
+import { format, subDays, isAfter } from "date-fns";
+import { Shield, BarChart3, Users, TrendingUp, AlertTriangle, Award, Building2, ChevronRight, Star, Zap, TrendingDown, RefreshCw, BrainCircuit, Activity, Clock, CheckSquare } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, LineChart, Line, ReferenceLine, ScatterChart, Scatter, ZAxis } from "recharts";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { runPerformanceEngine } from "@/lib/performance-engine";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-
+import { GoogleGenAI } from "@google/genai";
 
 const StaffUtilisation = () => {
   const { isSuperAdmin, isAdmin, profile: currentProfile } = useAuth();
@@ -24,6 +24,8 @@ const StaffUtilisation = () => {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [engineRunning, setEngineRunning] = useState(false);
   const [engineResult, setEngineResult] = useState<any>(null);
+  const [aiSummary, setAiSummary] = useState("Generating executive insights...");
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   // Auto-run the performance engine when super admin loads the page
   useEffect(() => {
@@ -36,23 +38,17 @@ const StaffUtilisation = () => {
       setEngineResult(result);
       setEngineRunning(false);
       localStorage.setItem('rac_perf_engine_last_run', today);
-      if (result.deductions.length > 0) {
-        toast.warning(`Performance engine: ${result.deductions.length} team member(s) had score deductions today.`, { duration: 6000 });
-      } else if (result.processed > 0) {
-        toast.success(`Performance engine: All ${result.processed} members clocked in on time. 🌟`, { duration: 4000 });
-      }
     }).catch(() => setEngineRunning(false));
   }, [isSuperAdmin, currentProfile]);
 
   const handleManualEngine = async () => {
     if (!currentProfile) return;
     setEngineRunning(true);
-    // Clear last run so it re-runs
     localStorage.removeItem('rac_perf_engine_last_run');
     try {
       const result = await runPerformanceEngine(currentProfile.id);
       setEngineResult(result);
-      toast.success(`Engine run complete. ${result.deductions.length} deduction(s), ${result.topPerformers.length} top performer(s). Refresh to see updates.`);
+      toast.success(`Engine run complete!`);
     } catch {
       toast.error('Engine run failed.');
     }
@@ -65,7 +61,7 @@ const StaffUtilisation = () => {
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("profiles").select("*").eq("is_active", true);
       if (error) throw error;
-      return data || [];
+      return (data as any[]) || [];
     },
   });
 
@@ -75,7 +71,7 @@ const StaffUtilisation = () => {
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("tasks").select("*");
       if (error) throw error;
-      return data || [];
+      return (data as any[]) || [];
     },
   });
 
@@ -86,7 +82,7 @@ const StaffUtilisation = () => {
           <CardContent className="pt-8 pb-8">
             <Shield className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-xl font-bold mb-2">Access Restricted</h2>
-            <p className="text-muted-foreground">Only Admins and Super Admins can view utilisation data.</p>
+            <p className="text-muted-foreground">Only Admins and Super Admins can view analytic data.</p>
           </CardContent>
         </Card>
       </div>
@@ -105,24 +101,33 @@ const StaffUtilisation = () => {
   ) || [];
 
   // Calculate utilisation per user
-  const userMetrics = filteredProfiles?.map((profile: any) => {
-    const userTasks = departmentTasks.filter((t: any) => t.assigned_to === profile.full_name || t.assigned_to_user_id === profile.id);
-    const completed = userTasks.filter((t: any) => t.status === "completed").length;
-    const total = userTasks.length;
-    const overdue = userTasks.filter((t: any) => t.status === "overdue").length;
-    const inProgress = userTasks.filter((t: any) => t.status === "in-progress").length;
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    return {
-      ...profile,
-      userTasks,
-      totalTasks: total,
-      completed,
-      inProgress,
-      overdue,
-      completionRate,
-    };
-  }) || [];
+  const userMetrics = useMemo(() => {
+    return filteredProfiles?.map((profile: any) => {
+      const userTasks = departmentTasks.filter((t: any) => t.assigned_to === profile.full_name || t.assigned_to_user_id === profile.id);
+      const completed = userTasks.filter((t: any) => t.status === "completed").length;
+      const total = userTasks.length;
+      const overdue = userTasks.filter((t: any) => t.status === "overdue").length;
+      const inProgress = userTasks.filter((t: any) => t.status === "in-progress").length;
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+  
+      // Determine Custom Flight Risk Labels
+      const tags = [];
+      if (overdue > 3) tags.push("High Overdue Volume");
+      if (total > 15 && completionRate < 40) tags.push("Severe Bottleneck");
+      if ((profile.performance_score || 100) < 60) tags.push("Low Score");
+  
+      return {
+        ...profile,
+        userTasks,
+        totalTasks: total,
+        completed,
+        inProgress,
+        overdue,
+        completionRate,
+        tags
+      };
+    }) || [];
+  }, [filteredProfiles, departmentTasks]);
 
   const totalTasks = departmentTasks.length;
   const totalCompleted = departmentTasks.filter((t: any) => t.status === "completed").length;
@@ -138,36 +143,79 @@ const StaffUtilisation = () => {
     const memberIds = new Set(members.map((m: any) => m.id));
     const deptTasks = tasks?.filter((t: any) => memberNames.has(t.assigned_to) || memberIds.has(t.assigned_to_user_id)) || [];
     const completed = deptTasks.filter((t: any) => t.status === "completed").length;
-    const overdue = deptTasks.filter((t: any) => t.status === "overdue").length;
-    const inProgress = deptTasks.filter((t: any) => t.status === "in-progress").length;
     const total = deptTasks.length;
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    return {
-      name: dept,
-      members,
-      memberCount: members.length,
-      totalTasks: total,
-      completed,
-      inProgress,
-      overdue,
-      completionRate,
+    return { name: dept, totalTasks: total, completionRate };
+  }).sort((a, b) => b.completionRate - a.completionRate); // sort by efficiency
+
+  // Auto-generate AI Summary Text via Gemini 2.5
+  useEffect(() => {
+    if (userMetrics.length === 0) {
+      setAiSummary("Insufficient data to generate workforce insights.");
+      return;
+    }
+
+    const generateAIInsight = async () => {
+       setIsGeneratingAI(true);
+       try {
+         const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+         if (!apiKey) {
+           setAiSummary("Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file.");
+           return;
+         }
+
+         const ai = new GoogleGenAI({ apiKey });
+         
+         const dataPayload = {
+           totalStaff: userMetrics.length,
+           averageCompletion: avgCompletion,
+           overdueTasks: totalOverdue,
+           topPerformers: userMetrics.filter((u: any) => u.completionRate >= 90).map((u: any) => u.full_name).slice(0, 3),
+           bestDepartment: departmentMetrics[0]?.name || "N/A"
+         };
+
+         const atRiskCount = userMetrics.filter((u: any) => u.tags.length > 0).length;
+
+         const prompt = `You are an elite Fortune 500 Executive AI Assistant analyzing workforce utilisation data. Here is the real-time data: ${JSON.stringify(dataPayload)}, plus ${atRiskCount} staff members flagged for intervention.
+
+Write a sophisticated, 2-2 sentence executive brief analyzing this performance. Keep it strictly professional, highly analytical, and immediately actionable. Focus on efficiency, burnout risk, and top performance. Do not use any markdown formatting like bolding or asterisks. Make it sound like an elite management consultant report. Ensure the response is no more than 280 characters.`;
+
+         const response = await ai.models.generateContent({
+             model: 'gemini-2.5-flash',
+             contents: prompt,
+         });
+         
+         const cleanedText = (response.text || "Insight generation failed.").replace(/\*\*/g, '').replace(/\*/g, '');
+         setAiSummary(cleanedText);
+       } catch (error: any) {
+         console.error("AI Generation Error:", error);
+         setAiSummary("Unable to generate AI insights at this time. Please check your network or API quota.");
+       } finally {
+         setIsGeneratingAI(false);
+       }
     };
-  }).sort((a, b) => b.totalTasks - a.totalTasks);
+
+    const timeout = setTimeout(generateAIInsight, 1500);
+    return () => clearTimeout(timeout);
+  }, [userMetrics, avgCompletion, departmentMetrics]);
 
   return (
-    <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="flex-1 w-full flex flex-col min-h-screen bg-background/50 p-4 md:p-8 overflow-y-auto">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Staff Utilisation</h1>
-          <p className="text-muted-foreground mt-1">Monitor team performance and workload distribution</p>
+          <div className="inline-flex items-center space-x-2 text-xs font-semibold text-[#bc7e57] uppercase tracking-wider mb-2">
+            <span className="w-2 h-2 rounded-full bg-[#bc7e57]" />
+            <span>Workforce Analytics</span>
+          </div>
+          <h1 className="text-3xl font-extrabold tracking-tight">Staff Utilisation</h1>
         </div>
         <Select value={selectedDept} onValueChange={setSelectedDept}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-48 bg-background border-border shadow-sm rounded-lg h-10">
             <SelectValue placeholder="All Departments" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Departments</SelectItem>
+            <SelectItem value="all">Global Workspace (All)</SelectItem>
             {departments.map((d: string) => (
               <SelectItem key={d} value={d}>{d}</SelectItem>
             ))}
@@ -175,410 +223,368 @@ const StaffUtilisation = () => {
         </Select>
       </div>
 
-      {/* Dept Efficiency Chart */}
-      {departmentMetrics.length >= 2 && (
-        <Card className="mb-8 border-[#bc7e57]/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <BarChart3 className="h-5 w-5" style={{ color: '#bc7e57' }} /> Department Efficiency — Task Completion Rate
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={departmentMetrics.map((d: any) => ({ name: d.name, rate: d.completionRate, tasks: d.totalTasks }))} layout="vertical" margin={{ left: 16, right: 32 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(130,130,130,0.15)" />
-                <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
-                <Tooltip formatter={(val: number) => [`${val}%`, 'Completion']} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-                <Bar dataKey="rate" name="Completion" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                  {departmentMetrics.map((_: any, i: number) => {
-                    const hues = ['#bc7e57','#d4956e','#a06845','#c88f6a','#b37352','#9b5f3e','#e0a880','#8a5230'];
-                    return <Cell key={i} fill={hues[i % hues.length]} />;
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
+      {/* 🚀 EXECUTIVE AI BRIEF */}
+      <Card className="mb-8 border-none bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-xl overflow-hidden relative">
+        <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+          <BrainCircuit className="w-64 h-64" />
+        </div>
+        <CardContent className="p-8 relative z-10 flex flex-col md:flex-row items-center gap-8">
+          <div className="h-16 w-16 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20 shadow-inner">
+            <BrainCircuit className="h-8 w-8 text-[#bc7e57]" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold mb-2 flex items-center gap-2 text-white/90">
+              Executive AI Brief <Badge className="bg-[#bc7e57] text-white hover:bg-[#a66c4a] border-none scale-90">GEMINI 2.5 LIVE</Badge>
+            </h3>
+            <p className="text-white/80 leading-relaxed text-sm md:text-base max-w-4xl font-medium">
+              {isGeneratingAI ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full border-2 border-white/50 border-t-white animate-spin" />
+                  Analyzing ideal workforce distribution parameters...
+                </span>
+              ) : aiSummary}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Overview Stats */}
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+        <Card className="bg-card hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm text-muted-foreground">Total Tasks</p>
-                <p className="text-2xl font-bold">{totalTasks}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Active Tasks</p>
+                <p className="text-3xl font-bold mt-2">{totalTasks}</p>
               </div>
-              <BarChart3 className="h-8 w-8 text-[#bc7e57]/50" />
+              <div className="p-2 bg-muted rounded-lg"><Activity className="h-4 w-4 text-[#bc7e57]" /></div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+        <Card className="bg-card hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm text-muted-foreground">Completion Rate</p>
-                <p className="text-2xl font-bold">{avgCompletion}%</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Global Completion</p>
+                <p className="text-3xl font-bold mt-2 text-green-600 dark:text-green-500">{avgCompletion}%</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-500/50" />
+              <div className="p-2 bg-green-500/10 rounded-lg"><TrendingUp className="h-4 w-4 text-green-600" /></div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+        <Card className="bg-card hover:shadow-md transition-shadow border-red-500/20">
+          <CardContent className="p-5">
+             <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm text-muted-foreground">Overdue</p>
-                <p className="text-2xl font-bold text-red-500">{totalOverdue}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Overdue Tasks</p>
+                <p className="text-3xl font-bold mt-2 text-red-600">{totalOverdue}</p>
               </div>
-              <AlertTriangle className="h-8 w-8 text-red-500/50" />
+              <div className="p-2 bg-red-500/10 rounded-lg"><AlertTriangle className="h-4 w-4 text-red-600" /></div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+        <Card className="bg-card hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm text-muted-foreground">Active Members</p>
-                <p className="text-2xl font-bold">{filteredProfiles?.length || 0}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active Staff</p>
+                <p className="text-3xl font-bold mt-2">{filteredProfiles?.length || 0}</p>
               </div>
-              <Users className="h-8 w-8 text-blue-500/50" />
+              <div className="p-2 bg-blue-500/10 rounded-lg"><Users className="h-4 w-4 text-blue-600" /></div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabbed Views: Individual Performance + Department Overview */}
-      <Tabs defaultValue="individual" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="individual" className="gap-2"><Award className="h-4 w-4" /> Individual Performance</TabsTrigger>
-          <TabsTrigger value="departments" className="gap-2"><Building2 className="h-4 w-4" /> Department Overview</TabsTrigger>
-          {isSuperAdmin && <TabsTrigger value="analytics" className="gap-2"><Star className="h-4 w-4" /> Score Analytics</TabsTrigger>}
-        </TabsList>
-
-        <TabsContent value="individual">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" /> Individual Performance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Team Member</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead className="text-center">Total Tasks</TableHead>
-                    <TableHead className="text-center">Completed</TableHead>
-                    <TableHead className="text-center">In Progress</TableHead>
-                    <TableHead className="text-center">Overdue</TableHead>
-                    <TableHead>Completion Rate</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {userMetrics.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="p-0">
-                        <EmptyState illustration="staff" heading="No team members found" subtext="Users will appear here once they have signed up and been assigned to the system. Invite your team to get started."/>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    userMetrics.map((user: any) => (
-                      <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedUser(user)}>
-                        <TableCell className="font-medium">{user.full_name}</TableCell>
-                        <TableCell>{user.department || "—"}</TableCell>
-                        <TableCell className="text-center">{user.totalTasks}</TableCell>
-                        <TableCell className="text-center text-green-600">{user.completed}</TableCell>
-                        <TableCell className="text-center text-blue-600">{user.inProgress}</TableCell>
-                        <TableCell className="text-center">
-                          {user.overdue > 0 ? (
-                            <Badge variant="destructive">{user.overdue}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">0</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={user.completionRate} className="h-2 flex-1" />
-                            <span className="text-sm font-medium w-10 text-right">{user.completionRate}%</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="departments">
-          {departmentMetrics.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center text-muted-foreground">
-                <Building2 className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                <EmptyState illustration="staff" heading="No departments found" subtext="Assign departments to your team members first, then return here to see departmental breakdowns."/>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {departmentMetrics.map((dept) => (
-                <Card key={dept.name} className="border-l-4 hover:shadow-lg transition-shadow" style={{ borderLeftColor: '#bc7e57' }}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-[#bc7e57]" />
-                        {dept.name}
-                      </CardTitle>
-                      <Badge variant="secondary" className="text-xs">{dept.memberCount} member{dept.memberCount !== 1 ? 's' : ''}</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Department Metrics Row */}
-                    <div className="grid grid-cols-4 gap-3 text-center">
-                      <div className="bg-muted/30 rounded-lg p-2">
-                        <p className="text-xs text-muted-foreground">Tasks</p>
-                        <p className="text-lg font-bold">{dept.totalTasks}</p>
-                      </div>
-                      <div className="bg-green-50 dark:bg-green-900/10 rounded-lg p-2">
-                        <p className="text-xs text-green-600">Done</p>
-                        <p className="text-lg font-bold text-green-600">{dept.completed}</p>
-                      </div>
-                      <div className="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-2">
-                        <p className="text-xs text-blue-600">Active</p>
-                        <p className="text-lg font-bold text-blue-600">{dept.inProgress}</p>
-                      </div>
-                      <div className="bg-red-50 dark:bg-red-900/10 rounded-lg p-2">
-                        <p className="text-xs text-red-500">Overdue</p>
-                        <p className="text-lg font-bold text-red-500">{dept.overdue}</p>
-                      </div>
-                    </div>
-
-                    {/* Completion Bar */}
-                    <div className="flex items-center gap-3">
-                      <Progress value={dept.completionRate} className="h-2.5 flex-1" />
-                      <span className="text-sm font-semibold w-12 text-right">{dept.completionRate}%</span>
-                    </div>
-
-                    {/* Member List */}
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Team Members</p>
-                      <div className="space-y-1.5">
-                        {dept.members.map((member: any) => {
-                          const mTasks = tasks?.filter((t: any) => t.assigned_to === member.full_name || t.assigned_to_user_id === member.id) || [];
-                          const mCompleted = mTasks.filter((t: any) => t.status === "completed").length;
-                          const mRate = mTasks.length > 0 ? Math.round((mCompleted / mTasks.length) * 100) : 0;
-                          return (
-                            <div key={member.id} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-muted/40 cursor-pointer transition-colors" onClick={() => {
-                              const found = userMetrics.find(u => u.id === member.id);
-                              if (found) setSelectedUser(found);
-                            }}>
-                              <div className="flex items-center gap-2">
-                                <div className="h-7 w-7 rounded-full bg-[#bc7e57]/20 flex items-center justify-center text-[10px] font-bold text-[#bc7e57] shrink-0">
-                                  {(member.full_name || "").substring(0, 2).toUpperCase()}
-                                </div>
-                                <span className="text-sm font-medium">{member.full_name}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground">{mTasks.length} tasks · {mRate}%</span>
-                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                              </div>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+        {/* 🚀 WORKLOAD & BURNOUT MATRIX (Scatter Plot) */}
+        <Card className="xl:col-span-2 shadow-sm border-border">
+          <CardHeader className="pb-2 border-b border-border/50">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Workload & Burnout Matrix</CardTitle>
+                <CardDescription>Mapping task volume vs completion efficiency</CardDescription>
+              </div>
+              <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-green-500 mr-1" /> Peak</span>
+                <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-amber-500 mr-1" /> At Risk</span>
+                <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-red-500 mr-1" /> Struggling</span>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6 h-[400px]">
+             <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(150,150,150,0.1)" />
+                  <XAxis type="number" dataKey="x" name="Active Tasks" domain={[0, 'dataMax + 2']} label={{ value: 'Total Task Volume', position: 'insideBottom', offset: -10, fontSize: 12, fill: '#888' }} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                  <YAxis type="number" dataKey="y" name="Completion Rate" domain={[0, 100]} tickFormatter={v => `${v}%`} label={{ value: 'Efficiency (%)', angle: -90, position: 'insideLeft', fontSize: 12, fill: '#888' }} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                  <ZAxis type="number" range={[150, 400]} />
+                  <Tooltip 
+                    cursor={{ strokeDasharray: '3 3' }} 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-popover text-popover-foreground border border-border rounded-lg shadow-xl p-3 text-sm">
+                            <p className="font-bold border-b border-border pb-1 mb-2">{data.name}</p>
+                            <div className="space-y-1">
+                              <p><span className="text-muted-foreground">Tasks:</span> {data.x} total</p>
+                              <p><span className="text-muted-foreground">Efficiency:</span> {data.y}%</p>
+                              {data.overdue > 0 && <p className="text-red-500 font-medium">{data.overdue} overdue</p>}
                             </div>
-                          );
-                        })}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <ReferenceLine x={5} stroke="#888" strokeOpacity={0.3} strokeDasharray="3 3" />
+                  <ReferenceLine y={60} stroke="#888" strokeOpacity={0.3} strokeDasharray="3 3" />
+                  <Scatter 
+                    data={userMetrics.map(u => ({
+                      id: u.id, name: u.full_name, x: u.totalTasks, y: u.completionRate, overdue: u.overdue,
+                      fill: u.completionRate >= 80 ? '#22c55e' : u.completionRate >= 50 ? '#f59e0b' : '#ef4444'
+                    }))} 
+                    onClick={(e) => {
+                      const user = userMetrics.find(u => u.id === e.id);
+                      if(user) setSelectedUser(user);
+                    }}
+                    className="cursor-pointer"
+                  />
+                </ScatterChart>
+             </ResponsiveContainer>
+             <div className="grid grid-cols-2 text-center text-xs text-muted-foreground opacity-50 absolute inset-0 pointer-events-none -z-10 pt-10">
+                <div className="flex items-center justify-center border-r border-b border-border/10">Under-Utilized</div>
+                <div className="flex items-center justify-center border-b border-border/10">Peak Performance</div>
+                <div className="flex items-center justify-center border-r border-border/10">Struggling</div>
+                <div className="flex items-center justify-center border-border/10">Burnout Risk</div>
+             </div>
+          </CardContent>
+        </Card>
+
+        {/* 🚀 FLIGHT RISK / NEEDS ATTENTION PANEL */}
+        <Card className="shadow-sm border-border flex flex-col">
+          <CardHeader className="pb-3 border-b border-border/50 bg-red-50/50 dark:bg-red-950/10">
+            <CardTitle className="text-lg flex items-center gap-2 text-red-600 dark:text-red-400">
+              <AlertTriangle className="h-5 w-5" /> Intervention Panel
+            </CardTitle>
+            <CardDescription>Staff flagged for immediate review</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 flex-1 overflow-y-auto max-h-[400px]">
+            <div className="divide-y divide-border/50">
+              {userMetrics.filter(u => u.tags.length > 0).length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground flex flex-col items-center">
+                  <Shield className="h-10 w-10 text-green-500/40 mb-3" />
+                  <p className="text-sm">Workforce is stable.</p>
+                  <p className="text-xs">No active interventions required.</p>
+                </div>
+              ) : (
+                userMetrics.filter(u => u.tags.length > 0).map(u => (
+                  <div key={u.id} className="p-4 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => setSelectedUser(u)}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 flex items-center justify-center font-bold text-xs ring-1 ring-red-500/20">
+                          {(u.full_name||'').substring(0,2).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{u.full_name}</p>
+                          <p className="text-xs text-muted-foreground">{u.department || 'No dept'}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-red-500">{u.performance_score ?? 100}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase">Score</p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    <div className="flex flex-wrap gap-1.5 pl-11">
+                      {u.tags.map(tag => (
+                        <Badge key={tag} variant="secondary" className="text-[10px] bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 hover:bg-red-200 border border-red-200 dark:border-red-800">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 🚀 INDIVIDUAL PERFORMANCE MASONRY GRID */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold flex items-center gap-2"><Users className="h-5 w-5 text-[#bc7e57]" /> Workforce Directory</h2>
+          {isSuperAdmin && (
+            <Button size="sm" variant="outline" className="gap-2 border-[#bc7e57]/40 text-[#bc7e57] hover:bg-[#bc7e57]/10" onClick={handleManualEngine} disabled={engineRunning}>
+              <RefreshCw className={`h-3.5 w-3.5 ${engineRunning ? 'animate-spin' : ''}`}/>
+              {engineRunning ? 'Crunching...' : 'Run Perf Engine'}
+            </Button>
+          )}
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {userMetrics.map((user: any) => (
+            <div key={user.id} onClick={() => setSelectedUser(user)} className="group cursor-pointer bg-card hover:bg-muted/30 border border-border/60 hover:border-[#bc7e57]/40 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <ChevronRight className="h-4 w-4 text-[#bc7e57]" />
+               </div>
+               
+               <div className="flex items-center gap-3 mb-4">
+                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#bc7e57]/20 to-transparent flex items-center justify-center font-bold text-[#bc7e57] border border-[#bc7e57]/20 group-hover:scale-105 transition-transform">
+                    {(user.full_name||'').substring(0,2).toUpperCase()}
+                 </div>
+                 <div className="flex-1 min-w-0">
+                   <p className="font-semibold text-sm truncate">{user.full_name}</p>
+                   <p className="text-xs text-muted-foreground truncate">{user.department || '—'}</p>
+                 </div>
+               </div>
+
+               <div className="space-y-3">
+                 <div className="flex justify-between items-center text-xs">
+                   <span className="text-muted-foreground">Overall Efficiency</span>
+                   <span className="font-bold">{user.completionRate}%</span>
+                 </div>
+                 <Progress value={user.completionRate} className="h-1.5" />
+                 
+                 <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/50 text-center">
+                   <div>
+                     <p className="text-lg font-bold">{user.totalTasks}</p>
+                     <p className="text-[10px] text-muted-foreground uppercase">Tasks</p>
+                   </div>
+                   <div>
+                     <p className="text-lg font-bold text-green-600">{user.completed}</p>
+                     <p className="text-[10px] text-muted-foreground uppercase">Done</p>
+                   </div>
+                   <div>
+                     <p className={`text-lg font-bold ${user.overdue > 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                       {user.overdue > 0 ? user.overdue : user.inProgress}
+                     </p>
+                     <p className="text-[10px] text-muted-foreground uppercase">{user.overdue > 0 ? 'Overdue' : 'Active'}</p>
+                   </div>
+                 </div>
+               </div>
+            </div>
+          ))}
+          {userMetrics.length === 0 && (
+            <div className="col-span-full py-12">
+               <EmptyState illustration="staff" heading="No workforce data available" subtext="No active user metrics aligned with current filters." />
             </div>
           )}
-        </TabsContent>
+        </div>
+      </div>
 
-        {/* ===== PERFORMANCE SCORE ANALYTICS TAB ===== */}
-        {isSuperAdmin && (
-          <TabsContent value="analytics" className="space-y-6">
-            {/* Engine Control Banner */}
-            <Card className="border-[#bc7e57]/30 bg-[#bc7e57]/5">
-              <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-[#bc7e57]/15 flex items-center justify-center">
-                    <Zap className="h-5 w-5" style={{ color: '#bc7e57' }}/>
+      {/* 🚀 DEEP DIVE PROFILE SIDEPANEL (SHEET) */}
+      <Sheet open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
+        <SheetContent className="w-full sm:max-w-md lg:max-w-xl overflow-y-auto p-0 border-l border-border/50">
+          {selectedUser && (
+            <div className="flex flex-col h-full bg-background">
+              {/* Header Header */}
+              <div className="bg-muted/30 p-6 border-b border-border/50 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#bc7e57]/20 to-transparent rounded-bl-full opacity-50 pointer-events-none" />
+                <div className="flex items-start gap-4 relative z-10">
+                  <div className="h-16 w-16 rounded-2xl bg-background shadow-md border border-border flex items-center justify-center text-xl font-bold text-[#bc7e57]">
+                    {(selectedUser.full_name||'').substring(0,2).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-semibold text-sm">Performance Automation Engine</p>
-                    <p className="text-xs text-muted-foreground">Auto-runs daily. Deducts −2 pts per missed clock-in. Respects individual work schedules and approved leave.</p>
+                    <h2 className="text-2xl font-bold">{selectedUser.full_name}</h2>
+                    <p className="text-muted-foreground">{selectedUser.role?.replace('_', ' ').toUpperCase()} • {selectedUser.department || 'General'}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                       <Badge variant="outline" className="bg-background text-xs"><Clock className="w-3 h-3 mr-1"/> Last Active: Today</Badge>
+                       <Badge variant="outline" className="bg-background text-xs border-[#bc7e57]/40 text-[#bc7e57]">Score: {selectedUser.performance_score ?? 100}</Badge>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {engineResult && (
-                    <div className="text-xs text-muted-foreground text-right">
-                      <p>Last run: {new Date().toLocaleDateString()}</p>
-                      <p>{engineResult.deductions.length} deduction(s) · {engineResult.topPerformers.length} top performer(s)</p>
-                    </div>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleManualEngine}
-                    disabled={engineRunning}
-                    className="gap-2 border-[#bc7e57]/30 hover:border-[#bc7e57] hover:text-[#bc7e57]"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${engineRunning ? 'animate-spin' : ''}`}/>
-                    {engineRunning ? 'Running...' : 'Run Engine Now'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Needs Attention */}
-            {(() => {
-              const atRisk = (profiles || []).filter((p: any) => (p.performance_score ?? 100) < 70);
-              if (atRisk.length === 0) return null;
-              return (
-                <Card className="border-red-200 dark:border-red-900/40">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base text-red-600 dark:text-red-400">
-                      <TrendingDown className="h-4 w-4"/> Needs Attention ({atRisk.length})
-                    </CardTitle>
-                    <CardDescription>These team members have a performance score below 70. Consider a 1:1 check-in.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {atRisk.map((p: any) => {
-                        const score = p.performance_score ?? 100;
-                        return (
-                          <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl border border-red-200/60 dark:border-red-900/30 bg-red-50/40 dark:bg-red-950/10">
-                            <div className="h-9 w-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-xs font-bold text-red-600">
-                              {(p.full_name || '').substring(0, 2).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{p.full_name}</p>
-                              <p className="text-xs text-muted-foreground">{p.department || 'No dept'}</p>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-xl font-bold text-red-500">{score}</span>
-                              <span className="text-xs text-muted-foreground">/100</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
-
-            {/* Leaderboard */}
-            <Card>{(()=>{
-              const ranked = [...(profiles||[])].sort((a:any,b:any)=>(b.performance_score??100)-(a.performance_score??100));
-              const getScoreColor = (s:number)=> s>=90?'text-green-600 dark:text-green-400':s>=70?'text-[#bc7e57]':s>=50?'text-amber-600':'text-red-600';
-              const getScoreBg = (s:number)=> s>=90?'bg-green-100 dark:bg-green-900/30':s>=70?'bg-[#bc7e57]/10':s>=50?'bg-amber-100 dark:bg-amber-900/30':'bg-red-100 dark:bg-red-900/30';
-              const badges = ['🥇','🥈','🥉'];
-              return (
-                <>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Award className="h-4 w-4" style={{color:'#bc7e57'}}/> Performance Leaderboard
-                    </CardTitle>
-                    <CardDescription>Ranked by performance score. Updated automatically every working day.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="divide-y divide-border/50">
-                      {ranked.map((p:any, idx:number)=>{
-                        const score = p.performance_score??100;
-                        const history = p.score_history||[];
-                        const trend = history.length>=2 ? history[history.length-1]?.score - history[history.length-2]?.score : 0;
-                        return (
-                          <div key={p.id} className={`flex items-center gap-4 px-5 py-3.5 ${idx<3?'bg-muted/20':''}`}>
-                            <span className="text-lg w-7 text-center font-bold">{badges[idx]||<span className="text-sm text-muted-foreground font-normal">#{idx+1}</span>}</span>
-                            <div className="h-9 w-9 rounded-full bg-[#bc7e57]/15 flex items-center justify-center text-xs font-bold" style={{color:'#bc7e57'}}>
-                              {(p.full_name||'').substring(0,2).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold truncate">{p.full_name}</p>
-                              <p className="text-xs text-muted-foreground">{p.department||'—'} · {p.work_mode||'office'}</p>
-                            </div>
-                            {history.length>0 && (
-                              <div className="hidden md:block w-24 h-8">
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <LineChart data={history.slice(-14).map((h:any)=>({v:h.score}))}>
-                                    <Line type="monotone" dataKey="v" stroke="#bc7e57" strokeWidth={1.5} dot={false}/>
-                                    <ReferenceLine y={100} stroke="#e8ddd5" strokeDasharray="2 2"/>
-                                  </LineChart>
-                                </ResponsiveContainer>
-                              </div>
-                            )}
-                            {trend !== 0 && (
-                              <span className={`text-xs font-medium ${trend>0?'text-green-500':'text-red-500'}`}>{trend>0?'↑':'↓'}{Math.abs(trend)}</span>
-                            )}
-                            <div className={`text-center min-w-[60px] py-1 px-2.5 rounded-lg ${getScoreBg(score)}`}>
-                              <span className={`text-xl font-bold ${getScoreColor(score)}`}>{score}</span>
-                              <span className="text-xs text-muted-foreground">/100</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {ranked.length===0&&<div className="py-12 text-center text-sm text-muted-foreground">No team members found.</div>}
-                    </div>
-                  </CardContent>
-                </>
-              );
-            })()}
-            </Card>
-
-            {/* Top Performers Banner */}
-            {isSuperAdmin && (profiles||[]).some((p:any)=>(p.performance_score??100)>=90) && (
-              <Card className="border-green-200 dark:border-green-900/40 bg-green-50/30 dark:bg-green-950/10">
-                <CardContent className="p-4">
-                  <p className="font-semibold text-sm text-green-700 dark:text-green-400 flex items-center gap-2 mb-3">
-                    <Star className="h-4 w-4"/> Top Performers (90+)
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {(profiles||[]).filter((p:any)=>(p.performance_score??100)>=90).map((p:any)=>(
-                      <div key={p.id} className="flex items-center gap-2 bg-white dark:bg-green-900/20 rounded-full px-3 py-1.5 border border-green-200 dark:border-green-800/30">
-                        <span className="text-xs font-medium">{p.full_name}</span>
-                        <span className="text-xs font-bold text-green-600">{p.performance_score??100}/100</span>
-                      </div>
-                    ))}
+              {/* Body */}
+              <div className="p-6 space-y-8">
+                
+                {/* Micro-Stats Line */}
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="text-center p-3 bg-muted/20 rounded-xl border border-border/30">
+                    <p className="text-2xl font-bold">{selectedUser.totalTasks}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-medium mt-1">Volume</p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        )}
-      </Tabs>
+                  <div className="text-center p-3 bg-green-500/5 rounded-xl border border-green-500/10">
+                    <p className="text-2xl font-bold text-green-600">{selectedUser.completed}</p>
+                    <p className="text-[10px] text-green-600/70 uppercase font-medium mt-1">Resolved</p>
+                  </div>
+                  <div className="text-center p-3 bg-blue-500/5 rounded-xl border border-blue-500/10">
+                    <p className="text-2xl font-bold text-blue-600">{selectedUser.inProgress}</p>
+                    <p className="text-[10px] text-blue-600/70 uppercase font-medium mt-1">Active</p>
+                  </div>
+                  <div className="text-center p-3 bg-red-500/5 rounded-xl border border-red-500/10">
+                    <p className="text-2xl font-bold text-red-600">{selectedUser.overdue}</p>
+                    <p className="text-[10px] text-red-600/70 uppercase font-medium mt-1">Delayed</p>
+                  </div>
+                </div>
 
-      <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Task Drilldown: {selectedUser?.full_name}</DialogTitle>
-          </DialogHeader>
-          <Table>
-            <TableHeader>
-               <TableRow><TableHead>Task</TableHead><TableHead>Status</TableHead><TableHead>Due Date</TableHead></TableRow>
-            </TableHeader>
-            <TableBody>
-               {selectedUser?.userTasks?.map((task: any) => (
-                 <TableRow key={task.id}>
-                    <TableCell className="font-medium">{task.title}</TableCell>
-                    <TableCell>
-                      <Badge variant={task.status === "completed" ? "default" : task.status === "overdue" ? "destructive" : "secondary"} className="capitalize">
-                        {task.status.replace('-', ' ')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{task.due_date ? format(new Date(task.due_date), "MMM d, yyyy") : 'N/A'}</TableCell>
-                 </TableRow>
-               ))}
-               {!selectedUser?.userTasks?.length && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-4">No tasks assigned.</TableCell></TableRow>}
-            </TableBody>
-          </Table>
-        </DialogContent>
-      </Dialog>
+                {/* Performance Trend */}
+                {selectedUser.score_history && selectedUser.score_history.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-[#bc7e57]" /> 14-Day Performance Trend</h3>
+                    <div className="h-40 border border-border/50 rounded-xl p-4 bg-muted/10">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={selectedUser.score_history.slice(-14).map((h:any)=>({ date: format(new Date(h.date), "MMM d"), score: h.score }))}>
+                          <Line type="monotone" dataKey="score" stroke="#bc7e57" strokeWidth={2} dot={{ fill: '#bc7e57', r: 3 }} activeDot={{ r: 5 }} />
+                          <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                          <ReferenceLine y={100} stroke="#888" strokeOpacity={0.2} strokeDasharray="3 3"/>
+                          <YAxis domain={['dataMin - 5', 100]} hide />
+                          <XAxis dataKey="date" hide />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                {/* Active Task Log */}
+                <div>
+                   <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><CheckSquare className="w-4 h-4 text-[#bc7e57]" /> Active & Overdue Pipeline</h3>
+                   <div className="border border-border/50 rounded-xl overflow-hidden bg-card">
+                     <Table>
+                       <TableHeader className="bg-muted/30">
+                         <TableRow>
+                           <TableHead>Task Name</TableHead>
+                           <TableHead className="w-[100px]">Status</TableHead>
+                         </TableRow>
+                       </TableHeader>
+                       <TableBody>
+                         {selectedUser.userTasks?.filter((t:any) => t.status !== 'completed').map((task: any) => (
+                           <TableRow key={task.id}>
+                             <TableCell className="font-medium text-sm">
+                               {task.title}
+                               {task.due_date && (
+                                 <p className={`text-[10px] mt-0.5 ${task.status === 'overdue' ? 'text-red-500' : 'text-muted-foreground'}`}>
+                                   Due: {format(new Date(task.due_date), "MMM d, yyyy")}
+                                 </p>
+                               )}
+                             </TableCell>
+                             <TableCell>
+                               <Badge variant={task.status === "overdue" ? "destructive" : "secondary"} className="text-[10px] capitalize">
+                                 {task.status.replace('-', ' ')}
+                               </Badge>
+                             </TableCell>
+                           </TableRow>
+                         ))}
+                         {selectedUser.userTasks?.filter((t:any) => t.status !== 'completed').length === 0 && (
+                           <TableRow>
+                             <TableCell colSpan={2} className="text-center text-muted-foreground text-sm py-6">
+                               No active tasks. Queue is clear!
+                             </TableCell>
+                           </TableRow>
+                         )}
+                       </TableBody>
+                     </Table>
+                   </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
     </div>
   );
 };

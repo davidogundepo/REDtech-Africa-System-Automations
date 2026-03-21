@@ -124,7 +124,26 @@ export function Header() {
         </button>
       </div>
       
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
+        {/* Toggle Copilot Button */}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="hidden md:flex gap-1.5 border-[#bc7e57]/30 bg-[#bc7e57]/5 hover:bg-[#bc7e57]/15 hover:border-[#bc7e57]/60 text-[#bc7e57] transition-all rounded-full px-3 h-8 shadow-sm"
+          onClick={() => window.dispatchEvent(new CustomEvent('rac-open-ai-assistant', { detail: { open: true } }))}
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>AI Assistance</span>
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="md:hidden h-9 w-9 text-[#bc7e57] hover:bg-[#bc7e57]/10 rounded-full"
+          onClick={() => window.dispatchEvent(new CustomEvent('rac-open-ai-assistant', { detail: { open: true } }))}
+        >
+          <Sparkles className="h-5 w-5" />
+        </Button>
+
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button 

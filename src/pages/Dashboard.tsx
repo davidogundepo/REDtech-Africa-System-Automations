@@ -103,7 +103,7 @@ const tips = [
 ];
 
 const Dashboard = () => {
-  const { profile, isSuperAdmin } = useAuth();
+  const { profile, isSuperAdmin, isAdmin } = useAuth();
 
   // Fetch live stats
   const { data: taskCount } = useQuery({
@@ -191,7 +191,6 @@ const Dashboard = () => {
           <StatCard icon={CalendarDays} label="Pending Leave" value={(pendingLeave ?? "—").toString()} warning={!!pendingLeave && pendingLeave > 0} />
         </div>
 
-        {/* Module grid */}
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
