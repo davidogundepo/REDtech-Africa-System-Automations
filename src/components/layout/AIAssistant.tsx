@@ -255,10 +255,12 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
     // ⚡ HOT CONTEXT INJECTION (Prevents slow ReAct DB loops for common queries)
     let tasksRes = { data: [] };
     let leavesRes = { data: [] };
+    let staffRes = { data: [] };
     try {
-      [tasksRes, leavesRes] = await Promise.all([
+      [tasksRes, leavesRes, staffRes] = await Promise.all([
         (supabase as any).from('tasks').select('title, status, priority').eq('user_id', profile?.id).in('status', ['todo', 'in_progress']).limit(5),
-        (supabase as any).from('leave_requests').select('status, leave_type').eq('user_id', profile?.id).eq('status', 'pending').limit(1)
+        (supabase as any).from('leave_requests').select('status, leave_type').eq('user_id', profile?.id).eq('status', 'pending').limit(1),
+        (supabase as any).from('profiles').select('full_name, department, email, role, performance_score').limit(50)
       ]);
     } catch (dbErr) {
       console.warn("Failed to fetch hot context for AI, proceeding without it", dbErr);
@@ -273,6 +275,7 @@ Current Page URL: ${location.pathname}
 ⚡ HOT CONTEXT (Use this LIVE DATA instantly to answer questions. Do NOT use query_database for tasks or leaves unless they need more than the last 5):
 - User's Active Tasks: ${JSON.stringify(tasksRes.data || [])}
 - User's Pending Leaves: ${JSON.stringify(leavesRes.data || [])}
+- Company Staff Directory: ${JSON.stringify(staffRes.data || [])}
 
 SECURITY & STRICT RBAC ENFORCEMENT:
 If the user's Role is 'team-member', you MUST legally and strictly refuse to summarize global company analytics, staff utilisation stats of other users, or finance data. Act politely to deny. If they are 'super-admin' or 'admin', provide any requested global insights.
@@ -401,13 +404,13 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
         const actionRegex = /```json\s*(\{[\s\S]*?\}|\[[\s\S]*?\])\s*```/g;
         let cleanText = aiOutput;
         let match;
+        let queryResults = [];
         
         while ((match = actionRegex.exec(aiOutput)) !== null) {
           if (match[1]) {
             try {
               const parsed = JSON.parse(match[1]);
               const actions = Array.isArray(parsed) ? parsed : [parsed];
-              let queryResults = [];
               
               for (const actionObj of actions) {
                 if (actionObj.action === 'navigate') {
@@ -421,36 +424,41 @@ Style & Formatting: Highly professional, warm, concise. ALWAYS use bullet points
                   queryResults.push(`[RESULT FOR '${actionObj.action}' ON '${actionObj.target}']: ${dbResult}`);
                 }
               }
-              
-              if (queryResults.length > 0) {
-                 const systemFeedback = queryResults.join("\n");
-                 // Only push assistant text if there is conversational text alongside the JSON block
-                 let intermediateText = cleanText.replace(actionRegex, '').trim();
-                 if (!intermediateText) {
-                    intermediateText = "Processing data based on your request...";
-                 }
-                 currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: intermediateText });
-                 
-                 // Always push system feedback so Gemini can read it next loop
-                 currentHistory.push({ id: crypto.randomUUID(), role: "system", content: systemFeedback });
-                 requiresAnotherPass = true;
-              }
-              
             } catch (e) {
                console.error("Failed to parse AI action payload", e); 
             }
           }
         }
         
-        if (!requiresAnotherPass) {
-          let finalAssistantReply = cleanText.replace(actionRegex, '').trim();
-          if (!finalAssistantReply && loopCount >= maximumLoops) {
-             finalAssistantReply = "I have executed the requested actions.";
-          }
-          if (finalAssistantReply) {
-             currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: finalAssistantReply });
-          }
+        let assistantConversationalText = cleanText.replace(actionRegex, '').trim();
+        
+        if (queryResults.length > 0) {
+           const systemFeedback = queryResults.join("\n");
+           // Only optionally push intermediate processing status if no conversational text
+           if (!assistantConversationalText) {
+              assistantConversationalText = "Processing data based on your request...";
+           }
+           currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: assistantConversationalText });
+           currentHistory.push({ id: crypto.randomUUID(), role: "system", content: systemFeedback });
+           requiresAnotherPass = true;
+           
+           // Optimistically update UI so spinner reflects processing state correctly
+           setMessages(currentHistory.filter(m => m.role !== 'system'));
+        } else {
+           // Terminal condition
+           requiresAnotherPass = false;
+           if (!assistantConversationalText && loopCount >= maximumLoops) {
+              assistantConversationalText = "I have executed the requested actions.";
+           }
+           if (assistantConversationalText) {
+              currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: assistantConversationalText });
+           }
         }
+      }
+      
+      // If we exit due to max loops but we still had pending actions
+      if (requiresAnotherPass && loopCount >= maximumLoops) {
+         currentHistory.push({ id: crypto.randomUUID(), role: "assistant", content: "I've reached my maximum processing limit for this request, but I did execute your commands." });
       }
 
       const visibleHistory = currentHistory.filter(m => m.role !== 'system');
