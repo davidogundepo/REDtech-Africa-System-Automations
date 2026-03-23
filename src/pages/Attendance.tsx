@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -16,6 +16,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Clock, LogIn, LogOut, CalendarDays, Users, AlertTriangle, CheckCircle2, UserCheck, ShieldAlert, Star, TrendingUp, Building2, Home, Laptop, MapPin, Zap, Eye, Send, Mail, Download, Filter } from "lucide-react";
 import companyLogo from "@/assets/company-logo.png";
+import { MyDashboardCards, TeamOverviewCards, AnalyticsCards } from "@/components/attendance/AttendanceDashboard";
+import { isNigerianHoliday, getUpcomingHolidays } from "@/lib/nigerian-holidays";
 
 const WORK_MODES = [
   { id: "office", label: "HQ Office", icon: Building2 },
@@ -832,17 +834,122 @@ const Attendance = () => {
   const previewUser = allProfiles?.find(u => u.id === previewUserId);
   const previewScore = previewUser?.performance_score ?? 100;
 
+  // ═══════ NEW: Yearly records for heatmap ═══════
+  const currentYear = new Date().getFullYear();
+  const { data: yearlyRecords } = useQuery({
+    queryKey: ["yearly-attendance", profile?.id, currentYear],
+    queryFn: async () => {
+      if (!profile) return [];
+      const { data, error } = await supabase.from("attendance_records").select("date, status").eq("user_id", profile.id).gte("date", `${currentYear}-01-01`).lte("date", `${currentYear}-12-31`);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!profile,
+  });
+
+  // ═══════ NEW: Personal attendance history ═══════
+  const { data: myHistoryRecords } = useQuery({
+    queryKey: ["my-history", profile?.id],
+    queryFn: async () => {
+      if (!profile) return [];
+      const ago = new Date(); ago.setDate(ago.getDate() - 30);
+      const { data, error } = await supabase.from("attendance_records").select("*").eq("user_id", profile.id).gte("date", format(ago, "yyyy-MM-dd")).order("date", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!profile,
+  });
+
+  // ═══════ NEW: Analytics ═══════
+  const departmentBreakdown = useMemo(() => {
+    if (!allProfiles || !allRecords) return [];
+    const depts = [...new Set(allProfiles.map((p: any) => String(p.department || "Unassigned")))];
+    return depts.map(dept => {
+      const staff = allProfiles.filter(p => (p.department || "Unassigned") === dept);
+      const ids = new Set(staff.map(s => s.id));
+      const recs = allRecords.filter((r: any) => ids.has(r.user_id));
+      return { department: dept, totalStaff: staff.length, present: recs.filter((r: any) => r.status === "present").length, late: recs.filter((r: any) => r.status === "late").length, absent: staff.length - recs.length };
+    }).sort((a, b) => b.totalStaff - a.totalStaff);
+  }, [allProfiles, allRecords]);
+
+  const monthlyPerfData = useMemo(() => {
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return months.map((m, i) => {
+      const ms = `${currentYear}-${String(i+1).padStart(2,"0")}`;
+      const mr = (monthlyRecords||[]).filter((r:any) => r.date?.startsWith(ms));
+      const tp = (allProfiles?.length||1) * 22;
+      const at = mr.filter((r:any) => r.status==="present"||r.status==="late").length;
+      return { month: m, rate: Math.min(tp > 0 ? Math.round((at/tp)*100) : 0, 100) };
+    });
+  }, [monthlyRecords, allProfiles, currentYear]);
+
+  const genderStats = useMemo(() => {
+    if (!allProfiles) return [];
+    const m = allProfiles.filter((p:any) => p.gender==="male").length;
+    const f = allProfiles.filter((p:any) => p.gender==="female").length;
+    const u = allProfiles.length - m - f;
+    return [{name:"Male",value:m,color:"#3b82f6"},{name:"Female",value:f,color:"#ec4899"},...(u>0?[{name:"Unspecified",value:u,color:"#94a3b8"}]:[]) ];
+  }, [allProfiles]);
+
+  const employeeOfMonth = useMemo(() => { const s = generateMonthlySummary(); return s.length > 0 ? s[0] : null; }, [allProfiles, monthlyRecords]);
+
+  const weeklyGridData = useMemo(() => {
+    if (!allProfiles || !weeklyRecords) return [];
+    const d = new Date(selectedDate); const dy = d.getDay(); const diff = d.getDate()-dy+(dy===0?-6:1);
+    const mon = new Date(new Date(selectedDate).setDate(diff)); const wd: string[] = [];
+    for (let i=0;i<7;i++){const x=new Date(mon);x.setDate(x.getDate()+i);wd.push(format(x,"yyyy-MM-dd"));}
+    return allProfiles.map((u:any) => ({ ...u, dayStatuses: wd.map(ds => {
+      const r=weeklyRecords.find((x:any)=>x.user_id===u.id&&x.date===ds);
+      const we=new Date(ds).getDay()===0||new Date(ds).getDay()===6;
+      if(isNigerianHoliday(ds))return{date:ds,status:"holiday"};if(we)return{date:ds,status:"weekend"};return{date:ds,status:r?.status||"absent"};
+    }) }));
+  }, [allProfiles, weeklyRecords, selectedDate]);
+
+  const myStats = useMemo(() => {
+    if (!myHistoryRecords||myHistoryRecords.length===0) return {avgIn:"—",avgOut:"—",avgHours:"—",onTimeRate:0};
+    const ci=myHistoryRecords.filter(r=>r.clock_in).map(r=>new Date(r.clock_in!));
+    const co=myHistoryRecords.filter(r=>r.clock_out).map(r=>new Date(r.clock_out!));
+    const ai=ci.length>0?ci.reduce((a,b)=>a+(b.getHours()*60+b.getMinutes()),0)/ci.length:0;
+    const ao=co.length>0?co.reduce((a,b)=>a+(b.getHours()*60+b.getMinutes()),0)/co.length:0;
+    const avgIn=ci.length>0?`${Math.floor(ai/60).toString().padStart(2,"0")}:${Math.floor(ai%60).toString().padStart(2,"0")}`:"—";
+    const avgOut=co.length>0?`${Math.floor(ao/60).toString().padStart(2,"0")}:${Math.floor(ao%60).toString().padStart(2,"0")}`:"—";
+    const hv=(ao-ai)/60; const avgHours=hv>0?`${Math.floor(hv)}h ${Math.round((hv%1)*60)}m`:"—";
+    const ot=myHistoryRecords.filter(r=>r.status==="present").length;
+    return{avgIn,avgOut,avgHours,onTimeRate:myHistoryRecords.length>0?Math.round((ot/myHistoryRecords.length)*100):0};
+  }, [myHistoryRecords]);
+
+  const greetText=(()=>{const h=new Date().getHours();if(h<12)return"Good Morning";if(h<17)return"Good Afternoon";return"Good Evening";})();
+
   return (
     <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-6 md:p-10 font-sans overflow-y-auto">
       <div className="max-w-[1600px] mx-auto w-full">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">
-              Workforce Engine
-            </h1>
-            <p className="text-muted-foreground mt-2 text-lg">Record attendance and view global performance metrics.</p>
+        {/* ═══════ WELCOME BANNER ═══════ */}
+        <div className="relative rounded-2xl overflow-hidden mb-6 bg-gradient-to-r from-[#bc7e57]/10 via-[#bc7e57]/5 to-transparent border border-[#bc7e57]/15 p-6 md:p-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-[#bc7e57]/20 flex items-center justify-center text-lg font-bold shrink-0 overflow-hidden" style={{ color: '#bc7e57' }}>
+                {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" /> : getInitials(profile?.full_name || "U")}
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">{greetText}, {(profile?.full_name || "").split(" ")[0]}! 👋</h1>
+                <p className="text-muted-foreground mt-0.5 text-sm">{format(new Date(), "EEEE, MMMM d, yyyy")} · Workforce Engine</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-center bg-card px-5 py-3 rounded-xl border border-border/50 shadow-sm"><p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Score</p><p className={`text-2xl font-black ${getScoreColor(myScore)}`}>{myScore}</p></div>
+              <div className="text-center bg-card px-5 py-3 rounded-xl border border-border/50 shadow-sm"><p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">On-Time</p><p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{myStats.onTimeRate}%</p></div>
+            </div>
           </div>
+        </div>
+
+        {/* ═══════ MAIN TABS ═══════ */}
+        <Tabs defaultValue="my-dashboard" className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+            <TabsList className="bg-muted/30 border border-border/40 p-1 rounded-xl h-auto">
+              <TabsTrigger value="my-dashboard" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm px-5 py-2.5 text-sm font-semibold">My Dashboard</TabsTrigger>
+              {(isAdmin || isSuperAdmin) && <TabsTrigger value="team-overview" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm px-5 py-2.5 text-sm font-semibold">Team Overview</TabsTrigger>}
+              {isSuperAdmin && <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm px-5 py-2.5 text-sm font-semibold">Analytics</TabsTrigger>}
+            </TabsList>
           <div className="flex flex-wrap items-center gap-3">
             {isSuperAdmin && (
               <Sheet open={automationsOpen} onOpenChange={setAutomationsOpen}>
@@ -1344,10 +1451,13 @@ const Attendance = () => {
               <span className="font-semibold text-foreground">{format(new Date(), "EEEE, MMMM d, yyyy")}</span>
             </div>
           </div>
-        </div>
+          </div>
+
+          {/* ═══════ TAB: MY DASHBOARD ═══════ */}
+          <TabsContent value="my-dashboard" className="space-y-6 mt-0">
 
         {/* Global Overview & User Action Row */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-10">
+        <div className="grid lg:grid-cols-3 gap-6 mb-6">
           <Card className="lg:col-span-2 border-border/40 shadow-xl bg-card/80 backdrop-blur-xl relative overflow-hidden">
             <CardContent className="p-8">
               <div className="flex flex-col md:flex-row items-center justify-between gap-8">
@@ -1434,9 +1544,17 @@ const Attendance = () => {
           </Card>
         </div>
 
+            {/* New Dashboard Cards */}
+            <MyDashboardCards myStats={myStats} yearlyRecords={yearlyRecords || []} myHistoryRecords={myHistoryRecords || []} getWorkingHours={getWorkingHours} />
+          </TabsContent>
+
+          {/* ═══════ TAB: TEAM OVERVIEW ═══════ */}
+          {(isAdmin || isSuperAdmin) && (
+            <TabsContent value="team-overview" className="space-y-6 mt-0">
+
         {/* Global Insight Engine (Admin Only) */}
         {(isAdmin || isSuperAdmin) && totalMembers > 0 && (
-          <div className="mb-10">
+          <div className="mb-6">
             <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-muted-foreground" /> Today's Pulse
             </h2>
@@ -1627,6 +1745,17 @@ const Attendance = () => {
             </CardContent>
           </Card>
         )}
+              <TeamOverviewCards departmentBreakdown={departmentBreakdown} weeklyGridData={weeklyGridData} employeeOfMonth={employeeOfMonth} allRecords={allRecords || []} allProfiles={allProfiles || []} activeLeaves={activeLeaves || []} selectedDate={selectedDate} />
+            </TabsContent>
+          )}
+
+          {/* ═══════ TAB: ANALYTICS ═══════ */}
+          {isSuperAdmin && (
+            <TabsContent value="analytics" className="space-y-6 mt-0">
+              <AnalyticsCards monthlyPerformanceData={monthlyPerfData} departmentBreakdown={departmentBreakdown} genderStats={genderStats} allProfiles={allProfiles || []} />
+            </TabsContent>
+          )}
+        </Tabs>
 
       </div>
 
