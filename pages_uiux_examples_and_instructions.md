@@ -359,3 +359,5 @@ P.S. AND INSTRUCTIONS YOU MUST FOLLOW:
     Super admin is like owner or founders, admin is like departmental managers, team member is like mnormal staff. Have this in mind when buiding and designing each page. THere are hierahies which determins how each page should be shown based on what type of heirarchy it is. An yet still they are all staff so still got their own bags of accountabilities et al.
 
     Always take up space, if creating modals make it wide and large and well data filled, not small and unprofessional, looking cheap. Alway have this in mind amongst others take up space, make it look premium and elegant and simplicity please.
+
+    Seamless, "Mission Control" orchestration,	Prototyping, visual tasks, and UI-to-code	Production-grade code and complex debugging

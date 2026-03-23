@@ -11,10 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSpreadsheet, FileImage, Link as LinkIcon, ExternalLink, Trash2, Clock, Eye, AlertCircle, Building2, Globe, X, Download } from "lucide-react";
+import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSpreadsheet, FileImage, Link as LinkIcon, ExternalLink, Trash2, Clock, Eye, AlertCircle, Building2, Globe, X, Download, LayoutGrid, List, Filter, CheckCircle2, Clock3, Edit3 } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useTheme } from "@/components/ThemeProvider";
+import { DocumentsDashboard } from "@/components/documents/DocumentsDashboard";
 
 const TypeIcon = ({ type, className }: { type: string, className?: string }) => {
   switch (type.toLowerCase()) {
@@ -96,19 +97,24 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
              {file.name}
            </h3>
            <div className="flex flex-wrap gap-2 mt-3">
-             <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+             <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/50">
                {file.size}
              </span>
              {file.department && (
-               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#bc7e57]/10 text-[#bc7e57]">
+               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#bc7e57]/10 text-[#bc7e57] border border-[#bc7e57]/20">
                  <FolderOpen className="h-2.5 w-2.5 mr-1" /> {file.department}
                </span>
              )}
              {file.type === 'link' && (
-               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500">
+               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
                  External
                </span>
              )}
+              {file.name?.toLowerCase().includes('inv') && (
+                <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                  <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> Paid
+                </span>
+              )}
            </div>
          </div>
 
@@ -149,6 +155,8 @@ const DocumentRepository = () => {
   const { profile, canEdit } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [docState, setDocState] = useState("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -285,8 +293,23 @@ const DocumentRepository = () => {
       activeTab === "links" ? f.type === "link" :
       activeTab === "images" ? f.type === "image" :
       activeTab === "documents" ? ["pdf", "word", "excel", "csv", "unknown"].includes(f.type) : true;
-    return matchesSearch && matchesTab;
+    
+    // Mock state filter based on random attributes for demo
+    const matchesState = docState === "all" ? true :
+                         docState === "approved" ? f.id.charCodeAt(0) % 2 === 0 :
+                         docState === "waiting" ? f.id.charCodeAt(0) % 3 === 0 :
+                         docState === "draft" ? f.id.charCodeAt(0) % 5 === 0 : true;
+
+    return matchesSearch && matchesTab && matchesState;
   });
+
+  // Mock Folders Data
+  const mockFolders = [
+    { title: "Finance & Accounting", count: 145, size: "1.2 GB", icon: <Building2 className="w-6 h-6 text-emerald-500"/>, color: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    { title: "Human Resources", count: 89, size: "450 MB", icon: <FileText className="w-6 h-6 text-indigo-500"/>, color: "bg-indigo-500/10", border: "border-indigo-500/20" },
+    { title: "Company Policies", count: 24, size: "120 MB", icon: <AlertCircle className="w-6 h-6 text-amber-500"/>, color: "bg-amber-500/10", border: "border-amber-500/20" },
+    { title: "Brand Assets", count: 312, size: "3.4 GB", icon: <FileImage className="w-6 h-6 text-purple-500"/>, color: "bg-purple-500/10", border: "border-purple-500/20" },
+  ];
 
   if (isLoading) return (
     <div className="flex-1 w-full min-h-screen flex items-center justify-center bg-background">
@@ -447,7 +470,57 @@ const DocumentRepository = () => {
         </div>
       </div>
 
-      {/* Tabs Layout */}
+      <DocumentsDashboard />
+
+      {/* Visual Folders System */}
+      <div className="mb-10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold tracking-tight">Access Hubs</h2>
+          {profile?.role === 'super_admin' && (
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              <Edit3 className="w-4 h-4 mr-2" /> Manage Folders
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          {mockFolders.map((folder, i) => (
+            <Card key={i} className={`bg-card shadow-sm hover:shadow-md transition-all cursor-pointer border ${folder.border}`}>
+              <CardContent className="p-5 flex items-start gap-4">
+                <div className={`p-3 rounded-xl ${folder.color}`}>
+                  {folder.icon}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm line-clamp-1">{folder.title}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">{folder.count} files • {folder.size}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Document State Filters & View Toggles */}
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-card border border-border/60 p-2 rounded-2xl shadow-sm mb-6">
+        <Tabs value={docState} onValueChange={setDocState} className="w-full sm:w-auto">
+          <TabsList className="bg-transparent h-10">
+             <TabsTrigger value="all" className="data-[state=active]:bg-[#bc7e57]/10 data-[state=active]:text-[#bc7e57] rounded-xl px-4 font-medium">All States</TabsTrigger>
+             <TabsTrigger value="approved" className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-500 rounded-xl px-4 font-medium"><CheckCircle2 className="w-3.5 h-3.5 mr-1.5"/> Approved</TabsTrigger>
+             <TabsTrigger value="waiting" className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-500 rounded-xl px-4 font-medium"><Clock3 className="w-3.5 h-3.5 mr-1.5"/> Waiting Auth</TabsTrigger>
+             <TabsTrigger value="draft" className="data-[state=active]:bg-slate-500/10 data-[state=active]:text-slate-500 rounded-xl px-4 font-medium"><Edit3 className="w-3.5 h-3.5 mr-1.5"/> Drafts</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
+        <div className="flex items-center gap-2 mt-4 sm:mt-0 bg-muted/50 p-1 rounded-xl">
+           <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("grid")} className="h-8 rounded-lg">
+             <LayoutGrid className="w-4 h-4" />
+           </Button>
+           <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("list")} className="h-8 rounded-lg">
+             <List className="w-4 h-4" />
+           </Button>
+        </div>
+      </div>
+
+      {/* Type Tabs Layout */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col space-y-8">
         <TabsList className="bg-transparent border-b border-border w-full flex justify-start rounded-none h-auto p-0 gap-8">
           <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-4 text-sm font-medium transition-all text-muted-foreground data-[state=active]:text-foreground">
@@ -473,7 +546,7 @@ const DocumentRepository = () => {
                 subtext={searchQuery ? "No files match your search criteria." : "This namespace is currently empty. Upload files to securely store them."}
               />
             </div>
-          ) : (
+          ) : viewMode === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 animate-in fade-in zoom-in-95 duration-500">
               {filteredDocs.map((file) => (
                 <DocumentCard 
@@ -484,6 +557,82 @@ const DocumentRepository = () => {
                   canEdit={canEdit} 
                 />
               ))}
+            </div>
+          ) : (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 border border-border overflow-hidden rounded-xl bg-card shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
+                    <tr>
+                      <th className="px-6 py-4">Name</th>
+                      <th className="px-6 py-4">Department</th>
+                      <th className="px-6 py-4">Size</th>
+                      <th className="px-6 py-4">Uploaded By</th>
+                      <th className="px-6 py-4">Date</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {filteredDocs.map((file) => (
+                      <tr key={file.id} className="hover:bg-muted/20 transition-colors group cursor-pointer" onClick={() => setPreviewDoc(file)}>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-background border border-border shadow-sm">
+                              <TypeIcon type={file.type} className="w-4 h-4" />
+                            </div>
+                            <span className="font-semibold text-foreground truncate max-w-[300px] block">{file.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {file.department ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#bc7e57]/10 text-[#bc7e57]">
+                              {file.department}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-muted-foreground font-medium">{file.size}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                             <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] border border-border/50 font-bold shrink-0 text-muted-foreground">
+                               {(file.created_by || "").substring(0, 2).toUpperCase() || 'SYS'}
+                             </div>
+                             <span className="truncate max-w-[120px] block">{file.created_by || 'System'}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-muted-foreground">{format(parseISO(file.created_at), 'MMM dd, yyyy')}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2 pr-2">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-[#bc7e57]/10 hover:text-[#bc7e57]" onClick={(e) => { e.stopPropagation(); setPreviewDoc(file); }}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {canEdit && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {profile?.role === 'super_admin' && (
+                                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toast.success("Document flagged as Internal Only"); }}>
+                                       <AlertCircle className="h-4 w-4 mr-2 text-amber-500" /> Flag Visibility
+                                     </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem className="text-red-500" onClick={(e) => { e.stopPropagation(); deleteDocMutation.mutate(file.id); }}>
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
