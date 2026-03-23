@@ -5,8 +5,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Building2, User, FileText, CreditCard, ListChecks, Palette } from "lucide-react";
+import { FileText, CreditCard, ListChecks, Palette, User, Building2, Plus, Trash2 } from "lucide-react";
 import { LogoUpload } from "@/components/shared/LogoUpload";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+
+const MOCK_CLIENTS = [
+  { id: "1", name: "Tony Stark", company: "Stark Industries", address: "1 Stark Tower", city: "New York", postcode: "10001", email: "billing@stark.com" },
+  { id: "2", name: "Sarah Connor", company: "TechFlow Ltd", address: "45 Cyber Avenue", city: "Abuja", postcode: "900001", email: "sarah@techflow.io" },
+  { id: "3", name: "John Doe", company: "Acme Corp", address: "123 Innovation Drive", city: "Lagos", postcode: "100001", email: "accounts@acmecorp.com" },
+  { id: "4", name: "Bruce Wayne", company: "Wayne Enterprises", address: "1007 Mountain Drive", city: "Gotham", postcode: "00001", email: "bruce@wayne.com" },
+];
 
 interface InvoiceFormProps {
   invoiceData: InvoiceData;
@@ -23,6 +32,22 @@ export const InvoiceForm = ({ invoiceData, setInvoiceData }: InvoiceFormProps) =
       ...prev,
       paymentDetails: { ...prev.paymentDetails, [field]: value }
     }));
+  };
+
+  const handleSmartClientSelect = (clientId: string) => {
+    const client = MOCK_CLIENTS.find(c => c.id === clientId);
+    if (!client) return;
+    
+    setInvoiceData(prev => ({
+      ...prev,
+      clientName: client.name,
+      clientCompany: client.company,
+      clientAddress: client.address,
+      clientCity: client.city,
+      clientPostcode: client.postcode,
+      clientEmail: client.email
+    }));
+    toast.success(`${client.company || client.name} auto-filled from CRM sync!`);
   };
 
   const addLineItem = () => {
@@ -235,12 +260,19 @@ export const InvoiceForm = ({ invoiceData, setInvoiceData }: InvoiceFormProps) =
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="currency">Currency Symbol</Label>
-              <Input
-                id="currency"
-                value={invoiceData.currency}
-                onChange={(e) => updateField('currency', e.target.value)}
-                placeholder="₦"
-              />
+              <Select value={invoiceData.currency} onValueChange={(val) => updateField('currency', val)}>
+                <SelectTrigger id="currency" className="bg-background">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="₦">🇳🇬 Naira (₦)</SelectItem>
+                  <SelectItem value="$">🇺🇸 USD ($)</SelectItem>
+                  <SelectItem value="£">🇬🇧 GBP (£)</SelectItem>
+                  <SelectItem value="€">🇪🇺 EUR (€)</SelectItem>
+                  <SelectItem value="₵">🇬🇭 Cedis (₵)</SelectItem>
+                  <SelectItem value="C$">🇨🇦 CAD (C$)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="vatEnabled">VAT</Label>
@@ -275,11 +307,24 @@ export const InvoiceForm = ({ invoiceData, setInvoiceData }: InvoiceFormProps) =
 
       {/* Client Info */}
       <Card>
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-4 border-b border-border/50 mb-4 bg-muted/20">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="h-5 w-5" />
-            Bill To
+            <User className="h-5 w-5 text-invoice-accent" />
+            Client Details (Bill To)
           </CardTitle>
+          <div className="mt-4">
+             <Label className="text-muted-foreground flex items-center gap-2 mb-2 text-xs uppercase tracking-wider font-bold">Smart Client Lookup (CRM)</Label>
+             <Select onValueChange={(val) => handleSmartClientSelect(val)}>
+               <SelectTrigger className="w-full bg-background border-invoice-accent/30 focus:ring-invoice-accent/20 transition-all">
+                 <SelectValue placeholder="Select a known client to auto-fill details instantly..." />
+               </SelectTrigger>
+               <SelectContent>
+                 {MOCK_CLIENTS.map(c => (
+                   <SelectItem key={c.id} value={c.id} className="cursor-pointer">{c.name} ({c.company})</SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

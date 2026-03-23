@@ -4,10 +4,12 @@ import { InvoiceData, defaultCompanyInfo } from "@/types/invoice";
 import { InvoiceForm } from "./InvoiceForm";
 import { InvoicePreview } from "./InvoicePreview";
 import { Button } from "@/components/ui/button";
-import { FileDown, Loader2, Eye, Edit } from "lucide-react";
+import { FileDown, Loader2, Eye, Edit, ListTree, FolderArchive, Layers, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InvoiceDashboard } from "./InvoiceDashboard";
 
 const getInitialInvoiceData = (): InvoiceData => {
   const today = new Date();
@@ -128,13 +130,20 @@ export const InvoiceGenerator = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-background">
+    <div className="flex-1 flex flex-col min-h-screen bg-background animate-in fade-in slide-in-from-bottom-4 duration-700">
+      
       {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
+      <header className="bg-card border-b border-border sticky top-0 z-20 shadow-sm backdrop-blur-md bg-card/80">
+        <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-invoice-accent">Invoice Generator</h1>
+            <div className="flex items-center gap-3">
+               <div className="h-10 w-10 rounded-xl bg-invoice-accent/10 flex items-center justify-center hidden md:flex">
+                 <ListTree className="w-5 h-5 text-invoice-accent" />
+               </div>
+               <div>
+                 <h1 className="text-2xl font-black text-invoice-accent tracking-tight">Invoice Generator</h1>
+                 <p className="text-xs text-muted-foreground hidden md:block uppercase tracking-widest font-bold">Billing command center</p>
+               </div>
             </div>
             <div className="flex items-center gap-3">
               <Button
@@ -143,22 +152,22 @@ export const InvoiceGenerator = () => {
                 className="lg:hidden"
               >
                 {showPreview ? <Edit className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                {showPreview ? "Edit" : "Preview"}
+                {showPreview ? "Edit Options" : "Live Preview"}
               </Button>
               <Button
                 onClick={handleGenerateInvoice}
                 disabled={isGenerating}
-                className="bg-invoice-accent hover:bg-invoice-accent/90 text-primary-foreground"
+                className="bg-invoice-accent hover:bg-invoice-accent/90 text-primary-foreground shadow-lg hover:shadow-invoice-accent/20 transition-all font-semibold"
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating...
+                    Generating Master PDF...
                   </>
                 ) : (
                   <>
                     <FileDown className="h-4 w-4 mr-2" />
-                    Download PDF
+                    Download PDF Document
                   </>
                 )}
               </Button>
@@ -167,33 +176,51 @@ export const InvoiceGenerator = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-6 flex-1">
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Form */}
-          <div className={`${showPreview ? 'hidden lg:block' : 'block'}`}>
-            <div className="bg-card rounded-lg border border-border shadow-sm">
-              <InvoiceForm invoiceData={invoiceData} setInvoiceData={setInvoiceData} />
-            </div>
-          </div>
+      {/* Main Content within Tabs architecture */}
+      <div className="container mx-auto px-4 lg:px-6 py-6 flex-1 max-w-7xl">
+        <Tabs defaultValue="create" className="w-full">
+          <TabsList className="mb-6 flex-wrap h-auto gap-2 border-b border-border bg-transparent w-full justify-start rounded-none">
+            <TabsTrigger value="history" className="rounded-none border-b-2 border-transparent data-[state=active]:border-invoice-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3 flex items-center gap-2 transition-all">
+              <FolderArchive className="w-4 h-4" /> Global Ledger
+            </TabsTrigger>
+            <TabsTrigger value="create" className="rounded-none border-b-2 border-transparent data-[state=active]:border-invoice-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3 flex items-center gap-2 transition-all">
+              <Plus className="w-4 h-4" /> Create New Invoice
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Preview */}
-          <div className={`${!showPreview ? 'hidden lg:block' : 'block'}`}>
-            <div className="sticky top-24">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Eye className="h-5 w-5" />
-                Live Preview
-              </h2>
-              <div className="bg-muted p-4 rounded-lg overflow-auto max-h-[calc(100vh-180px)]">
-                <div className="transform origin-top-left scale-[0.6] md:scale-[0.7] lg:scale-[0.55] xl:scale-[0.65]">
-                  <div className="shadow-2xl">
-                    <InvoicePreview ref={printRef} invoiceData={invoiceData} />
+          <TabsContent value="history" className="mt-6">
+             <InvoiceDashboard />
+          </TabsContent>
+
+          <TabsContent value="create" className="mt-6 animate-in fade-in duration-500">
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Form Engine */}
+              <div className={`${showPreview ? 'hidden lg:block' : 'block'}`}>
+                <div className="bg-card rounded-2xl border border-border shadow-xl overflow-hidden relative">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-invoice-accent" />
+                  <InvoiceForm invoiceData={invoiceData} setInvoiceData={setInvoiceData} />
+                </div>
+              </div>
+
+              {/* Live Preview Monitor */}
+              <div className={`${!showPreview ? 'hidden lg:block' : 'block'}`}>
+                <div className="sticky top-[100px]">
+                  <h2 className="text-lg font-bold mb-4 flex items-center gap-2 px-2">
+                    <Layers className="h-5 w-5 text-invoice-accent" />
+                    Live Print Preview
+                  </h2>
+                  <div className="bg-muted p-2 sm:p-4 rounded-2xl border border-border/50 shadow-inner overflow-auto max-h-[calc(100vh-160px)] custom-scrollbar">
+                    <div className="transform origin-top-left scale-[0.5] sm:scale-[0.6] md:scale-[0.7] lg:scale-[0.55] xl:scale-[0.65] 2xl:scale-[0.8]">
+                      <div className="shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] hover:shadow-[0_25px_65px_-15px_rgba(0,0,0,0.4)] transition-shadow duration-500 rounded-lg overflow-hidden ring-1 ring-border border-0">
+                        <InvoicePreview ref={printRef} invoiceData={invoiceData} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
