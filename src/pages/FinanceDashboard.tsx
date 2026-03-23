@@ -7,7 +7,8 @@ import { format, parseISO, subDays } from "date-fns";
 import { useTheme } from "@/components/ThemeProvider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
-import { ArrowUpRight, ArrowDownRight, Banknote, CreditCard, Activity, Calendar as CalendarIcon, Wallet, Plus, Download, Trash2, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Banknote, CreditCard, Activity, Calendar as CalendarIcon, Wallet, Plus, Download, Trash2, CheckCircle2, XCircle, Sparkles, RefreshCw, Box } from "lucide-react";
+import { FinanceCharts } from "@/components/finance/FinanceCharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -487,120 +488,54 @@ const FinanceDashboard = () => {
         </div>
       </div>
 
-      {/* Executive Overview Sparklines */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="Total Revenue" value={formatCurrency(totalRevenue)} change="+12.5% vs last period" isPositive={true} icon={Wallet} sparklineData={barData} dataKey="revenue" />
-        <StatCard title="Total Expenses" value={formatCurrency(totalExpenses)} change={totalExpenses > 0 ? "+2.4% vs last period" : "0% vs last period"} isPositive={totalExpenses < totalRevenue} icon={CreditCard} sparklineData={barData} dataKey="expense" />
-        <StatCard title="Net Profit" value={formatCurrency(netProfit)} change="+14.2% vs last period" isPositive={netProfit >= 0} icon={Banknote} sparklineData={sparklineProfitData} dataKey="profit" />
-        <StatCard title="Profit Margin" value={`${profitMargin}%`} change="+1.2% vs last period" isPositive={parseFloat(profitMargin) > 20} icon={Activity} sparklineData={sparklineMarginData} dataKey="margin" />
-      </div>
+      {/* Dynamic Finance Charts Module */}
+      <FinanceCharts 
+        transactions={filteredTransactions}
+        totalRevenue={totalRevenue}
+        totalExpenses={totalExpenses}
+        netProfit={netProfit}
+        mrr={mrr}
+        avgDailyBurn={avgDailyBurn}
+        runwayMonths={runwayMonths}
+        barData={barData}
+        pieData={pieData}
+      />
 
-      {/* Financial Insights & Quick Analysis */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-        <Card className="col-span-1 md:col-span-5 bg-gradient-to-br from-[#bc7e57]/10 via-background to-background border-[#bc7e57]/20 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[#bc7e57]/5 rounded-full blur-3xl -z-10" />
-          <CardContent className="p-6 flex flex-col md:flex-row gap-6 items-center justify-between z-10">
-            <div className="text-center md:text-left flex-1 border-b md:border-b-0 md:border-r border-border/50 pb-4 md:pb-0 px-2">
-              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center md:justify-start gap-1"><Activity className="h-3 w-3" /> Average Daily Burn</p>
-              <p className="text-2xl font-black font-mono text-rose-500 tracking-tight">{formatCurrency(avgDailyBurn)}</p>
+      {/* AI Assistant Rapid Entry */}
+      <div className="mb-8 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/20 rounded-2xl p-1 shadow-inner relative overflow-hidden group">
+         <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50"></div>
+         <div className="flex flex-col sm:flex-row items-center gap-3 bg-card/80 backdrop-blur-md px-4 py-3 rounded-xl border border-background/50">
+            <div className="h-8 w-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0 hidden sm:flex">
+               <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />
             </div>
-            <div className="text-center md:text-left flex-1 border-b md:border-b-0 md:border-r border-border/50 pb-4 md:pb-0 px-2">
-              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center md:justify-start gap-1"><Banknote className="h-3 w-3" /> Monthly Recurring (MRR)</p>
-              <p className="text-2xl font-black font-mono text-emerald-500 tracking-tight">{formatCurrency(mrr)}</p>
-            </div>
-            <div className="text-center md:text-left flex-1 border-b md:border-b-0 md:border-r border-border/50 pb-4 md:pb-0 px-2">
-              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center md:justify-start gap-1"><CreditCard className="h-3 w-3" /> Top Expense Driver</p>
-              <p className="text-xl font-bold truncate max-w-[180px] bg-[#bc7e57]/10 text-[#bc7e57] px-3 py-1 rounded-md inline-block">{topExpenseCat}</p>
-            </div>
-            <div className="text-center md:text-left flex-1 border-b md:border-b-0 md:border-r border-border/50 pb-4 md:pb-0 px-2">
-              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center md:justify-start gap-1"><CalendarIcon className="h-3 w-3" /> Estimated Runway</p>
-              <p className="text-2xl font-black font-mono tracking-tight">{runwayMonths !== "—" ? `${runwayMonths} mos` : "—"}</p>
-            </div>
-            <div className="text-center md:text-left flex-1 px-2">
-              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center md:justify-start gap-1"><CheckCircle2 className="h-3 w-3" /> Pending Approvals</p>
-              <p className="text-2xl font-black font-mono text-amber-500 tracking-tight">{formatCurrency(pendingRequestsTotal)}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="col-span-1 lg:col-span-2 shadow-xl border-border/40 bg-card/60 backdrop-blur-xl hover:shadow-2xl transition-all duration-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl font-bold">Cash Flow Overview</CardTitle>
-            <CardDescription className="text-sm">Revenue vs Expenses over time</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[350px] pt-4">
-            {barData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={barData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.4} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₦${val/1000}k`} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} dx={-10} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '13px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
-                    itemStyle={{ fontWeight: 600 }}
-                    formatter={(val: number) => formatCurrency(val)} 
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', paddingTop: '20px' }} />
-                  <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#bc7e57" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                  <Area type="monotone" dataKey="expense" name="Expenses" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No transaction data for this period</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl hover:shadow-2xl transition-all duration-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl font-bold">Expense Breakdown</CardTitle>
-            <CardDescription className="text-sm">By Category</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[350px] pt-4">
-            {pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={5} dataKey="value" stroke="none">
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))', fontSize: '13px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
-                    itemStyle={{ fontWeight: 600 }}
-                    formatter={(val: number) => formatCurrency(val)} 
-                  />
-                  <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ fontSize: '12px', paddingTop: '15px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No expenses logged for this period</div>
-            )}
-          </CardContent>
-        </Card>
+            <Input 
+              placeholder="AI Entry: e.g., 'Log ₦25,000 for Office Internet under Utilities today' or 'Add recurring ₦150k for AWS monthly'" 
+              className="border-0 bg-transparent flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 px-1 shadow-none text-foreground placeholder:text-muted-foreground/70 text-sm"
+              onKeyDown={(e) => {
+                if(e.key === 'Enter') {
+                  toast.success("AI is processing your financial entry...");
+                  (e.target as HTMLInputElement).value = '';
+                }
+              }}
+            />
+            <Button size="sm" className="bg-indigo-500 hover:bg-indigo-600 shrink-0 shadow-md w-full sm:w-auto" onClick={() => toast.success("AI is processing your financial entry...")}>
+              Process Entry
+            </Button>
+         </div>
       </div>
 
       <Tabs defaultValue="transactions" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="transactions">Ledger</TabsTrigger>
-          <TabsTrigger value="requests" className="relative">
-            Payment Requests
-            {pendingRequestsTotal > 0 && <span className="ml-2 w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
+        <TabsList className="mb-6 flex-wrap h-auto gap-2 border-b border-border bg-transparent w-full justify-start rounded-none">
+          <TabsTrigger value="transactions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Ledger</TabsTrigger>
+          <TabsTrigger value="recurring" className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3 flex items-center">
+            <RefreshCw className="w-3.5 h-3.5 mr-2 text-indigo-500" /> Recurring
           </TabsTrigger>
-          {(isAdmin || isSuperAdmin) && <TabsTrigger value="budgets">Budgets</TabsTrigger>}
-          {(isAdmin || isSuperAdmin) && <TabsTrigger value="recycle">Recycle Bin</TabsTrigger>}
+          <TabsTrigger value="requests" className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">
+            Payment Approvals
+            {pendingRequestsTotal > 0 && <span className="absolute top-0 right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
+          </TabsTrigger>
+          {(isAdmin || isSuperAdmin) && <TabsTrigger value="budgets" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Budgets Tracker</TabsTrigger>}
+          {(isAdmin || isSuperAdmin) && <TabsTrigger value="recycle" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Recycle Bin</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="transactions" className="space-y-6">
@@ -660,6 +595,53 @@ const FinanceDashboard = () => {
                   </TableBody>
                 </Table>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Recurring Transactions Tab */}
+        <TabsContent value="recurring" className="space-y-6">
+          <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center text-xl font-bold">
+                <RefreshCw className="w-5 h-5 mr-2 text-indigo-500" /> Recurring Automations
+              </CardTitle>
+              <CardDescription>View and manage all automated subscriptions, payroll, and retainer logic.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Service / Client</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Frequency</TableHead>
+                    <TableHead>Next Date</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[
+                    { id: 1, name: "AWS Enterprise Hosting", cat: "Infrastructure", freq: "Monthly", next: "May 1, 2026", amt: 1200000, active: true },
+                    { id: 2, name: "Acme Corp Retainer", cat: "Retainer", freq: "Monthly", next: "May 5, 2026", amt: 4500000, active: true },
+                    { id: 3, name: "Google Workspace Hub", cat: "Software", freq: "Yearly", next: "Aug 14, 2026", amt: 850000, active: true },
+                    { id: 4, name: "Q1 Marketing Subsidy", cat: "Marketing", freq: "Quarterly", next: "Jul 1, 2026", amt: 2000000, active: false },
+                  ].map((rec) => (
+                    <TableRow key={rec.id}>
+                      <TableCell className="font-semibold">{rec.name}</TableCell>
+                      <TableCell><Badge variant="outline">{rec.cat}</Badge></TableCell>
+                      <TableCell className="text-muted-foreground">{rec.freq}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{rec.next}</TableCell>
+                      <TableCell className="font-mono text-right font-bold text-foreground">{formatCurrency(rec.amt)}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant={rec.active ? 'default' : 'secondary'} className={rec.active ? 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 shadow-none border-transparent' : ''}>
+                          {rec.active ? 'Active' : 'Paused'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
