@@ -863,9 +863,9 @@ const Attendance = () => {
   // ═══════ NEW: Analytics ═══════
   const departmentBreakdown = useMemo(() => {
     if (!allProfiles || !allRecords) return [];
-    const depts = [...new Set(allProfiles.map((p: any) => String(p.department || "Unassigned")))];
-    return depts.map(dept => {
-      const staff = allProfiles.filter(p => (p.department || "Unassigned") === dept);
+    const depts = [...new Set(allProfiles.map((p: any) => String(p.department || "Unassigned")))] as string[];
+    return depts.map((dept: string) => {
+      const staff = allProfiles.filter((p: any) => String(p.department || "Unassigned") === dept);
       const ids = new Set(staff.map(s => s.id));
       const recs = allRecords.filter((r: any) => ids.has(r.user_id));
       return { department: dept, totalStaff: staff.length, present: recs.filter((r: any) => r.status === "present").length, late: recs.filter((r: any) => r.status === "late").length, absent: staff.length - recs.length };
