@@ -1,4 +1,6 @@
 import { ViewerBanner } from "@/components/ViewerBanner";
+import { MotionPage } from "@/components/shared/MotionPage";
+import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -384,8 +386,20 @@ const FinanceDashboard = () => {
     ? (netProfit / (avgDailyBurn * 30)).toFixed(1) 
     : "—";
 
+  // Average Payment Delay — computed from approved payment requests
+  const avgPaymentDelay = (() => {
+    const resolved = (paymentRequests || []).filter((r: any) => r.status === 'approved' && r.resolved_at && r.created_at);
+    if (resolved.length === 0) return null;
+    const totalDays = resolved.reduce((sum: number, r: any) => {
+      const created = new Date(r.created_at).getTime();
+      const resolvedAt = new Date(r.resolved_at).getTime();
+      return sum + Math.max(0, Math.ceil((resolvedAt - created) / 86400000));
+    }, 0);
+    return Math.round(totalDays / resolved.length);
+  })();
+
   return (
-    <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
+    <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Financial Performance</h1>
@@ -488,18 +502,77 @@ const FinanceDashboard = () => {
         </div>
       </div>
 
-      {/* Dynamic Finance Charts Module */}
-      <FinanceCharts 
-        transactions={filteredTransactions}
-        totalRevenue={totalRevenue}
-        totalExpenses={totalExpenses}
-        netProfit={netProfit}
-        mrr={mrr}
-        avgDailyBurn={avgDailyBurn}
-        runwayMonths={runwayMonths}
-        barData={barData}
-        pieData={pieData}
-      />
+      <SwapCardWrapper views={[
+        {
+          label: "Revenue & Expense Charts",
+          content: (
+            <div className="p-0">
+              <FinanceCharts 
+                transactions={filteredTransactions}
+                totalRevenue={totalRevenue}
+                totalExpenses={totalExpenses}
+                netProfit={netProfit}
+                mrr={mrr}
+                avgDailyBurn={avgDailyBurn}
+                runwayMonths={runwayMonths}
+                barData={barData}
+                pieData={pieData}
+              />
+            </div>
+          ),
+        },
+        {
+          label: "Cashflow Performance",
+          content: (
+            <div className="p-6 space-y-4">
+              <h3 className="text-lg font-bold text-foreground">Cashflow & Runway</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Net Profit</p>
+                  <p className={`text-2xl font-black mt-1 ${netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(netProfit)}</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MRR</p>
+                  <p className="text-2xl font-black mt-1" style={{ color: '#bc7e57' }}>{formatCurrency(mrr)}</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Daily Burn Rate</p>
+                  <p className="text-2xl font-black mt-1 text-amber-600 dark:text-amber-400">{formatCurrency(avgDailyBurn)}</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Runway</p>
+                  <p className="text-2xl font-black mt-1 text-foreground">{runwayMonths} months</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Profit Margin</p>
+                  <p className={`text-2xl font-black mt-1 ${parseFloat(profitMargin as string) >= 20 ? 'text-emerald-600 dark:text-emerald-400' : parseFloat(profitMargin as string) >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{profitMargin}%</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Avg Payment Delay</p>
+                  <p className={`text-2xl font-black mt-1 ${avgPaymentDelay !== null && avgPaymentDelay <= 3 ? 'text-emerald-600 dark:text-emerald-400' : avgPaymentDelay !== null && avgPaymentDelay <= 7 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{avgPaymentDelay !== null ? `${avgPaymentDelay}d` : '—'}</p>
+                </div>
+              </div>
+              <div className="rounded-xl border border-border/50 bg-card p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-foreground">Revenue vs Expenses</span>
+                </div>
+                <div className="flex h-4 rounded-full overflow-hidden bg-muted/30 gap-0.5">
+                  {totalRevenue + totalExpenses > 0 && (
+                    <>
+                      <div className="bg-emerald-500 rounded-full" style={{ width: `${(totalRevenue / (totalRevenue + totalExpenses)) * 100}%` }} />
+                      <div className="bg-red-400 rounded-full" style={{ width: `${(totalExpenses / (totalRevenue + totalExpenses)) * 100}%` }} />
+                    </>
+                  )}
+                </div>
+                <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Revenue: {formatCurrency(totalRevenue)}</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" /> Expenses: {formatCurrency(totalExpenses)}</span>
+                </div>
+              </div>
+            </div>
+          ),
+        },
+      ]} />
 
       {/* AI Assistant Rapid Entry */}
       <div className="mb-8 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/20 rounded-2xl p-1 shadow-inner relative overflow-hidden group">
@@ -599,51 +672,107 @@ const FinanceDashboard = () => {
           </Card>
         </TabsContent>
 
-        {/* Recurring Transactions Tab */}
         <TabsContent value="recurring" className="space-y-6">
-          <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center text-xl font-bold">
-                <RefreshCw className="w-5 h-5 mr-2 text-indigo-500" /> Recurring Automations
-              </CardTitle>
-              <CardDescription>View and manage all automated subscriptions, payroll, and retainer logic.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Service / Client</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Frequency</TableHead>
-                    <TableHead>Next Date</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[
-                    { id: 1, name: "AWS Enterprise Hosting", cat: "Infrastructure", freq: "Monthly", next: "May 1, 2026", amt: 1200000, active: true },
-                    { id: 2, name: "Acme Corp Retainer", cat: "Retainer", freq: "Monthly", next: "May 5, 2026", amt: 4500000, active: true },
-                    { id: 3, name: "Google Workspace Hub", cat: "Software", freq: "Yearly", next: "Aug 14, 2026", amt: 850000, active: true },
-                    { id: 4, name: "Q1 Marketing Subsidy", cat: "Marketing", freq: "Quarterly", next: "Jul 1, 2026", amt: 2000000, active: false },
-                  ].map((rec) => (
-                    <TableRow key={rec.id}>
-                      <TableCell className="font-semibold">{rec.name}</TableCell>
-                      <TableCell><Badge variant="outline">{rec.cat}</Badge></TableCell>
-                      <TableCell className="text-muted-foreground">{rec.freq}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{rec.next}</TableCell>
-                      <TableCell className="font-mono text-right font-bold text-foreground">{formatCurrency(rec.amt)}</TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant={rec.active ? 'default' : 'secondary'} className={rec.active ? 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 shadow-none border-transparent' : ''}>
-                          {rec.active ? 'Active' : 'Paused'}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
+          {/* Upcoming Bills Segment — derived from transactions */}
+          {(() => {
+            const RECURRING_KEYWORDS = ['subscription', 'retainer', 'recurring', 'payroll', 'hosting', 'software', 'facilities', 'rent', 'license'];
+            const isRecurring = (t: any) => RECURRING_KEYWORDS.some(kw => 
+              t.description?.toLowerCase().includes(kw) || t.category?.toLowerCase().includes(kw)
+            );
+            const recurringFromDB = (transactions || []).filter(isRecurring);
+
+            // Seed data used only when no recurring transactions exist in Supabase
+            const SEED_RECURRING = [
+              { id: 's1', description: "AWS Enterprise Hosting", category: "Infrastructure", amount: 1200000, date: "2026-05-01", type: "expense" },
+              { id: 's2', description: "Acme Corp Retainer", category: "Retainer", amount: 4500000, date: "2026-05-05", type: "revenue" },
+              { id: 's3', description: "Google Workspace Hub", category: "Software", amount: 850000, date: "2026-08-14", type: "expense" },
+              { id: 's4', description: "Q2 Marketing Subsidy", category: "Marketing", amount: 2000000, date: "2026-07-01", type: "expense" },
+              { id: 's5', description: "Payroll — Engineering", category: "Payroll", amount: 8500000, date: "2026-03-28", type: "expense" },
+              { id: 's6', description: "Payroll — Operations", category: "Payroll", amount: 4200000, date: "2026-03-28", type: "expense" },
+              { id: 's7', description: "Slack Enterprise Grid", category: "Software", amount: 95000, date: "2026-04-10", type: "expense" },
+              { id: 's8', description: "WeWork Office Space", category: "Facilities", amount: 3500000, date: "2026-04-01", type: "expense" },
+            ];
+
+            const allRecurring = recurringFromDB.length > 0 ? recurringFromDB : SEED_RECURRING;
+            
+            const upcomingBills = [...allRecurring]
+              .filter((t: any) => t.date && new Date(t.date) >= new Date())
+              .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+              .slice(0, 3)
+              .map((t: any, i: number) => {
+                const daysLeft = Math.max(0, Math.ceil((new Date(t.date).getTime() - Date.now()) / 86400000));
+                const colors = ["bg-sky-500", "bg-emerald-500", "bg-purple-500"];
+                return { name: t.description?.slice(0, 40) || t.category, due: t.date ? format(new Date(t.date), "MMM d, yyyy") : "—", amt: Math.abs(t.amount || 0), daysLeft, color: colors[i % 3] };
+              });
+
+            return (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {upcomingBills.map((bill, i) => (
+                    <Card key={i} className="shadow-lg border-border/40 bg-card/60 backdrop-blur-xl overflow-hidden group hover:shadow-xl transition-all">
+                      <div className={`h-1 w-full ${bill.color}`} />
+                      <CardContent className="p-5">
+                        <div className="flex justify-between items-start mb-3">
+                          <h4 className="font-bold text-sm">{bill.name}</h4>
+                          <Badge variant="outline" className={`text-[10px] ${bill.daysLeft <= 30 ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-muted/50'}`}>
+                            {bill.daysLeft}d left
+                          </Badge>
+                        </div>
+                        <p className="text-2xl font-black font-mono tracking-tight">{formatCurrency(bill.amt)}</p>
+                        <p className="text-xs text-muted-foreground mt-2 font-medium">Due: {bill.due}</p>
+                      </CardContent>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                  {upcomingBills.length === 0 && (
+                    <div className="col-span-3 text-center py-6 text-muted-foreground text-sm">No upcoming bills found. Add transactions with categories like "Subscription" or "Retainer".</div>
+                  )}
+                </div>
+
+                {/* Recurring Table */}
+                <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl font-bold">
+                      <RefreshCw className="w-5 h-5 mr-2 text-indigo-500" /> Recurring Automations
+                    </CardTitle>
+                    <CardDescription>View and manage all automated subscriptions, payroll, and retainer logic.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Service / Client</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Frequency</TableHead>
+                          <TableHead>Next Date</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="text-right">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {allRecurring.map((rec: any, idx: number) => {
+                          const isPast = rec.date && new Date(rec.date) < new Date();
+                          return (
+                            <TableRow key={rec.id || idx}>
+                              <TableCell className="font-semibold">{rec.description?.slice(0, 40) || "Recurring Entry"}</TableCell>
+                              <TableCell><Badge variant="outline">{rec.category || "Other"}</Badge></TableCell>
+                              <TableCell className="text-muted-foreground">Monthly</TableCell>
+                              <TableCell className="font-mono text-xs text-muted-foreground">{rec.date ? format(new Date(rec.date), "MMM d, yyyy") : "—"}</TableCell>
+                              <TableCell className="font-mono text-right font-bold text-foreground">{formatCurrency(Math.abs(rec.amount || 0))}</TableCell>
+                              <TableCell className="text-right">
+                                <Badge variant={isPast ? 'secondary' : 'default'} className={!isPast ? 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 shadow-none border-transparent' : ''}>
+                                  {isPast ? 'Paid' : 'Active'}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </>
+            );
+          })()}
         </TabsContent>
 
         {/* Payment Requests Tab */}
@@ -919,7 +1048,7 @@ const FinanceDashboard = () => {
           </TabsContent>
         )}
       </Tabs>
-    </div>
+    </MotionPage>
   );
 };
 

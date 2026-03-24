@@ -21,6 +21,9 @@ import { sendNotificationEmail } from "@/lib/email";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { format } from "date-fns";
+import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
+import { MotionPage } from "@/components/shared/MotionPage";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Cell, Legend } from "recharts";
 
 interface Task {
   id: string;
@@ -260,8 +263,50 @@ const Tasks = () => {
     return { label: formatDate(dueDate), color: "text-muted-foreground" };
   };
 
+  // --- Chart data for Task Analytics ---
+  const statusChartData = [
+    { name: 'Pending', value: counts.pending, fill: '#94a3b8' },
+    { name: 'In Progress', value: counts['in-progress'], fill: '#3b82f6' },
+    { name: 'Completed', value: counts.completed, fill: '#10b981' },
+    { name: 'Overdue', value: counts.overdue + overdueTasks.length, fill: '#ef4444' },
+  ];
+
+  const priorityChartData = [
+    { name: 'Low', value: tasks.filter(t => t.priority === 'low').length, fill: '#94a3b8' },
+    { name: 'Medium', value: tasks.filter(t => t.priority === 'medium').length, fill: '#3b82f6' },
+    { name: 'High', value: tasks.filter(t => t.priority === 'high').length, fill: '#f97316' },
+    { name: 'Urgent', value: tasks.filter(t => t.priority === 'urgent').length, fill: '#ef4444' },
+  ];
+
+  const deptChartData = useMemo(() => {
+    const deptMap: Record<string, { total: number; completed: number }> = {};
+    tasks.forEach(t => {
+      const dept = t.department || 'Unassigned';
+      if (!deptMap[dept]) deptMap[dept] = { total: 0, completed: 0 };
+      deptMap[dept].total++;
+      if (t.status === 'completed') deptMap[dept].completed++;
+    });
+    return Object.entries(deptMap).map(([name, d]) => ({ name, total: d.total, completed: d.completed }));
+  }, [tasks]);
+
+  // --- PIC (Person In Charge) data ---
+  const picData = useMemo(() => {
+    const map: Record<string, { name: string; total: number; completed: number; inProgress: number; overdue: number }> = {};
+    tasks.forEach(t => {
+      const key = t.assigned_to || 'Unassigned';
+      if (!map[key]) map[key] = { name: key, total: 0, completed: 0, inProgress: 0, overdue: 0 };
+      map[key].total++;
+      if (t.status === 'completed') map[key].completed++;
+      if (t.status === 'in-progress') map[key].inProgress++;
+      if (t.status === 'overdue' || (t.due_date && new Date(t.due_date) < new Date() && t.status !== 'completed')) map[key].overdue++;
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [tasks]);
+
+  const CHART_COLORS = ['#94a3b8', '#3b82f6', '#10b981', '#ef4444'];
+
   return (
-    <div className="flex-1 min-h-screen bg-background">
+    <MotionPage className="flex-1 min-h-screen bg-background">
       {/* ═══════ HEADER ═══════ */}
       <header className="bg-card/80 backdrop-blur-md border-b border-border/50 sticky top-0 z-10">
         <div className="px-6 md:px-8 py-5">
@@ -394,6 +439,103 @@ const Tasks = () => {
             <p className="text-[11px] text-muted-foreground mt-1">require attention</p>
           </div>
         </div>
+
+        {/* ═══════ ANALYTICS & PIC SWAPCARD ═══════ */}
+        <SwapCardWrapper views={[
+          {
+            label: "Task Analytics",
+            content: (
+              <div className="p-6 space-y-6">
+                <h3 className="text-lg font-bold flex items-center gap-2"><TrendingUp className="w-5 h-5 text-[#bc7e57]" /> Task Analytics</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Status Breakdown */}
+                  <div className="bg-muted/20 rounded-2xl p-4 border border-border/30">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">By Status</p>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie data={statusChartData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
+                          {statusChartData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                        </Pie>
+                        <RechartsTooltip />
+                        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {/* Priority Distribution */}
+                  <div className="bg-muted/20 rounded-2xl p-4 border border-border/30">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">By Priority</p>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie data={priorityChartData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
+                          {priorityChartData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                        </Pie>
+                        <RechartsTooltip />
+                        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {/* Department Breakdown */}
+                  <div className="bg-muted/20 rounded-2xl p-4 border border-border/30">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">By Department</p>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={deptChartData} layout="vertical" margin={{ left: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                        <XAxis type="number" tick={{ fontSize: 10 }} />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={80} />
+                        <RechartsTooltip />
+                        <Bar dataKey="total" fill="#bc7e57" radius={[0, 4, 4, 0]} name="Total" />
+                        <Bar dataKey="completed" fill="#10b981" radius={[0, 4, 4, 0]} name="Completed" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            )
+          },
+          {
+            label: "PIC Overview",
+            content: (
+              <div className="p-6">
+                <h3 className="text-lg font-bold flex items-center gap-2 mb-5"><User className="w-5 h-5 text-[#bc7e57]" /> Person In Charge (PIC) Grid</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {picData.map((pic) => {
+                    const rate = pic.total > 0 ? Math.round((pic.completed / pic.total) * 100) : 0;
+                    return (
+                      <div key={pic.name} className="rounded-2xl border border-border/50 bg-card p-5 hover:shadow-md transition-all duration-200">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="h-10 w-10 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-sm font-bold text-[#bc7e57]">
+                            {getInitials(pic.name)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground truncate max-w-[140px]">{pic.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{pic.total} task{pic.total !== 1 ? 's' : ''}</p>
+                          </div>
+                        </div>
+                        <div className="w-full bg-muted/30 rounded-full h-2 mb-3">
+                          <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${rate}%` }} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-1 text-center">
+                          <div>
+                            <p className="text-lg font-bold text-blue-500">{pic.inProgress}</p>
+                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Active</p>
+                          </div>
+                          <div>
+                            <p className="text-lg font-bold text-emerald-500">{pic.completed}</p>
+                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Done</p>
+                          </div>
+                          <div>
+                            <p className={`text-lg font-bold ${pic.overdue > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>{pic.overdue}</p>
+                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Late</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )
+          }
+        ]} className="rounded-xl border border-border/50 bg-card shadow-sm" />
 
         {/* ═══════ FILTER BAR ═══════ */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -601,7 +743,7 @@ const Tasks = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </MotionPage>
   );
 };
 

@@ -1,5 +1,6 @@
 import { ViewerBanner } from "@/components/ViewerBanner";
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { MotionPage } from "@/components/shared/MotionPage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -21,13 +22,14 @@ import {
   Film, LayoutGrid, BookImage, Newspaper, Video, Play,
   ChevronLeft, ChevronRight, Eye, Edit3, Tag, Users, Activity,
   Layers, SmartphoneIcon, Monitor, Megaphone, User, AlignLeft,
-  X, Check, AlertCircle, RefreshCw, Search, TrendingUp, BarChart3, PieChart
+  X, Check, AlertCircle, RefreshCw, Search, TrendingUp, BarChart3, PieChart, Zap
 } from "lucide-react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart as RechartsPie, Pie } from "recharts";
 import { XIcon, TikTokIcon } from "@/components/shared/PlatformIcons";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PostPreview } from "@/components/shared/PostPreview";
+import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 
 // ─── Types ────────────────────────────────────────────────────────
 interface SocialPost {
@@ -254,75 +256,155 @@ const MediaRenderer = ({ urlStr, className = "" }: { urlStr?: string; className?
   );
 };
 
-// ─── Content Calendar (Enhanced UI/UX) ────────────────────────────
-const ContentCalendar = ({ posts }: { posts: SocialPost[] }) => {
+// ─── Content Calendar with Drag-and-Drop ─────────────────────────
+const ContentCalendar = ({ posts, onReschedule }: { posts: SocialPost[]; onReschedule?: (id: string, newDate: string) => void }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [draggingPost, setDraggingPost] = useState<SocialPost | null>(null);
+  const [dropTarget, setDropTarget] = useState<Date | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ post: SocialPost; newDate: Date } | null>(null);
   const days = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) });
   const startOffset = startOfMonth(currentMonth).getDay();
 
   const getPostsForDay = (day: Date) =>
     posts.filter(p => p.scheduled_date && isSameDay(parseISO(p.scheduled_date), day));
 
+  const handleDragStart = (e: React.DragEvent, post: SocialPost) => {
+    setDraggingPost(post);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDropTarget(day);
+  };
+
+  const handleDrop = (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    setDropTarget(null);
+    if (!draggingPost) return;
+    const isSame = draggingPost.scheduled_date && isSameDay(parseISO(draggingPost.scheduled_date), day);
+    if (isSame) { setDraggingPost(null); return; }
+    setConfirmModal({ post: draggingPost, newDate: day });
+    setDraggingPost(null);
+  };
+
+  const handleConfirmReschedule = () => {
+    if (!confirmModal || !onReschedule) return;
+    const newDateStr = format(confirmModal.newDate, "yyyy-MM-dd") + "T09:00";
+    onReschedule(confirmModal.post.id, newDateStr);
+    toast.success(`"${confirmModal.post.content.slice(0, 30)}..." rescheduled to ${format(confirmModal.newDate, "d MMM yyyy")} ✅`);
+    setConfirmModal(null);
+  };
+
   return (
-    <Card className="border-[#bc7e57]/20 shadow-sm overflow-hidden">
-      <CardHeader className="bg-muted/30 border-b border-border/50 pb-4 pt-5">
-        <div className="flex items-center justify-between px-2">
-          <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
-            <Calendar className="h-5 w-5" style={{ color: "#bc7e57" }}/> Content Calendar
-          </CardTitle>
-          <div className="flex items-center gap-1 bg-background border rounded-lg p-1 shadow-sm">
-            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-muted" onClick={() => setCurrentMonth(m => subMonths(m, 1))}><ChevronLeft className="h-4 w-4"/></Button>
-            <span className="text-sm font-semibold w-32 text-center">{format(currentMonth, "MMMM yyyy")}</span>
-            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-muted" onClick={() => setCurrentMonth(m => addMonths(m, 1))}><ChevronRight className="h-4 w-4"/></Button>
+    <>
+      <Card className="border-[#bc7e57]/20 shadow-sm overflow-hidden">
+        <CardHeader className="bg-muted/30 border-b border-border/50 pb-4 pt-5">
+          <div className="flex items-center justify-between px-2">
+            <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
+              <Calendar className="h-5 w-5" style={{ color: "#bc7e57" }}/> Content Calendar
+              <span className="text-xs text-muted-foreground font-normal ml-2">Drag posts to reschedule</span>
+            </CardTitle>
+            <div className="flex items-center gap-1 bg-background border rounded-lg p-1 shadow-sm">
+              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-muted" onClick={() => setCurrentMonth(m => subMonths(m, 1))}><ChevronLeft className="h-4 w-4"/></Button>
+              <span className="text-sm font-semibold w-32 text-center">{format(currentMonth, "MMMM yyyy")}</span>
+              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-muted" onClick={() => setCurrentMonth(m => addMonths(m, 1))}><ChevronRight className="h-4 w-4"/></Button>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="grid grid-cols-7 border-b border-border/50 bg-muted/10">
-          {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-            <div key={d} className="text-xs font-bold text-muted-foreground text-center py-3 uppercase tracking-wider">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 auto-rows-fr">
-          {Array.from({ length: startOffset }).map((_, i) => (
-            <div key={`empty-${i}`} className="min-h-[100px] border-r border-b border-border/30 bg-muted/5 pointer-events-none" />
-          ))}
-          {days.map(day => {
-            const dayPosts = getPostsForDay(day);
-            const today = isToday(day);
-            return (
-              <div 
-                key={day.toISOString()} 
-                className={`min-h-[100px] border-r border-b border-border/30 p-1.5 flex flex-col transition-colors hover:bg-muted/40 cursor-pointer ${!isSameMonth(day, currentMonth) ? "opacity-40 bg-muted/5" : ""} ${today ? "bg-[#bc7e57]/5" : ""}`}
-              >
-                <div className="flex justify-between items-start mb-1.5 px-1">
-                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${today ? "bg-[#bc7e57] text-white shadow-md shadow-[#bc7e57]/20" : "text-foreground"}`}>
-                    {format(day, "d")}
-                  </span>
-                  {dayPosts.length > 0 && (
-                     <span className="text-[9px] font-medium text-muted-foreground mt-1">{dayPosts.length} post{dayPosts.length > 1 ? 's' : ''}</span>
-                  )}
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="grid grid-cols-7 border-b border-border/50 bg-muted/10">
+            {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
+              <div key={d} className="text-xs font-bold text-muted-foreground text-center py-3 uppercase tracking-wider">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 auto-rows-fr">
+            {Array.from({ length: startOffset }).map((_, i) => (
+              <div key={`empty-${i}`} className="min-h-[100px] border-r border-b border-border/30 bg-muted/5 pointer-events-none" />
+            ))}
+            {days.map(day => {
+              const dayPosts = getPostsForDay(day);
+              const today = isToday(day);
+              const isDropTarget = dropTarget && isSameDay(dropTarget, day);
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={`min-h-[100px] border-r border-b border-border/30 p-1.5 flex flex-col transition-all ${!isSameMonth(day, currentMonth) ? "opacity-40 bg-muted/5" : ""} ${today ? "bg-[#bc7e57]/5" : ""} ${isDropTarget ? "bg-[#bc7e57]/15 ring-2 ring-inset ring-[#bc7e57]/50 scale-[0.99]" : "hover:bg-muted/40"}`}
+                  onDragOver={e => handleDragOver(e, day)}
+                  onDragLeave={() => setDropTarget(null)}
+                  onDrop={e => handleDrop(e, day)}
+                >
+                  <div className="flex justify-between items-start mb-1.5 px-1">
+                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${today ? "bg-[#bc7e57] text-white shadow-md shadow-[#bc7e57]/20" : "text-foreground"}`}>
+                      {format(day, "d")}
+                    </span>
+                    {dayPosts.length > 0 && (
+                      <span className="text-[9px] font-medium text-muted-foreground mt-1">{dayPosts.length} post{dayPosts.length > 1 ? 's' : ''}</span>
+                    )}
+                    {isDropTarget && (
+                      <span className="text-[9px] font-bold text-[#bc7e57] animate-pulse">Drop here</span>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-1 overflow-y-auto pr-0.5 custom-scrollbar">
+                    {dayPosts.slice(0, 3).map(p => {
+                      const plt = PLATFORMS.find(x => x.value === p.platform);
+                      return (
+                        <div
+                          key={p.id}
+                          draggable
+                          onDragStart={e => handleDragStart(e, p)}
+                          className="group relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-white border border-white/10 shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md cursor-grab active:cursor-grabbing active:opacity-60 active:scale-95 select-none"
+                          style={{ backgroundColor: plt?.color || "#bc7e57" }}
+                          title={`Drag to reschedule: ${p.content?.slice(0, 50)}`}
+                        >
+                          {plt && <plt.icon className="h-2.5 w-2.5 flex-shrink-0 opacity-90"/>}
+                          <span className="text-[9px] font-medium truncate leading-tight tracking-tight drop-shadow-sm">{p.content?.slice(0, 24) || "New Post"}</span>
+                        </div>
+                      );
+                    })}
+                    {dayPosts.length > 3 && <div className="text-[8px] text-muted-foreground pl-1">+{dayPosts.length - 3} more</div>}
+                  </div>
                 </div>
-                <div className="flex-1 space-y-1 overflow-y-auto pr-0.5 custom-scrollbar">
-                  {dayPosts.map(p => {
-                    const plt = PLATFORMS.find(x => x.value === p.platform);
-                    return (
-                      <div key={p.id} className="group relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-white border border-white/10 shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md" style={{ backgroundColor: plt?.color || "#bc7e57" }}>
-                        {plt && <plt.icon className="h-2.5 w-2.5 flex-shrink-0 opacity-90"/>}
-                        <span className="text-[9px] font-medium truncate leading-tight tracking-tight drop-shadow-sm">{p.content?.slice(0, 24) || "New Post"}</span>
-                      </div>
-                    );
-                  })}
-                  {dayPosts.length > 3 && <div className="text-[8px] text-muted-foreground pl-1">+{dayPosts.length - 3} more</div>}
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reschedule Confirmation Modal */}
+      <AlertDialog open={!!confirmModal} onOpenChange={() => setConfirmModal(null)}>
+        <AlertDialogContent className="rounded-3xl border-border/50 bg-card/95 backdrop-blur-xl max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-black flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-[#bc7e57]" /> Confirm Reschedule
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-muted-foreground mt-2">
+              <span className="block mb-3">You're about to move this post to a new date:</span>
+              {confirmModal && (
+                <div className="rounded-xl bg-muted/50 border border-border/50 p-3 space-y-2">
+                  <p className="text-xs text-foreground font-semibold line-clamp-2">"{confirmModal.post.content.slice(0, 80)}..."</p>
+                  <p className="text-xs font-bold text-[#bc7e57]">📅 New date: {format(confirmModal.newDate, "EEEE, d MMMM yyyy")}</p>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmReschedule}
+              className="rounded-xl bg-[#bc7e57] hover:bg-[#a56d49] text-white font-bold shadow-md shadow-[#bc7e57]/20"
+            >
+              Confirm Reschedule
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
+
+
 
 // ─── Post Card ───────────────────────────────────────────────────
 const PostCard = ({ post, onPreview, onEdit, onDelete, onStatusChange, isAdmin }: {
@@ -423,13 +505,15 @@ const PostCard = ({ post, onPreview, onEdit, onDelete, onStatusChange, isAdmin }
 
 // ─── Weekly Calendar ─────────────────────────────────────────────
 const WeeklyCalendar = ({
-  posts, canEdit, openStudio, setPreviewPost
+  posts, canEdit, openStudio, setPreviewPost, onReschedule
 }: {
   posts: SocialPost[];
   canEdit: boolean;
   openStudio: (p?: SocialPost) => void;
   setPreviewPost: (p: SocialPost | null) => void;
+  onReschedule?: (postId: string, newDate: string) => void;
 }) => {
+  const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
   const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
@@ -526,15 +610,33 @@ const WeeklyCalendar = ({
                   return (
                     <div key={di} className={`border-r border-border/10 p-1 space-y-0.5 ${
                       isTodayD ? 'bg-[#bc7e57]/[0.03]' : 'hover:bg-muted/20'
-                    } transition-colors`}>
+                    } ${dragOverSlot === `${di}-${hour}` ? 'ring-2 ring-[#bc7e57]/40 bg-[#bc7e57]/10' : ''} transition-colors`}
+                      onDragOver={(e) => { e.preventDefault(); setDragOverSlot(`${di}-${hour}`); }}
+                      onDragLeave={() => setDragOverSlot(null)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragOverSlot(null);
+                        const postId = e.dataTransfer.getData('postId');
+                        if (postId && onReschedule) {
+                          const newDate = new Date(day);
+                          newDate.setHours(hour, 0, 0, 0);
+                          onReschedule(postId, newDate.toISOString());
+                        }
+                      }}
+                    >
                       {slotPosts.map((p: SocialPost) => {
                         const plt = PLATFORMS.find(x => x.value === p.platform);
                         const PIcon = plt?.icon || Megaphone;
                         return (
                           <button
                             key={p.id}
+                            draggable={canEdit}
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('postId', p.id);
+                              e.dataTransfer.effectAllowed = 'move';
+                            }}
                             onClick={() => setPreviewPost(p)}
-                            className="w-full text-left rounded-md px-1.5 py-1 text-white text-[9px] leading-tight hover:opacity-90 transition-opacity flex items-start gap-1 shadow-sm"
+                            className={`w-full text-left rounded-md px-1.5 py-1 text-white text-[9px] leading-tight hover:opacity-90 transition-opacity flex items-start gap-1 shadow-sm ${canEdit ? 'cursor-grab active:cursor-grabbing' : ''}`}
                             style={{ background: plt?.color || '#bc7e57' }}
                           >
                             <PIcon className="h-2.5 w-2.5 flex-shrink-0 mt-0.5"/>
@@ -707,6 +809,171 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+// ─── Strategy Tab (Gamified Planning) ─────────────────────────────
+const StrategyTab = () => {
+  const naijaHolidays = [
+    { date: "Oct 1", name: "Independence Day", idea: "Green & White graphic celebrating national progression. Hashtags: #NigeriaAt60something #TechNG" },
+    { date: "May 1", name: "Workers' Day", idea: "Carousel spotlighting REDtech's core engineering and operations staff." },
+    { date: "Jun 12", name: "Democracy Day", idea: "Thought leadership post on democratic tech access and financial inclusion." },
+    { date: "Dec 25", name: "Christmas Day", idea: "Festive team video or 'Year in Review' stats infographic." },
+    { date: "Mar 8", name: "Int'l Women's Day", idea: "Celebrate the women driving REDtech Africa. Quote cards from female leads." }
+  ];
+
+  const contentPillars = [
+    { name: "Educational", value: 35, color: "#10b981" },
+    { name: "Promotional", value: 40, color: "#bc7e57" },
+    { name: "Culture", value: 15, color: "#3b82f6" },
+    { name: "Thought Leadership", value: 10, color: "#8b5cf6" },
+  ];
+
+  const trendingHashtags = [
+    { tag: "#FinTechNG", volume: 14500 },
+    { tag: "#SaaS", volume: 12200 },
+    { tag: "#TechTalent", volume: 9800 },
+    { tag: "#REDtech", volume: 7500 },
+    { tag: "#Innovation", volume: 6200 },
+  ];
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row gap-6 h-full lg:h-[450px]">
+        {/* Left: Interactive Strategy Modules via SwapCard */}
+        <div className="flex-1 min-w-0">
+          <SwapCardWrapper views={[
+            {
+              label: "Nigerian Content Ideation Calendar",
+              content: (
+                <div className="p-6 md:p-8 h-full flex flex-col">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Calendar className="h-5 w-5 text-emerald-500" />
+                    <h3 className="text-xl font-black">Naija Cultural Calendar</h3>
+                  </div>
+                  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                    {naijaHolidays.map((h, i) => (
+                      <div key={i} className="flex gap-4 p-4 rounded-xl border border-border/50 bg-background hover:border-emerald-500/30 transition-colors">
+                        <div className="shrink-0 flex flex-col items-center justify-center w-16 h-16 rounded-lg bg-emerald-500/10 text-emerald-600">
+                          <span className="text-xs font-bold uppercase">{h.date.split(' ')[0]}</span>
+                          <span className="text-xl font-black">{h.date.split(' ')[1]}</span>
+                        </div>
+                        <div className="flex flex-col justify-center">
+                          <h4 className="font-bold text-sm text-foreground">{h.name}</h4>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{h.idea}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            },
+            {
+              label: "Content Pillars Array",
+              content: (
+                <div className="p-6 md:p-8 h-full flex flex-col">
+                  <div className="flex items-center gap-2 mb-2">
+                    <PieChart className="h-5 w-5 text-[#bc7e57]" />
+                    <h3 className="text-xl font-black">Strategic Content Mix</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-medium mb-4">Target distribution for maximum algorithm optimization.</p>
+                  <div className="flex-1 flex items-center justify-center min-h-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPie>
+                        <Pie
+                          data={contentPillars}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="50%"
+                          outerRadius="80%"
+                          paddingAngle={5}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {contentPillars.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px' }}
+                          formatter={(value) => [`${value}% Portfolio`, 'Target Allocation']}
+                        />
+                      </RechartsPie>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )
+            },
+            {
+              label: "Trending Algorithmic Vectors",
+              content: (
+                <div className="p-6 md:p-8 h-full flex flex-col">
+                  <div className="flex items-center gap-2 mb-6">
+                    <TrendingUp className="h-5 w-5 text-blue-500" />
+                    <h3 className="text-xl font-black">Local Hashtag Velocity</h3>
+                  </div>
+                  <div className="flex-1 min-h-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={trendingHashtags} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                            <stop offset="100%" stopColor="#8b5cf6" stopOpacity={1}/>
+                          </linearGradient>
+                        </defs>
+                        <XAxis type="number" hide />
+                        <YAxis type="category" dataKey="tag" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 'bold', fill: 'hsl(var(--foreground))' }} width={80} />
+                        <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))' }}/>
+                        <Bar dataKey="volume" radius={[0, 4, 4, 0]} barSize={24} fill="url(#barGrad)">
+                          {trendingHashtags.map((entry, index) => (
+                            <Cell key={`cell-${index}`} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )
+            }
+          ]} className="h-full rounded-3xl border border-border/50 shadow-lg bg-card" />
+        </div>
+
+        {/* Right: Quick Recommendations Panel */}
+        <Card className="w-full lg:w-96 shrink-0 rounded-3xl border-border/50 shadow-lg bg-muted/20">
+          <CardHeader>
+            <CardTitle className="text-base font-black flex items-center gap-2">
+              <Zap className="h-4 w-4 text-emerald-500" /> Platform Optimization
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 rounded-xl bg-background border border-border/40 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-bold">
+                <Linkedin className="h-4 w-4 text-[#0077b5]" /> LinkedIn
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Algorithm currently favors deep-dive PDF carousels and text-heavy industry insights over direct link sharing.
+              </p>
+            </div>
+            <div className="p-4 rounded-xl bg-background border border-border/40 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-bold">
+                <Instagram className="h-4 w-4 text-[#e1306c]" /> Instagram
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Reels under 15 seconds driving 60% of reach. Leverage trending Nigerian Amapiano audio for maximum hook retention.
+              </p>
+            </div>
+            <div className="p-4 rounded-xl bg-background border border-border/40 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-bold">
+                <XIcon className="h-4 w-4" /> X (Twitter)
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                High velocity threads (3-5 tweets) breaking down complex finance/tech concepts outperforming single metric posts.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main Component ───────────────────────────────────────────────
 const SocialMediaHub = () => {
   const { profile, canEdit, isAdmin, isSuperAdmin } = useAuth();
@@ -815,6 +1082,22 @@ const SocialMediaHub = () => {
     },
   });
 
+  const rescheduleMutation = useMutation({
+    mutationFn: async ({ id, newDate }: { id: string; newDate: string }) => {
+      const { error } = await (supabase as any)
+        .from("social_posts")
+        .update({ scheduled_date: newDate, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["social_posts"] }),
+    onError: (e: any) => toast.error("Reschedule failed: " + e.message),
+  });
+
+  const handleReschedule = (id: string, newDate: string) => {
+    rescheduleMutation.mutate({ id, newDate });
+  };
+
   const handleSave = async () => {
     if (!form.content.trim()) return toast.error("Caption / content is required.");
     let image_url = form.image_url;
@@ -890,7 +1173,7 @@ const SocialMediaHub = () => {
     .slice(0, 15);
 
   return (
-    <div className="flex-1 w-full flex flex-col min-h-screen bg-background overflow-y-auto">
+    <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background overflow-y-auto">
       <ViewerBanner/>
 
       {/* ── Header ── */}
@@ -953,7 +1236,8 @@ const SocialMediaHub = () => {
             <TabsTrigger value="posts" className="gap-2"><Layers className="h-4 w-4"/> All Posts</TabsTrigger>
             <TabsTrigger value="calendar" className="gap-2"><Calendar className="h-4 w-4"/> Calendar</TabsTrigger>
             <TabsTrigger value="analytics" className="gap-2"><BarChart3 className="h-4 w-4"/> Analytics</TabsTrigger>
-            <TabsTrigger value="activity" className="gap-2"><Activity className="h-4 w-4"/> Activity</TabsTrigger>
+            <TabsTrigger value="strategy" className="gap-2"><TrendingUp className="h-4 w-4"/> Strategy</TabsTrigger>
+            <TabsTrigger value="activity" className="gap-2"><Users className="h-4 w-4"/> Activity</TabsTrigger>
           </TabsList>
 
           {/* ── POSTS TAB ── */}
@@ -1052,6 +1336,12 @@ const SocialMediaHub = () => {
               canEdit={canEdit}
               openStudio={openStudio}
               setPreviewPost={setPreviewPost}
+              onReschedule={async (postId, newDate) => {
+                const { error } = await (supabase as any).from('social_posts').update({ scheduled_date: newDate }).eq('id', postId);
+                if (error) { toast.error('Failed to reschedule'); return; }
+                queryClient.invalidateQueries({ queryKey: ['social_posts'] });
+                toast.success('Post rescheduled! 📅');
+              }}
             />
           </TabsContent>
 
@@ -1196,6 +1486,11 @@ const SocialMediaHub = () => {
                 </div>
               );
             })()}
+          </TabsContent>
+
+          {/* ── STRATEGY TAB ── */}
+          <TabsContent value="strategy">
+            <StrategyTab />
           </TabsContent>
 
 
@@ -1598,7 +1893,7 @@ const SocialMediaHub = () => {
       >
         <Plus className="h-6 w-6" />
       </button>
-    </div>
+    </MotionPage>
   );
 };
 

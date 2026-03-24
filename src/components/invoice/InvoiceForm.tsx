@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { InvoiceData, LineItem, defaultCompanyInfo } from "@/types/invoice";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,13 +11,6 @@ import { FileText, CreditCard, ListChecks, Palette, User, Building2, Plus, Trash
 import { LogoUpload } from "@/components/shared/LogoUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-
-const MOCK_CLIENTS = [
-  { id: "1", name: "Tony Stark", company: "Stark Industries", address: "1 Stark Tower", city: "New York", postcode: "10001", email: "billing@stark.com" },
-  { id: "2", name: "Sarah Connor", company: "TechFlow Ltd", address: "45 Cyber Avenue", city: "Abuja", postcode: "900001", email: "sarah@techflow.io" },
-  { id: "3", name: "John Doe", company: "Acme Corp", address: "123 Innovation Drive", city: "Lagos", postcode: "100001", email: "accounts@acmecorp.com" },
-  { id: "4", name: "Bruce Wayne", company: "Wayne Enterprises", address: "1007 Mountain Drive", city: "Gotham", postcode: "00001", email: "bruce@wayne.com" },
-];
 
 interface InvoiceFormProps {
   invoiceData: InvoiceData;
@@ -34,20 +29,30 @@ export const InvoiceForm = ({ invoiceData, setInvoiceData }: InvoiceFormProps) =
     }));
   };
 
+  // Live CRM client lookup from Supabase
+  const { data: crmClients } = useQuery({
+    queryKey: ["crm-clients-lookup"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("clients").select("id, name, company, address, city, postcode, email, status").order("name");
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const handleSmartClientSelect = (clientId: string) => {
-    const client = MOCK_CLIENTS.find(c => c.id === clientId);
+    const client = (crmClients || []).find((c: any) => c.id === clientId);
     if (!client) return;
-    
     setInvoiceData(prev => ({
       ...prev,
-      clientName: client.name,
-      clientCompany: client.company,
-      clientAddress: client.address,
-      clientCity: client.city,
-      clientPostcode: client.postcode,
-      clientEmail: client.email
+      clientName: client.name || "",
+      clientCompany: client.company || "",
+      clientAddress: client.address || "",
+      clientCity: client.city || "",
+      clientPostcode: client.postcode || "",
+      clientEmail: client.email || "",
     }));
-    toast.success(`${client.company || client.name} auto-filled from CRM sync!`);
+    toast.success(`${client.company || client.name} auto-filled from CRM! ✅`);
   };
 
   const addLineItem = () => {
@@ -319,8 +324,12 @@ export const InvoiceForm = ({ invoiceData, setInvoiceData }: InvoiceFormProps) =
                  <SelectValue placeholder="Select a known client to auto-fill details instantly..." />
                </SelectTrigger>
                <SelectContent>
-                 {MOCK_CLIENTS.map(c => (
-                   <SelectItem key={c.id} value={c.id} className="cursor-pointer">{c.name} ({c.company})</SelectItem>
+                 {(crmClients || []).length === 0 ? (
+                   <SelectItem value="__loading" disabled>No CRM clients yet…</SelectItem>
+                 ) : (crmClients || []).map((c: any) => (
+                   <SelectItem key={c.id} value={c.id} className="cursor-pointer">
+                     {c.company || c.name}{c.company && c.name !== c.company ? ` — ${c.name}` : ""}
+                   </SelectItem>
                  ))}
                </SelectContent>
              </Select>

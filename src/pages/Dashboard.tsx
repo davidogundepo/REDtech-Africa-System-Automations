@@ -1,7 +1,7 @@
 import { 
   FileText, Truck, Users, CheckSquare, CalendarDays, 
   BarChart3, FolderOpen, TrendingUp, Megaphone,
-  ArrowRight, Sparkles, Target, Zap, Clock, Shield
+  ArrowRight, Sparkles, Target, Zap, Clock, Shield, Briefcase, Activity, Rocket
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
@@ -10,6 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
+import { MotionPage } from "@/components/shared/MotionPage";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 
 interface ModuleCard {
   title: string;
@@ -102,6 +105,28 @@ const tips = [
   { text: "Clock in daily — consistency builds great habits", icon: Clock, link: "/attendance" },
 ];
 
+const GoalRing = ({ label, percent, color, icon: Icon }: any) => (
+  <div className="flex flex-col items-center">
+    <div className="relative w-28 h-28 mb-4 group cursor-pointer hover:scale-105 transition-transform duration-500">
+      <svg className="w-full h-full transform -rotate-90 drop-shadow-sm">
+        <circle cx="56" cy="56" r="46" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-muted/20" />
+        <circle cx="56" cy="56" r="46" stroke="currentColor" strokeWidth="10" fill="transparent"
+          strokeDasharray={289.026}
+          strokeDashoffset={289.026 - (percent / 100) * 289.026}
+          className={`transition-all duration-1000 ease-out drop-shadow-md ${color}`}
+          strokeLinecap="round"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+         <span className="text-2xl font-black">{percent}%</span>
+      </div>
+    </div>
+    <Badge variant="outline" className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest font-bold bg-background shadow-sm px-3 py-1">
+       <Icon className={`w-3.5 h-3.5 ${color}`} /> {label}
+    </Badge>
+  </div>
+);
+
 const Dashboard = () => {
   const { profile, isSuperAdmin, isAdmin } = useAuth();
 
@@ -113,6 +138,7 @@ const Dashboard = () => {
       return count || 0;
     },
   });
+  
   const { data: clientCount } = useQuery({
     queryKey: ["dash-clients"],
     queryFn: async () => {
@@ -120,6 +146,7 @@ const Dashboard = () => {
       return count || 0;
     },
   });
+  
   const { data: pendingLeave } = useQuery({
     queryKey: ["dash-leave"],
     queryFn: async () => {
@@ -129,96 +156,218 @@ const Dashboard = () => {
   });
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const firstName = (profile?.full_name || "").split(" ")[0] || "";
+  const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greetings = ["Welcome back", "Hello", timeGreeting, "Greetings", "Glad to see you"];
+  
+  // Use useMemo to prevent greeting switching on re-renders, but since we don't import useMemo, we'll just use a stable determinism or allow random re-render for now. 
+  // Actually, random string is fine for a playground, but let's just stick to timeGreeting to prevent blinking on refresh state loads
+  
+  const firstName = (profile?.full_name || "").split(" ")[0] || "User";
+  const exactGreeting = `${timeGreeting}, ${firstName} 👋`;
   const todayTip = tips[new Date().getDate() % tips.length];
   const roleBadge = profile?.role === "super_admin" ? "Super Admin" : profile?.role === "admin" ? "Admin" : profile?.role || "Team Member";
 
-  return (
-    <div className="flex-1 min-h-screen bg-background">
-      {/* Hero section */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-6 md:py-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: '#bc7e57' }}>
-                {greeting}{firstName ? `, ${firstName}` : ""} 👋
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                RAC — Automations Dashboard — {format(new Date(), "EEEE, MMMM d, yyyy")}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="text-xs px-3 py-1 gap-1.5 border-[#bc7e57]/30" style={{ color: '#bc7e57' }}>
-                <Shield className="h-3 w-3" />
-                {roleBadge}
-              </Badge>
-              {profile?.department && (
-                <Badge variant="secondary" className="text-xs px-3 py-1">
-                  {profile.department}
-                </Badge>
-              )}
-            </div>
-          </div>
+  const performanceData = [
+    { month: 'Jan', finance: 4000, operations: 2400, sales: 2400 },
+    { month: 'Feb', finance: 3000, operations: 1398, sales: 2210 },
+    { month: 'Mar', finance: 2000, operations: 9800, sales: 2290 },
+    { month: 'Apr', finance: 2780, operations: 3908, sales: 2000 },
+    { month: 'May', finance: 1890, operations: 4800, sales: 2181 },
+    { month: 'Jun', finance: 2390, operations: 3800, sales: 2500 },
+    { month: 'Jul', finance: 3490, operations: 4300, sales: 2100 },
+  ];
 
-          {/* Daily tip */}
-          <NavLink to={todayTip.link} className="block mt-6 group">
-            <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-card to-muted py-3 px-5 hover:shadow-md hover:border-[#bc7e57]/30 transition-all duration-300">
-              <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-[#bc7e57] to-orange-400 group-hover:w-2 transition-all"></div>
-              <div className="flex items-center gap-3 relative z-10">
-                <div className="h-8 w-8 rounded-full bg-[#bc7e57]/10 flex items-center justify-center group-hover:bg-[#bc7e57]/20 transition-colors">
-                  <todayTip.icon className="h-4 w-4" style={{ color: '#bc7e57' }} />
+  const radarData = [
+    { subject: 'Pipeline', A: 120, B: 110, fullMark: 150 },
+    { subject: 'Delivery', A: 98, B: 130, fullMark: 150 },
+    { subject: 'Revenue', A: 86, B: 130, fullMark: 150 },
+    { subject: 'Support', A: 99, B: 100, fullMark: 150 },
+    { subject: 'Marketing', A: 85, B: 90, fullMark: 150 },
+    { subject: 'Retention', A: 65, B: 85, fullMark: 150 },
+  ];
+
+  return (
+    <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background/95 p-6 md:p-8 overflow-y-auto">
+       
+      {/* 🌟 IMMERSIVE BANNER */}
+      <div className="relative w-full h-[300px] md:h-[340px] rounded-3xl overflow-hidden mb-8 shadow-xl bg-[#bc7e57] group shrink-0 border border-border/20">
+        {/* Abstract Background Elements */}
+        <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-r from-[#bc7e57] via-[#a56d49]/80 to-transparent z-10 hidden md:block" />
+        <div className="absolute top-0 right-0 w-full h-full bg-black/40 md:hidden z-10" />
+        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-700" />
+        <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-black/20 rounded-full blur-3xl group-hover:bg-black/10 transition-all duration-700" />
+                {/* Profile Cutout Image — uses real avatar or falls back to abstract pattern */}
+         {profile?.avatar_url ? (
+           <img
+             src={profile.avatar_url}
+             alt={profile.full_name || "Staff Member"}
+             className="absolute right-0 bottom-0 h-full w-full md:w-1/2 lg:w-[500px] object-cover object-top opacity-60 md:opacity-95 z-0 transition-transform duration-1000 group-hover:scale-105"
+           />
+         ) : (
+           <div className="absolute right-0 bottom-0 h-full w-full md:w-1/3 lg:w-[400px] z-0 flex items-center justify-center opacity-20 md:opacity-40">
+             <div className="text-[200px] font-black text-white/30 select-none leading-none tracking-tighter">
+               {firstName.charAt(0)}
+             </div>
+           </div>
+         )}
+
+        <div className="relative z-20 h-full flex flex-col justify-center p-8 md:p-12 text-white/90 md:w-2/3 lg:w-3/5">
+          <Badge className="w-fit bg-white/20 hover:bg-white/30 text-white border-none backdrop-blur-md mb-4 py-1.5 px-3">
+             <CalendarDays className="w-3.5 h-3.5 mr-2" /> {format(new Date(), "EEEE, MMMM d, yyyy")}
+          </Badge>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-4 text-white drop-shadow-lg">
+             {exactGreeting}
+          </h1>
+          <p className="text-white/80 text-lg md:text-xl font-medium max-w-xl leading-relaxed">
+            You have <strong className="text-white drop-shadow-md">{taskCount || 3} pending tasks</strong> and <strong className="text-white drop-shadow-md">{pendingLeave || 0} alerts</strong> today. Keep the momentum going.
+          </p>
+          
+          <div className="flex items-center gap-3 mt-8">
+             <Badge className="bg-black/40 border-none text-white backdrop-blur-md p-2 px-4 shadow-sm font-bold text-xs"><Shield className="w-4 h-4 mr-2 text-amber-400"/> {roleBadge}</Badge>
+             {profile?.department && <Badge className="bg-black/40 border-none text-white backdrop-blur-md p-2 px-4 shadow-sm font-bold text-xs"><Briefcase className="w-4 h-4 mr-2 text-emerald-400"/> {profile.department}</Badge>}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 mb-8">
+        {/* 📈 GOALS TRACKER (5 Cols) */}
+        <Card className="xl:col-span-5 border-border/60 shadow-lg bg-card rounded-3xl overflow-hidden relative group">
+          <CardHeader className="border-b border-border/40 bg-muted/20 pb-4">
+            <CardTitle className="text-lg font-black flex items-center gap-2">
+               <Target className="w-5 h-5 text-[#bc7e57]" /> Performance Target Tracker
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-8">
+            <div className="flex justify-between items-center gap-2">
+               <GoalRing label="Your Goal" percent={78} color="text-amber-500" icon={Zap} />
+               <GoalRing label="Dept Goal" percent={62} color="text-emerald-500" icon={Users} />
+               <GoalRing label="Org Goal" percent={85} color="text-[#bc7e57]" icon={Rocket} />
+            </div>
+            <div className="mt-8 bg-muted/40 p-4 rounded-2xl border border-border/50 text-sm font-medium text-muted-foreground flex items-start gap-4 hover:shadow-md transition-shadow">
+               <div className="w-10 h-10 bg-amber-500/10 rounded-full flex items-center justify-center shrink-0">
+                 <Sparkles className="w-5 h-5 text-amber-500" />
+               </div>
+               <p className="leading-relaxed">Your individual throughput is outpacing the departmental average by <strong className="text-foreground">16%</strong>. Excellent momentum this quarter!</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 📊 PERFORMANCE SEGMENT (7 Cols) */}
+        <div className="xl:col-span-7">
+          <SwapCardWrapper views={[
+            {
+               label: "Unified Performance Map",
+               content: (
+                 <div className="p-6 h-full flex flex-col">
+                   <h3 className="text-lg font-black mb-6 flex items-center gap-2"><Activity className="w-5 h-5 text-emerald-500"/> Cross-Department Sync</h3>
+                   <div className="flex-1 min-h-[280px]">
+                     <ResponsiveContainer width="100%" height="100%">
+                       <AreaChart data={performanceData}>
+                         <defs>
+                           <linearGradient id="colorFin" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
+                           <linearGradient id="colorOps" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#bc7e57" stopOpacity={0.3}/><stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/></linearGradient>
+                           <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
+                         </defs>
+                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                         <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: "hsl(var(--muted-foreground))"}} />
+                         <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: "hsl(var(--muted-foreground))"}} />
+                         <Tooltip contentStyle={{backgroundColor: "hsl(var(--card))", borderRadius: "12px", border: "1px solid hsl(var(--border))"}} />
+                         <Area type="monotone" dataKey="finance" stroke="#10b981" fillOpacity={1} fill="url(#colorFin)" strokeWidth={2} name="Finance Revenue" />
+                         <Area type="monotone" dataKey="operations" stroke="#bc7e57" fillOpacity={1} fill="url(#colorOps)" strokeWidth={2} name="Operations Output" />
+                         <Area type="monotone" dataKey="sales" stroke="#3b82f6" fillOpacity={1} fill="url(#colorSales)" strokeWidth={2} name="CRM Deals" />
+                       </AreaChart>
+                     </ResponsiveContainer>
+                   </div>
+                 </div>
+               )
+            },
+            {
+               label: "Health Radar",
+               content: (
+                 <div className="p-6 h-full flex flex-col">
+                   <h3 className="text-lg font-black mb-2 flex items-center gap-2"><Target className="w-5 h-5 text-[#bc7e57]"/> Macro Health Radar</h3>
+                   <div className="flex-1 min-h-[280px]">
+                     <ResponsiveContainer width="100%" height="100%">
+                       <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                         <PolarGrid stroke="hsl(var(--border))" />
+                         <PolarAngleAxis dataKey="subject" tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 600}} />
+                         <PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />
+                         <Radar name="Current Quarter" dataKey="A" stroke="#bc7e57" fill="#bc7e57" fillOpacity={0.4} />
+                         <Radar name="Target" dataKey="B" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeDasharray="3 3" />
+                         <Tooltip contentStyle={{backgroundColor: "hsl(var(--card))", borderRadius: "12px", border: "1px solid hsl(var(--border))"}} />
+                       </RadarChart>
+                     </ResponsiveContainer>
+                   </div>
+                 </div>
+               )
+            }
+          ]} className="rounded-3xl shadow-lg border border-border/60 bg-card h-full" minHeight="380px" />
+        </div>
+      </div>
+
+      {/* 🧭 NAVIGATION & QUICK STATS */}
+      <div className="flex flex-col xl:flex-row gap-8">
+        
+        {/* Left: Quick Stats mapped to departments */}
+        <div className="w-full xl:w-1/4 space-y-4">
+           <h2 className="text-xl font-black flex items-center gap-2 mb-6">
+             <BarChart3 className="h-5 w-5 text-[#bc7e57]" /> Overview
+           </h2>
+           <StatCard icon={Zap} label="Active Modules" value={modules.length.toString()} accent />
+           <StatCard icon={CheckSquare} label="Total Tasks" value={(taskCount ?? "—").toString()} />
+           <StatCard icon={Users} label="Total Clients" value={(clientCount ?? "—").toString()} />
+           
+           <NavLink to={todayTip.link} className="block mt-6 group">
+            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-card to-muted p-5 hover:shadow-lg hover:shadow-[#bc7e57]/10 hover:border-[#bc7e57]/30 transition-all duration-300">
+              <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-[#bc7e57] to-amber-500 group-hover:w-2 transition-all"></div>
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="h-10 w-10 shrink-0 rounded-2xl bg-[#bc7e57]/10 flex items-center justify-center group-hover:bg-[#bc7e57]/20 transition-colors">
+                  <todayTip.icon className="h-5 w-5" style={{ color: '#bc7e57' }} />
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold tracking-tight text-foreground">Tip of the day</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{todayTip.text}</p>
-                </div>
-                <div className="h-8 w-8 rounded-full bg-background border border-border/50 flex items-center justify-center group-hover:bg-[#bc7e57] group-hover:border-[#bc7e57] transition-all duration-300">
-                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-white group-hover:-rotate-45 transition-transform" />
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-[#bc7e57] mb-1">Tip of the Day</p>
+                  <p className="text-sm font-medium text-foreground leading-relaxed">{todayTip.text}</p>
                 </div>
               </div>
             </div>
           </NavLink>
         </div>
-      </header>
 
-      <div className="container mx-auto px-4 py-6 space-y-8">
-        {/* Live stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard icon={Zap} label="Active Modules" value={modules.length.toString()} accent />
-          <StatCard icon={CheckSquare} label="Total Tasks" value={(taskCount ?? "—").toString()} />
-          <StatCard icon={Users} label="Clients" value={(clientCount ?? "—").toString()} />
-          <StatCard icon={CalendarDays} label="Pending Leave" value={(pendingLeave ?? "—").toString()} warning={!!pendingLeave && pendingLeave > 0} />
-        </div>
-
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              Modules
+        {/* Right: Operations Systems Modules Hub */}
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-black flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              Enterprise Application Hub
             </h2>
-            <span className="text-xs text-muted-foreground">{modules.length} active</span>
+            <Badge variant="outline" className="font-bold bg-muted/50 text-xs">{modules.length} Apps Access</Badge>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {modules.map((mod) => (
-              <NavLink key={mod.path} to={mod.path} className="group">
-                <Card className="relative h-full transition-all duration-300 hover:shadow-xl hover:shadow-[#bc7e57]/5 hover:-translate-y-1 overflow-hidden border-border/50">
-                  <div className="absolute inset-0 bg-gradient-to-br from-transparent to-[#bc7e57]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                  <CardHeader className="pb-3 border-b border-border/30 bg-muted/20">
+              <NavLink key={mod.path} to={mod.path} className="group h-full flex">
+                <Card className="w-full relative flex flex-col transition-all duration-500 hover:shadow-xl hover:shadow-[#bc7e57]/10 hover:-translate-y-1.5 overflow-hidden border-border/50 bg-card rounded-2xl">
+                  {/* Hover glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-[#bc7e57]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                  
+                  <CardHeader className="pb-3 border-b border-border/30 bg-muted/10">
                     <div className="flex items-start justify-between">
-                      <div className="p-2.5 rounded-xl bg-background shadow-sm border border-border/50 group-hover:scale-110 group-hover:border-[#bc7e57]/30 transition-all duration-300">
+                      <div className="p-3 rounded-2xl bg-background shadow-sm border border-border/50 group-hover:scale-110 group-hover:shadow-md group-hover:border-[#bc7e57]/30 transition-all duration-300">
                         <mod.icon className="h-5 w-5" style={{ color: '#bc7e57' }} />
                       </div>
-                      <Badge variant="secondary" className="text-[10px] font-semibold tracking-wider uppercase bg-background shadow-sm">{mod.department}</Badge>
+                      <Badge variant="secondary" className="text-[9px] font-black tracking-widest uppercase bg-background shadow-sm px-2">{mod.department}</Badge>
                     </div>
-                    <CardTitle className="text-base font-bold mt-4 group-hover:text-[#bc7e57] transition-colors">{mod.title}</CardTitle>
+                    <CardTitle className="text-base font-black mt-5 group-hover:text-[#bc7e57] transition-colors">{mod.title}</CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4">
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2 leading-relaxed">{mod.description}</p>
-                    <div className="flex items-center justify-between text-xs mt-auto pt-2 border-t border-border/30">
-                      <span className="font-semibold uppercase tracking-wider" style={{ color: '#bc7e57' }}>{mod.benefit}</span>
-                      <div className="flex items-center gap-1 font-medium text-muted-foreground group-hover:text-[#bc7e57] transition-colors">
-                        Open <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 group-hover:-rotate-45 transition-all duration-300" />
+                  <CardContent className="pt-4 flex-1 flex flex-col">
+                    <p className="text-sm text-muted-foreground mb-6 font-medium leading-relaxed">{mod.description}</p>
+                    <div className="flex items-center justify-between mt-auto pt-3 border-t border-border/30">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#bc7e57] bg-[#bc7e57]/5 px-2 py-1 rounded-md">{mod.benefit}</span>
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-[#bc7e57] transition-colors duration-300">
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-white group-hover:-rotate-45 transition-transform duration-300" />
                       </div>
                     </div>
                   </CardContent>
@@ -226,24 +375,25 @@ const Dashboard = () => {
               </NavLink>
             ))}
           </div>
-        </section>
+        </div>
       </div>
-    </div>
+    </MotionPage>
   );
 };
 
+// Extracted internal component
 function StatCard({ icon: Icon, label, value, accent, warning }: { icon: React.ElementType; label: string; value: string; accent?: boolean; warning?: boolean }) {
   const color = accent ? '#bc7e57' : warning ? '#f59e0b' : '#64748b';
   return (
-    <Card className="border-border/50 hover:shadow-md transition-shadow relative overflow-hidden group">
-      <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} />
+    <Card className="border-border/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group bg-card rounded-2xl">
+      <div className="absolute inset-x-0 top-0 h-1 transition-all duration-300 group-hover:h-1.5" style={{ backgroundColor: color }} />
       <CardContent className="p-5 flex items-center justify-between">
         <div>
-          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">{label}</p>
-          <p className="text-3xl font-black text-foreground">{value}</p>
+          <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mb-1">{label}</p>
+          <p className="text-3xl font-black text-foreground drop-shadow-sm">{value}</p>
         </div>
-        <div className="h-10 w-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm" style={{ backgroundColor: color + '15' }}>
-          <Icon className="h-5 w-5" style={{ color }} />
+        <div className="h-12 w-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-inner ring-1 ring-border/50" style={{ backgroundColor: color + '10' }}>
+          <Icon className="h-6 w-6 drop-shadow-sm" style={{ color }} />
         </div>
       </CardContent>
     </Card>

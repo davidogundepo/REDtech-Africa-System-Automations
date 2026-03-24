@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { MotionPage } from "@/components/shared/MotionPage";
+import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -389,6 +391,15 @@ const Attendance = () => {
     });
   };
 
+  const getGeoLocation = (): Promise<string> => new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve("");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(`[📌 ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}]`),
+      () => resolve(""),
+      { timeout: 5000, enableHighAccuracy: true }
+    );
+  });
+
   const clockInMutation = useMutation({
     mutationFn: async () => {
       if (!profile) throw new Error("Not logged in");
@@ -396,6 +407,10 @@ const Attendance = () => {
       
       if (now.getDay() === 0 || now.getDay() === 6) {
         throw new Error("Whoa there trailblazer! 🛑 It's the weekend. Put the laptop down, grab a drink, and go enjoy life! 🌴🍹");
+      }
+
+      if (isNigerianHoliday(now.toISOString().split('T')[0])) {
+        throw new Error("🇳🇬 Today is a Nigerian public holiday! No clock-in required. Enjoy the day off! 🎉");
       }
       
       const hour = now.getHours();
@@ -405,14 +420,15 @@ const Attendance = () => {
       
       const modeObj = WORK_MODES.find(m => m.id === workMode);
       const tag = modeObj ? `[📍 ${modeObj.label}] ` : '';
-      const finalNotes = notes.trim() ? `${tag}- ${notes}` : tag.trim();
+      const geo = await getGeoLocation();
+      const finalNotes = [tag.trim(), notes.trim(), geo].filter(Boolean).join(' ') || null;
       
       const { error } = await supabase.from("attendance_records").insert([{
         user_id: profile.id,
         clock_in: now.toISOString(),
         date: today,
         status,
-        notes: finalNotes || null,
+        notes: finalNotes,
       }]);
       if (error) throw error;
 
@@ -463,6 +479,9 @@ const Attendance = () => {
       if (reason) {
         updateData.notes = (myRecord.notes ? myRecord.notes + ' | ' : '') + `Early departure: ${reason}`;
       }
+
+      const geo = await getGeoLocation();
+      if (geo) updateData.notes = (updateData.notes || myRecord.notes || '') + ` ${geo}`;
 
       const { error } = await supabase.from("attendance_records").update(updateData).eq("id", myRecord.id);
       if (error) throw error;
@@ -921,7 +940,7 @@ const Attendance = () => {
   const greetText=(()=>{const h=new Date().getHours();if(h<12)return"Good Morning";if(h<17)return"Good Afternoon";return"Good Evening";})();
 
   return (
-    <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-6 md:p-10 font-sans overflow-y-auto">
+    <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background p-6 md:p-10 font-sans overflow-y-auto">
       <div className="max-w-[1600px] mx-auto w-full">
         {/* ═══════ WELCOME BANNER ═══════ */}
         <div className="relative rounded-2xl overflow-hidden mb-6 bg-gradient-to-r from-[#bc7e57]/10 via-[#bc7e57]/5 to-transparent border border-[#bc7e57]/15 p-6 md:p-8">
@@ -1752,7 +1771,48 @@ const Attendance = () => {
           {/* ═══════ TAB: ANALYTICS ═══════ */}
           {isSuperAdmin && (
             <TabsContent value="analytics" className="space-y-6 mt-0">
-              <AnalyticsCards monthlyPerformanceData={monthlyPerfData} departmentBreakdown={departmentBreakdown} genderStats={genderStats} allProfiles={allProfiles || []} />
+              <SwapCardWrapper views={[
+                {
+                  label: "Performance Analytics",
+                  content: (
+                    <div className="p-6">
+                      <AnalyticsCards monthlyPerformanceData={monthlyPerfData} departmentBreakdown={departmentBreakdown} genderStats={genderStats} allProfiles={allProfiles || []} />
+                    </div>
+                  ),
+                },
+                {
+                  label: "Department Breakdown",
+                  content: (
+                    <div className="p-6 space-y-4">
+                      <h3 className="text-lg font-bold text-foreground">Attendance by Department</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {departmentBreakdown.map((dept: any) => (
+                          <div key={dept.department} className="rounded-xl border border-border/50 bg-card p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-bold text-sm text-foreground">{dept.department}</h4>
+                              <span className="text-xs bg-[#bc7e57]/10 text-[#bc7e57] px-2 py-0.5 rounded-full font-semibold">{dept.totalStaff} staff</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 p-2">
+                                <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">{dept.present}</p>
+                                <p className="text-[10px] text-muted-foreground">Present</p>
+                              </div>
+                              <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 p-2">
+                                <p className="text-lg font-black text-amber-600 dark:text-amber-400">{dept.late}</p>
+                                <p className="text-[10px] text-muted-foreground">Late</p>
+                              </div>
+                              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-2">
+                                <p className="text-lg font-black text-red-600 dark:text-red-400">{dept.absent}</p>
+                                <p className="text-[10px] text-muted-foreground">Absent</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ),
+                },
+              ]} />
             </TabsContent>
           )}
         </Tabs>
@@ -1924,7 +1984,7 @@ const Attendance = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </MotionPage>
   );
 };
 

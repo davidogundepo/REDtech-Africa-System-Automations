@@ -1,4 +1,7 @@
 import { useState, useEffect, useMemo, useRef, Component, type ReactNode } from "react";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
+
+import { MotionPage } from "@/components/shared/MotionPage";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -10,8 +13,9 @@ import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format, subDays, isAfter } from "date-fns";
-import { Shield, BarChart3, Users, TrendingUp, AlertTriangle, Award, Building2, ChevronRight, Star, Zap, TrendingDown, RefreshCw, BrainCircuit, Activity, Clock, CheckSquare } from "lucide-react";
+import { Shield, BarChart3, Users, TrendingUp, AlertTriangle, Award, Building2, ChevronRight, Star, Zap, TrendingDown, RefreshCw, BrainCircuit, Activity, Clock, CheckSquare, Layers } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, LineChart, Line, ReferenceLine, ScatterChart, Scatter, ZAxis } from "recharts";
+import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { runPerformanceEngine } from "@/lib/performance-engine";
 import { toast } from "sonner";
@@ -46,6 +50,9 @@ const StaffUtilisation = () => {
   const [engineResult, setEngineResult] = useState<any>(null);
   const [aiSummary, setAiSummary] = useState("Generating executive insights...");
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [deptGroups, setDeptGroups] = useState<Record<string, any[]>>({});
+  const [pendingRealloc, setPendingRealloc] = useState<{name: string; from: string; to: string} | null>(null);
+
 
   // Auto-run the performance engine when super admin loads the page
   useEffect(() => {
@@ -226,7 +233,7 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
   }, [userMetrics.length]);
 
   return (
-    <div className="flex-1 w-full flex flex-col min-h-screen bg-background/50 p-4 md:p-8 overflow-y-auto">
+    <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background/50 p-4 md:p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
           <div className="inline-flex items-center space-x-2 text-xs font-semibold text-[#bc7e57] uppercase tracking-wider mb-2">
@@ -321,7 +328,14 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+      <SwapCardWrapper 
+        minHeight="800px"
+        views={[
+          {
+            label: "Global Workforce Matrix",
+            content: (
+              <>
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8 animate-in fade-in duration-500">
         {/* 🚀 WORKLOAD & BURNOUT MATRIX (Scatter Plot) */}
         <Card className="xl:col-span-2 shadow-sm border-border">
           <CardHeader className="pb-2 border-b border-border/50">
@@ -436,10 +450,123 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
         </Card>
       </div>
 
+      {/* 🚀 DRAG-DROP STAFF REALLOCATION BOARD */}
+      {isSuperAdmin && (() => {
+        // Build dept groups lazily from live profiles
+        const currentGroups: Record<string, any[]> = {};
+        (filteredProfiles || []).forEach((p: any) => {
+          const dept = p.department || "Unassigned";
+          if (!currentGroups[dept]) currentGroups[dept] = [];
+          currentGroups[dept].push(p);
+        });
+        const boardGroups = Object.keys(deptGroups).length > 0 ? deptGroups : currentGroups;
+        const boardDepts = Object.keys(boardGroups).sort();
+
+        const onDragEnd = (result: DropResult) => {
+          const { source, destination, draggableId } = result;
+          if (!destination || source.droppableId === destination.droppableId) return;
+          const fromDept = source.droppableId;
+          const toDept = destination.droppableId;
+          const updated = { ...boardGroups };
+          const person = (updated[fromDept] || []).find((p: any) => p.id === draggableId);
+          if (!person) return;
+          updated[fromDept] = updated[fromDept].filter((p: any) => p.id !== draggableId);
+          updated[toDept] = [{ ...person, department: toDept }, ...(updated[toDept] || [])];
+          setDeptGroups(updated);
+          setPendingRealloc({ name: person.full_name, from: fromDept, to: toDept });
+          toast.success(`${person.full_name.split(' ')[0]} moved to ${toDept}. Confirm to save.`, { duration: 4000 });
+        };
+
+        const confirmRealloc = async () => {
+          if (!pendingRealloc) return;
+          const person = Object.values(boardGroups).flat().find((p: any) => p.full_name === pendingRealloc.name);
+          if (!person) return;
+          const { error } = await (supabase as any).from("profiles").update({ department: pendingRealloc.to }).eq("id", person.id);
+          if (error) { toast.error("Failed to save reallocation"); return; }
+          toast.success(`${pendingRealloc.name} officially moved to ${pendingRealloc.to} ✅`);
+          setPendingRealloc(null);
+        };
+
+        return (
+          <div className="space-y-4 mb-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Layers className="h-5 w-5 text-[#bc7e57]" /> Staff Reallocation Board
+                <span className="text-xs font-normal text-muted-foreground ml-1">Drag staff between departments</span>
+              </h2>
+              {pendingRealloc && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">
+                    {pendingRealloc.name}: <strong>{pendingRealloc.from}</strong> → <strong className="text-[#bc7e57]">{pendingRealloc.to}</strong>
+                  </span>
+                  <Button size="sm" className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white text-xs h-7 px-3 font-bold" onClick={confirmRealloc}>
+                    Confirm
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-xs h-7 px-2" onClick={() => { setPendingRealloc(null); setDeptGroups({}); }}>
+                    Discard
+                  </Button>
+                </div>
+              )}
+            </div>
+            <DragDropContext onDragEnd={onDragEnd}>
+              <div className="flex gap-3 overflow-x-auto pb-3">
+                {boardDepts.map((dept) => (
+                  <Droppable key={dept} droppableId={dept}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`flex-shrink-0 w-52 rounded-xl border p-3 space-y-2 min-h-[120px] transition-colors ${
+                          snapshot.isDraggingOver
+                            ? "bg-[#bc7e57]/10 border-[#bc7e57]/40"
+                            : "bg-muted/20 border-border/40"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-bold text-[#bc7e57] truncate">{dept}</p>
+                          <span className="text-[10px] font-semibold bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{boardGroups[dept]?.length || 0}</span>
+                        </div>
+                        {(boardGroups[dept] || []).map((person: any, index: number) => (
+                          <Draggable key={person.id} draggableId={person.id} index={index}>
+                            {(prov, snap) => (
+                              <div
+                                ref={prov.innerRef}
+                                {...prov.draggableProps}
+                                {...prov.dragHandleProps}
+                                className={`px-3 py-2.5 rounded-xl bg-card border text-xs font-medium flex items-center gap-2.5 shadow-sm cursor-grab select-none transition-all ${
+                                  snap.isDragging
+                                    ? "shadow-xl border-[#bc7e57]/50 scale-105 opacity-90"
+                                    : "border-border/40 hover:border-[#bc7e57]/30 hover:bg-muted/40"
+                                }`}
+                              >
+                                <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#bc7e57]/30 to-transparent flex items-center justify-center font-bold text-[#bc7e57] text-[10px] shrink-0">
+                                  {(person.full_name || "?").substring(0, 2).toUpperCase()}
+                                </div>
+                                <span className="truncate text-foreground">{person.full_name?.split(" ")[0]}</span>
+                                {snap.isDragging && <span className="ml-auto text-[9px] text-[#bc7e57] font-bold">✦</span>}
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {snapshot.isDraggingOver && boardGroups[dept]?.length === 0 && (
+                          <div className="text-[10px] text-center text-[#bc7e57] font-medium py-2 border-2 border-dashed border-[#bc7e57]/30 rounded-lg">Drop here</div>
+                        )}
+                      </div>
+                    )}
+                  </Droppable>
+                ))}
+              </div>
+            </DragDropContext>
+          </div>
+        );
+      })()}
+
       {/* 🚀 INDIVIDUAL PERFORMANCE MASONRY GRID */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold flex items-center gap-2"><Users className="h-5 w-5 text-[#bc7e57]" /> Workforce Directory</h2>
+
           {isSuperAdmin && (
             <Button size="sm" variant="outline" className="gap-2 border-[#bc7e57]/40 text-[#bc7e57] hover:bg-[#bc7e57]/10" onClick={handleManualEngine} disabled={engineRunning}>
               <RefreshCw className={`h-3.5 w-3.5 ${engineRunning ? 'animate-spin' : ''}`}/>
@@ -496,8 +623,107 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
                <EmptyState illustration="staff" heading="No workforce data available" subtext="No active user metrics aligned with current filters." />
             </div>
           )}
-        </div>
-      </div>
+                 </div>
+                </div>
+              </>
+            )
+          },
+          {
+            label: "SuperAdmin Department Drill-Down",
+            content: (
+              <div className="animate-in fade-in duration-500 h-[700px] flex flex-col p-2">
+                <div className="flex items-center gap-3 mb-6">
+                  <BarChart3 className="h-6 w-6 text-[#bc7e57]" />
+                  <h2 className="text-2xl font-black">Inter-Departmental Efficiency Index</h2>
+                </div>
+                <div className="flex-1 min-h-0 bg-card rounded-2xl border border-border/50 p-6 shadow-sm">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={departmentMetrics} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
+                      <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{fill: "hsl(var(--muted-foreground))", fontWeight: "bold"}} />
+                      <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} domain={[0, 100]} />
+                      <Tooltip 
+                        cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }}
+                        contentStyle={{ backgroundColor: "hsl(var(--card))", borderRadius: "12px", border: "1px solid hsl(var(--border))" }}
+                      />
+                      <Bar dataKey="completionRate" name="Efficiency %" radius={[6, 6, 0, 0]} barSize={48}>
+                        {departmentMetrics.map((entry, index) => (
+                           <Cell key={`cell-${index}`} fill={entry.completionRate >= 80 ? '#22c55e' : entry.completionRate >= 50 ? '#f59e0b' : '#ef4444'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )
+          },
+          {
+            label: "Tactical Drag-and-Drop Reallocation",
+            content: (
+              <div className="animate-in fade-in duration-500 p-2 h-[750px] flex flex-col">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <Layers className="h-6 w-6 text-blue-500" />
+                    <h2 className="text-2xl font-black">Staff Matrix Reallocation</h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground font-medium bg-muted/50 px-3 py-1.5 rounded-full inline-flex items-center gap-2 border border-border/50">
+                    <Shield className="w-4 h-4 text-[#bc7e57]" /> SuperAdmin Auth Active
+                  </p>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <ReallocationBoard profiles={profiles || []} departments={departments} />
+                </div>
+              </div>
+            )
+          },
+          {
+            label: "🏆 Employee Leaderboard",
+            content: (
+              <div className="animate-in fade-in duration-500 p-2">
+                <div className="flex items-center gap-3 mb-6">
+                  <Award className="h-6 w-6 text-amber-500" />
+                  <h2 className="text-2xl font-black">Performance Leaderboard</h2>
+                </div>
+                <div className="space-y-2">
+                  {[...userMetrics]
+                    .sort((a: any, b: any) => (b.performance_score ?? 100) - (a.performance_score ?? 100))
+                    .slice(0, 20)
+                    .map((user: any, i: number) => {
+                      const score = user.performance_score ?? 100;
+                      const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+                      return (
+                        <div key={user.id} className={`flex items-center gap-4 p-3 rounded-xl border transition-all hover:shadow-md cursor-pointer ${i < 3 ? 'border-amber-500/20 bg-amber-500/5' : 'border-border/40 bg-card/50'}`} onClick={() => setSelectedUser(user)}>
+                          <div className="w-8 text-center shrink-0">
+                            {medal ? <span className="text-xl">{medal}</span> : <span className="text-sm font-bold text-muted-foreground">#{i + 1}</span>}
+                          </div>
+                          <div className="h-10 w-10 rounded-xl bg-[#bc7e57]/10 flex items-center justify-center text-sm font-bold shrink-0" style={{ color: '#bc7e57' }}>
+                            {(user.full_name || '').substring(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-sm truncate">{user.full_name}</p>
+                              <Badge variant="outline" className="text-[9px] shrink-0">{user.department || 'General'}</Badge>
+                            </div>
+                            <div className="flex items-center gap-3 mt-1">
+                              <div className="flex-1 h-1.5 rounded-full bg-muted/30 overflow-hidden">
+                                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${user.completionRate}%`, backgroundColor: user.completionRate >= 80 ? '#22c55e' : user.completionRate >= 50 ? '#f59e0b' : '#ef4444' }} />
+                              </div>
+                              <span className="text-[10px] text-muted-foreground shrink-0">{user.completionRate}% efficiency</span>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className={`text-lg font-black ${score >= 80 ? 'text-emerald-600 dark:text-emerald-400' : score >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{score}</p>
+                            <p className="text-[9px] text-muted-foreground uppercase font-semibold">Score</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )
+          }
+        ]}
+      />
 
       {/* 🚀 DEEP DIVE PROFILE SIDEPANEL (SHEET) */}
       <Sheet open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
@@ -610,9 +836,115 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
         </SheetContent>
       </Sheet>
 
+    </MotionPage>
+  );
+};
+
+// ─── Native HTML5 Drag-and-Drop Reallocation Board ─────────────────────
+const ReallocationBoard = ({ profiles, departments }: { profiles: any[], departments: string[] }) => {
+  const [localProfiles, setLocalProfiles] = useState(profiles);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const columns = ["Unassigned", ...departments.filter(Boolean)];
+
+  // Keep local state in sync with prop updates
+  useEffect(() => {
+    setLocalProfiles(profiles);
+  }, [profiles]);
+
+  const handleDragStart = (e: React.DragEvent, profileId: string, currentDept: string) => {
+    e.dataTransfer.setData("profileId", profileId);
+    e.dataTransfer.setData("sourceDept", currentDept);
+    // Visual feedback
+    if (e.target instanceof HTMLElement) {
+      e.target.style.opacity = '0.4';
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    if (e.target instanceof HTMLElement) {
+      e.target.style.opacity = '1';
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetDept: string) => {
+    e.preventDefault();
+    const profileId = e.dataTransfer.getData("profileId");
+    const sourceDept = e.dataTransfer.getData("sourceDept");
+    
+    if (!profileId || sourceDept === targetDept) return;
+
+    // Optimistically update local array
+    const realTarget = targetDept === "Unassigned" ? null : targetDept;
+    setLocalProfiles(prev => prev.map(p => p.id === profileId ? { ...p, department: realTarget } : p));
+    
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.from('profiles').update({ department: realTarget }).eq('id', profileId);
+      if (error) throw error;
+      toast.success(`Staff reallocated to ${targetDept}`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to reallocate. Reverting.");
+      setLocalProfiles(profiles); // Rollback
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar h-full items-start relative">
+       {isUpdating && (
+         <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-50 flex items-center justify-center rounded-xl">
+            <div className="flex items-center gap-2 px-4 py-2 bg-card border border-border shadow-xl rounded-full text-sm font-bold">
+              <RefreshCw className="w-4 h-4 animate-spin text-[#bc7e57]" /> Syncing Matrix...
+            </div>
+         </div>
+       )}
+       {columns.map(dept => (
+         <div 
+           key={dept} 
+           className="shrink-0 w-[320px] bg-muted/20 rounded-2xl border border-border/60 p-5 h-[650px] flex flex-col transition-colors hover:bg-muted/30 hover:border-border"
+           onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+           onDrop={(e) => handleDrop(e, dept)}
+         >
+           <h3 className="font-extrabold text-lg mb-5 flex items-center justify-between text-foreground/90">
+              {dept} 
+              <Badge variant="secondary" className="bg-background/80 shadow-sm border border-border/40 font-black px-2">
+                {localProfiles.filter(p => (p.department || 'Unassigned') === dept).length}
+              </Badge>
+           </h3>
+           <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-2">
+             {localProfiles.filter(p => (p.department || 'Unassigned') === dept).map(p => (
+                <div 
+                  key={p.id} 
+                  draggable={true} 
+                  onDragStart={(e) => handleDragStart(e, p.id, dept)}
+                  onDragEnd={handleDragEnd}
+                  className="bg-card p-4 rounded-[14px] border border-border/80 hover:border-[#bc7e57]/60 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-[#bc7e57]/10 to-transparent flex border border-[#bc7e57]/20 items-center justify-center font-bold text-[#bc7e57] text-sm group-hover:scale-105 transition-transform">
+                       {(p.full_name||'').substring(0,2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm leading-tight truncate">{p.full_name}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase mt-1 font-semibold tracking-wider truncate border-l-2 border-[#bc7e57]/30 pl-1.5">{p.role?.replace('_', ' ')}</p>
+                    </div>
+                  </div>
+                </div>
+             ))}
+             {localProfiles.filter(p => (p.department || 'Unassigned') === dept).length === 0 && (
+               <div className="h-24 border-2 border-dashed border-border/50 rounded-xl flex items-center justify-center text-xs font-bold text-muted-foreground uppercase opacity-60">
+                 Drop Staff Here
+               </div>
+             )}
+           </div>
+         </div>
+       ))}
     </div>
   );
 };
+
 
 export default function StaffUtilisationPage() {
   return (

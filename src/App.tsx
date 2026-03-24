@@ -22,6 +22,7 @@ import UserManagement from "./pages/UserManagement";
 import StaffUtilisation from "./pages/StaffUtilisation";
 import Attendance from "./pages/Attendance";
 import UserProfile from "./pages/UserProfile";
+import TeamDirectory from "./pages/TeamDirectory";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const AppRoutes = () => (
             <Route path="/utilisation" element={<StaffUtilisation />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/team" element={<TeamDirectory />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>

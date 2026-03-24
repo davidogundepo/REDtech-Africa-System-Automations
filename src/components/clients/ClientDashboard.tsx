@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from "recharts";
 import { format } from "date-fns";
-import { Users, Target, Award, TrendingUp, Clock, Activity, CalendarDays, Zap, FileText, Phone, Mail, Building2 } from "lucide-react";
+import { Users, Target, Award, TrendingUp, Clock, Activity, CalendarDays, Zap, FileText, Phone, Mail, Building2, Star, StarHalf } from "lucide-react";
 
 const BRAND = "#bc7e57";
 const CHART_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899"];
@@ -104,6 +104,41 @@ export const ClientDashboard = ({
       };
     });
   }, [wonDeals, avgDealSize]);
+
+  // MRR Computation
+  const monthlyRecurringRevenue = useMemo(() => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const currentYear = new Date().getFullYear();
+    
+    let cumulative = 0;
+    return months.map((month, i) => {
+      const monthStr = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
+      const wonInMonth = wonDeals.filter(c => c.created_at.startsWith(monthStr));
+      
+      const value = wonInMonth.reduce((sum, c) => sum + (getSimulatedValue(c) * 0.1), 0);
+      cumulative += value + (cumulative === 0 ? avgDealSize * 0.05 : cumulative * 0.05);
+      
+      return {
+        month,
+        mrr: i <= new Date().getMonth() ? Math.round(cumulative) : null,
+        projected: i >= new Date().getMonth() - 1 ? Math.round(cumulative * 1.08) : null
+      };
+    });
+  }, [wonDeals, avgDealSize]);
+
+  // CSAT Score simulation
+  const csatScores = useMemo(() => {
+    if (wonDeals.length === 0) return [];
+    return wonDeals.map(c => {
+      const score = 3.8 + ((c.name.length * 17) % 12) / 10; // Deterministic between 3.8 - 5.0
+      return {
+        id: c.id,
+        name: c.company || c.name,
+        score: Math.min(score, 5.0).toFixed(1),
+        industry: c.industry || "General"
+      }
+    }).sort((a, b) => parseFloat(b.score) - parseFloat(a.score)).slice(0, 5);
+  }, [wonDeals]);
 
   // Format currency
   const formatMoney = (amount: number) => {
@@ -275,6 +310,36 @@ export const ClientDashboard = ({
                   </ResponsiveContainer>
                 </div>
               )
+            },
+            {
+              label: "Monthly Recurring Revenue (MRR)",
+              content: (
+                <div className="h-[220px] pt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={monthlyRecurringRevenue}>
+                      <defs>
+                        <linearGradient id="colorMrr" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorProjected" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} className="opacity-20" />
+                      <XAxis dataKey="month" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={(val) => `$${val/1000}k`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <RechartsTooltip 
+                        formatter={(value: number) => formatMoney(value)}
+                        contentStyle={{ borderRadius: 8, fontSize: 12, border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", background: "hsl(var(--card))" }} 
+                      />
+                      <Area type="monotone" dataKey="mrr" name="Actual MRR" stroke="#bc7e57" fillOpacity={1} fill="url(#colorMrr)" strokeWidth={3} />
+                      <Area type="monotone" dataKey="projected" name="Projected MRR" stroke="#10b981" fillOpacity={1} fill="url(#colorProjected)" strokeWidth={2} strokeDasharray="4 4" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )
             }
           ]}
         />
@@ -333,13 +398,50 @@ export const ClientDashboard = ({
                       </div>
                       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden"><div className="h-full bg-emerald-500 w-1/2"></div></div>
                     </div>
-                    <div className="p-4 rounded-xl border border-border/40 bg-card">
+                     <div className="p-4 rounded-xl border border-border/40 bg-card">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2 text-sm font-semibold"><CalendarDays className="w-4 h-4 text-amber-500"/> Meetings Booked</div>
                         <span className="text-lg font-black tracking-tight">85</span>
                       </div>
                       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden"><div className="h-full bg-amber-500 w-[85%]"></div></div>
                     </div>
+                 </div>
+               )
+            },
+            {
+               label: "Client Satisfaction (CSAT)",
+               content: (
+                 <div className="h-[240px] flex flex-col mt-2">
+                   <div className="flex items-center justify-between mb-3 px-1">
+                     <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Top Rated Accounts</span>
+                     <Badge className="bg-[#bc7e57]/10 text-[#bc7e57] hover:bg-[#bc7e57]/20 border-0 pointer-events-none px-2 rounded-full shadow-sm text-[10px] font-black tracking-widest uppercase">Global Avg 4.8/5.0</Badge>
+                   </div>
+                   <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                     {csatScores.length > 0 ? csatScores.map((scoreObj, i) => (
+                       <div key={i} className="flex flex-col gap-1.5 p-3 rounded-[12px] border border-border/60 bg-card hover:border-[#bc7e57]/40 transition-colors shadow-sm relative overflow-hidden group">
+                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#f59e0b] to-[#bc7e57] opacity-60 group-hover:opacity-100 transition-opacity"></div>
+                         <div className="flex items-start justify-between pl-1">
+                            <h4 className="font-bold text-sm truncate pr-2 max-w-[150px]">{scoreObj.name}</h4>
+                            <div className="flex items-center gap-1.5 bg-background border border-border/50 px-2 py-1 rounded-full shadow-sm">
+                              {/* 5-star rating */}
+                              <div className="flex gap-0.5">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  star <= parseFloat(scoreObj.score) ? 
+                                    <Star key={star} className="w-3 h-3 fill-[#f59e0b] text-[#f59e0b]" /> 
+                                  : star - 0.5 <= parseFloat(scoreObj.score) ?
+                                    <StarHalf key={star} className="w-3 h-3 fill-[#f59e0b] text-[#f59e0b]" />
+                                  : <Star key={star} className="w-3 h-3 text-muted-foreground/30" />
+                                ))}
+                              </div>
+                              <span className="font-black text-xs text-foreground ml-1.5">{scoreObj.score}</span>
+                            </div>
+                         </div>
+                         <p className="text-[10px] text-muted-foreground uppercase pl-1 tracking-wider mt-1">{scoreObj.industry}</p>
+                       </div>
+                     )) : (
+                       <div className="flex items-center justify-center h-full text-sm font-semibold text-muted-foreground border-2 border-dashed border-border/50 rounded-2xl">No CSAT ratings mapped</div>
+                     )}
+                   </div>
                  </div>
                )
             }

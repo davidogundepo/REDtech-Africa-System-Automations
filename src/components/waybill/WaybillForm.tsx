@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { WaybillData, WaybillItem } from "@/types/waybill";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Building2, User, FileText, Truck, Package, Settings, Palette } from "lucide-react";
+import { Plus, Trash2, Building2, User, FileText, Truck, Package, Settings, Palette, Zap } from "lucide-react";
 import { LogoUpload } from "@/components/shared/LogoUpload";
+import { toast } from "sonner";
 
 interface WaybillFormProps {
   waybillData: WaybillData;
@@ -17,6 +20,29 @@ interface WaybillFormProps {
 export const WaybillForm = ({ waybillData, setWaybillData }: WaybillFormProps) => {
   const updateField = <K extends keyof WaybillData>(field: K, value: WaybillData[K]) => {
     setWaybillData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Live CRM client lookup from Supabase
+  const { data: crmClients } = useQuery({
+    queryKey: ["crm-clients-waybill-lookup"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("clients").select("id, name, company, address, city, status").order("name");
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const handleSmartRecipientSelect = (recipientId: string) => {
+    const r = (crmClients || []).find((c: any) => c.id === recipientId);
+    if (!r) return;
+    const addr = [r.address, r.city].filter(Boolean).join(", ");
+    setWaybillData(prev => ({
+      ...prev,
+      deliveredTo: r.company || r.name,
+      deliveryAddress: addr,
+    }));
+    toast.success(`${r.company || r.name} auto-filled from CRM! ✅`);
   };
 
   const addItem = () => {
@@ -161,6 +187,26 @@ export const WaybillForm = ({ waybillData, setWaybillData }: WaybillFormProps) =
               />
             </div>
           </div>
+          {/* Currency Selector */}
+          <div className="space-y-2">
+            <Label htmlFor="waybillCurrency">Currency</Label>
+            <Select
+              value={(waybillData as any).currency || '₦'}
+              onValueChange={(val) => updateField('currency' as any, val)}
+            >
+              <SelectTrigger id="waybillCurrency" className="bg-background">
+                <SelectValue placeholder="Select currency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="₦">🇳🇬 Naira (₦)</SelectItem>
+                <SelectItem value="$">🇺🇸 USD ($)</SelectItem>
+                <SelectItem value="£">🇬🇧 GBP (£)</SelectItem>
+                <SelectItem value="€">🇪🇺 EUR (€)</SelectItem>
+                <SelectItem value="₵">🇬🇭 Cedis (₵)</SelectItem>
+                <SelectItem value="C$">🇨🇦 CAD (C$)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
 
@@ -217,11 +263,32 @@ export const WaybillForm = ({ waybillData, setWaybillData }: WaybillFormProps) =
 
       {/* Delivery Info */}
       <Card>
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-4 border-b border-border/50 mb-4 bg-muted/20">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Truck className="h-5 w-5" />
             Delivery Information
           </CardTitle>
+          {/* Smart Recipient Lookup */}
+          <div className="mt-4">
+            <Label className="text-muted-foreground flex items-center gap-2 mb-2 text-xs uppercase tracking-wider font-bold">
+              <Zap className="h-3 w-3" /> Smart Recipient Lookup (CRM)
+            </Label>
+            <Select onValueChange={handleSmartRecipientSelect}>
+              <SelectTrigger className="w-full bg-background">
+                <SelectValue placeholder="Select a known recipient to auto-fill instantly..." />
+              </SelectTrigger>
+              <SelectContent>
+                {(crmClients || []).length === 0 ? (
+                  <SelectItem value="__loading" disabled>No CRM clients yet…</SelectItem>
+                ) : (crmClients || []).map((r: any) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    <span className="font-medium">{r.company || r.name}</span>
+                    {r.company && r.name !== r.company && <span className="text-muted-foreground text-xs ml-2">— {r.name}</span>}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">

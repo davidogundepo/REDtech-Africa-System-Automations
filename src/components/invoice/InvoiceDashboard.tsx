@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Banknote, Calendar, CreditCard, DollarSign, Activity, FileText, Download, Mail, MoreHorizontal, Search, Trash2, Eye, LayoutGrid, List as ListIcon } from "lucide-react";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
+import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";

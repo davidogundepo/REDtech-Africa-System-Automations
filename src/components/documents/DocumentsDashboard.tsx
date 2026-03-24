@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Award, Server, Activity, ArrowUpRight, FileImage, Folder, Database, Download } from "lucide-react";
-import { format, subDays } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, parseISO } from "date-fns";
 
 // Mock Data Generators for Analytics
 const COLORS = {
@@ -37,26 +39,6 @@ const documentTypesData = [
   { name: "Spreadsheets", value: 21 },
   { name: "Images", value: 15 },
   { name: "Word/Docs", value: 10 },
-];
-
-const acquisitionData = Array.from({ length: 6 }).map((_, i) => ({
-  month: format(subDays(new Date(), (5 - i) * 30), 'MMM'),
-  documents: Math.floor(Math.random() * 50) + 20,
-  uniqueClients: Math.floor(Math.random() * 20) + 5,
-}));
-
-const recentActivityData = [
-  { id: 1, user: "Adebayo O.", action: "Uploaded", file: "Q3_Financial_Audit.pdf", time: "10 mins ago", type: "pdf" },
-  { id: 2, user: "Ngozi E.", action: "Edited", file: "Team_Leave_Roster.xlsx", time: "1 hr ago", type: "excel" },
-  { id: 3, user: "System", action: "Auto-saved", file: "INV-2026-089.pdf", time: "2 hrs ago", type: "pdf" },
-  { id: 4, user: "David O.", action: "Deleted", file: "Old_Marketing_Draft.docx", time: "5 hrs ago", type: "word" },
-];
-
-const topContributorsData = [
-  { id: 1, name: "Ngozi Eze", dept: "HR", uploads: 142 },
-  { id: 2, name: "Adebayo O.", dept: "Finance", uploads: 98 },
-  { id: 3, name: "Chioma K.", dept: "Operations", uploads: 64 },
-  { id: 4, name: "System Automations", dept: "IT", uploads: 315 },
 ];
 
 // Reusable Custom SVG Semicircle Gauge
@@ -101,6 +83,92 @@ const SemicircleGauge = ({ value, max, title, subtitle }: { value: number; max: 
 
 
 export const DocumentsDashboard = () => {
+  // ── Live: Client acquisition by month (last 6 months from Supabase clients table)
+  const { data: allClients } = useQuery({
+    queryKey: ["docs-client-acquisition"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("clients")
+        .select("id, created_at")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // ── Live: Recent documents from Supabase (activity feed)
+  const { data: recentDocs } = useQuery({
+    queryKey: ["docs-recent-activity"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("documents")
+        .select("id, name, created_by, created_at, type")
+        .order("created_at", { ascending: false })
+        .limit(8);
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
+  // ── Live: Top contributors (most documents uploaded)
+  const { data: topContributorsRaw } = useQuery({
+    queryKey: ["docs-top-contributors"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("documents")
+        .select("created_by")
+        .not("created_by", "is", null);
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // ── Build acquisition chart data from live clients
+  const acquisitionData = useMemo(() => {
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const d = subMonths(new Date(), 5 - i);
+      return { month: format(d, 'MMM'), start: startOfMonth(d), end: endOfMonth(d), docs: 0, uniqueClients: 0 };
+    });
+    (allClients || []).forEach((c: any) => {
+      const date = parseISO(c.created_at);
+      months.forEach(m => { if (date >= m.start && date <= m.end) m.uniqueClients++; });
+    });
+    return months.map(m => ({ month: m.month, uniqueClients: m.uniqueClients }));
+  }, [allClients]);
+
+  // ── Build top contributors from live docs
+  const topContributorsData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (topContributorsRaw || []).forEach((d: any) => {
+      const name = d.created_by || "System";
+      counts[name] = (counts[name] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([name, uploads], i) => ({ id: i + 1, name, uploads }));
+  }, [topContributorsRaw]);
+
+  // ── Build activity feed from live docs
+  const recentActivityData = useMemo(() => {
+    return (recentDocs || []).map((d: any, i: number) => ({
+      id: d.id || i,
+      user: d.created_by || "System",
+      action: d.created_by === "System" ? "Auto-saved" : "Uploaded",
+      file: d.name,
+      time: (() => {
+        const diff = Math.round((Date.now() - new Date(d.created_at).getTime()) / 60000);
+        if (diff < 60) return `${diff}m ago`;
+        if (diff < 1440) return `${Math.round(diff/60)}h ago`;
+        return `${Math.round(diff/1440)}d ago`;
+      })(),
+      type: d.type || "pdf",
+    }));
+  }, [recentDocs]);
+
   // Fragment 1: Invoice Status vs Unpaid Value
   const InvoiceStatusFragment = () => (
     <div className="h-[300px] w-full flex flex-col pt-2">
@@ -336,7 +404,7 @@ export const DocumentsDashboard = () => {
               <div className="min-w-0">
                 <p className="text-sm font-bold text-foreground truncate leading-tight">{rep.name}</p>
                 <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground font-medium">
-                   <span>{rep.dept}</span>
+                   <span>Top Contributor</span>
                 </div>
               </div>
             </div>

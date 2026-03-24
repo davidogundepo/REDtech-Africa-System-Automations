@@ -13,8 +13,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
-import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus, Clock } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus, Clock, MapPin, Key } from "lucide-react";
 import { toast } from "sonner";
+import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
+import { MotionPage } from "@/components/shared/MotionPage";
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend } from "recharts";
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { format, subDays } from "date-fns";
@@ -52,6 +56,7 @@ const UserManagement = () => {
   const [broadcastType, setBroadcastType] = useState("info");
   const [broadcastTarget, setBroadcastTarget] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [staffTab, setStaffTab] = useState<"active" | "terminated" | "onboarding">("active");
 
   const [shiftDialogOpen, setShiftDialogOpen] = useState(false);
   const [shiftStart, setShiftStart] = useState("09:00");
@@ -269,8 +274,30 @@ const UserManagement = () => {
       u.full_name, u.email, u.department, u.role
     ].some(f => f?.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
-    return matchesSearch && matchesRole;
+    // Tab filtering
+    let matchesTab = true;
+    if (staffTab === 'active') matchesTab = u.is_active === true;
+    else if (staffTab === 'terminated') matchesTab = u.is_active === false;
+    else if (staffTab === 'onboarding') {
+      const daysSinceCreation = Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000 * 60 * 60 * 24));
+      matchesTab = u.is_active === true && daysSinceCreation <= 30;
+    }
+    return matchesSearch && matchesRole && matchesTab;
   }) || [];
+
+  // Location stats data
+  const locationData = [
+    { name: 'Office', value: users?.filter((u: any) => u.is_active && (u.work_mode === 'office' || !u.work_mode)).length || 0, fill: '#3b82f6' },
+    { name: 'Hybrid', value: users?.filter((u: any) => u.is_active && u.work_mode === 'hybrid').length || 0, fill: '#f59e0b' },
+    { name: 'Remote', value: users?.filter((u: any) => u.is_active && u.work_mode === 'remote').length || 0, fill: '#10b981' },
+  ];
+
+  const activeCount = users?.filter((u: any) => u.is_active).length || 0;
+  const terminatedCount = users?.filter((u: any) => !u.is_active).length || 0;
+  const onboardingCount = users?.filter((u: any) => {
+    const daysSince = Math.floor((Date.now() - new Date(u.created_at).getTime()) / (1000 * 60 * 60 * 24));
+    return u.is_active && daysSince <= 30;
+  }).length || 0;
 
   // WAIT for auth to finish loading before checking roles
   if (loading) {
@@ -299,7 +326,7 @@ const UserManagement = () => {
   }
 
   return (
-    <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
+    <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>User Management</h1>
@@ -345,7 +372,7 @@ const UserManagement = () => {
                 <Clock className="h-4 w-4 mr-2" /> Shift Settings
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md shadow-2xl">
+            <DialogContent className="sm:max-w-lg shadow-2xl">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-xl font-bold bg-gradient-to-r from-[#bc7e57] to-[#eab308] bg-clip-text text-transparent">
                   <Clock className="h-5 w-5 text-[#bc7e57]" /> Global Shift Configuration
@@ -398,7 +425,7 @@ const UserManagement = () => {
                 <Bell className="h-4 w-4 mr-2" /> Admin Broadcast
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Send Global Notification</DialogTitle>
               </DialogHeader>
@@ -507,6 +534,88 @@ const UserManagement = () => {
           );
         })}
       </div>
+
+      {/* Staff Status Tabs */}
+      <Tabs value={staffTab} onValueChange={(v) => setStaffTab(v as any)} className="mb-6">
+        <TabsList className="bg-muted/50 p-1 rounded-xl">
+          <TabsTrigger value="active" className="rounded-lg data-[state=active]:bg-emerald-500 data-[state=active]:text-white font-semibold gap-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" /> Active ({activeCount})
+          </TabsTrigger>
+          <TabsTrigger value="terminated" className="rounded-lg data-[state=active]:bg-red-500 data-[state=active]:text-white font-semibold gap-2">
+            <span className="h-2 w-2 rounded-full bg-red-400" /> Terminated ({terminatedCount})
+          </TabsTrigger>
+          <TabsTrigger value="onboarding" className="rounded-lg data-[state=active]:bg-blue-500 data-[state=active]:text-white font-semibold gap-2">
+            <span className="h-2 w-2 rounded-full bg-blue-400" /> Onboarding ({onboardingCount})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* SwapCard: Access Levels / Location Stats */}
+      <SwapCardWrapper views={[
+        {
+          label: "Access Levels",
+          content: (
+            <div className="p-6">
+              <h3 className="text-lg font-bold flex items-center gap-2 mb-5"><Key className="w-5 h-5 text-[#bc7e57]" /> Access Levels Overview</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {(['super_admin', 'admin', 'team_member', 'viewer'] as const).map(role => {
+                  const roleUsers = users?.filter((u: any) => u.role === role && u.is_active) || [];
+                  const colors: Record<string, string> = { super_admin: '#dc2626', admin: '#2563eb', team_member: '#16a34a', viewer: '#64748b' };
+                  return (
+                    <div key={role} className="rounded-2xl border border-border/50 bg-card p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <Badge className={roleBadgeColors[role]} variant="secondary">{roleLabels[role]}</Badge>
+                        <span className="text-2xl font-black" style={{ color: colors[role] }}>{roleUsers.length}</span>
+                      </div>
+                      <div className="space-y-1.5 max-h-24 overflow-y-auto">
+                        {roleUsers.slice(0, 5).map((u: any) => (
+                          <p key={u.id} className="text-xs text-muted-foreground truncate">{u.full_name} — {u.department || 'No dept'}</p>
+                        ))}
+                        {roleUsers.length > 5 && <p className="text-xs text-[#bc7e57] font-medium">+{roleUsers.length - 5} more</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )
+        },
+        {
+          label: "Location Stats",
+          content: (
+            <div className="p-6">
+              <h3 className="text-lg font-bold flex items-center gap-2 mb-5"><MapPin className="w-5 h-5 text-[#bc7e57]" /> Work Location Distribution</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-muted/20 rounded-2xl p-4 border border-border/30 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={locationData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value">
+                        {locationData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                      </Pie>
+                      <RechartsTooltip />
+                      <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: '12px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="space-y-4">
+                  {locationData.map(loc => (
+                    <div key={loc.name} className="rounded-xl border border-border/40 p-4 flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: loc.fill + '15' }}>
+                        {loc.name === 'Office' ? '🏢' : loc.name === 'Hybrid' ? '🔀' : '🏠'}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground">{loc.name}</p>
+                        <p className="text-xs text-muted-foreground">{loc.value} staff member{loc.value !== 1 ? 's' : ''}</p>
+                      </div>
+                      <span className="text-2xl font-black" style={{ color: loc.fill }}>{activeCount > 0 ? Math.round((loc.value / activeCount) * 100) : 0}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )
+        }
+      ]} className="rounded-xl border border-border/50 bg-card shadow-sm mb-6" />
 
       {/* Users Table */}
       <Card>
@@ -728,7 +837,7 @@ const UserManagement = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </MotionPage>
   );
 };
 

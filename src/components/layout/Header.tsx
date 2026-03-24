@@ -203,7 +203,7 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
               <span>Feedback</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-[#bc7e57]"><Bug className="h-5 w-5" /> Help us improve!</DialogTitle>
               <DialogDescription>

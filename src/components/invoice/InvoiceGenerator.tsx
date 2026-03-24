@@ -86,7 +86,78 @@ export const InvoiceGenerator = () => {
       }).then(({ error }: any) => {
         if (error) console.error("Failed to save invoice to transactions:", error);
       });
-      toast.success(`Invoice generated & saved! ${invoiceData.clientCompany || invoiceData.clientName} — ₦${total.toLocaleString()}`);
+
+      // Auto-push to Document Repository so invoice appears in the repo
+      (supabase as any).from("documents").insert({
+        name: `${invoiceData.invoiceNumber} — ${invoiceData.clientCompany || invoiceData.clientName}.pdf`,
+        type: "pdf",
+        size: `${Math.ceil(total / 100000)}KB`,
+        url: `#invoice-${invoiceData.invoiceNumber}`,
+        department: "Finance",
+        created_by: profile?.full_name || "System",
+        description: `Invoice — Sent | ${invoiceData.clientCompany || invoiceData.clientName} | ${invoiceData.currency}${total.toLocaleString()}`,
+      }).then(({ error }: any) => {
+        if (error) console.error("Failed to auto-save invoice to documents:", error);
+      });
+
+      // ── Smart Client Sync ─────────────────────────────────────────────────
+      // Saves client to CRM, increments their total_invoiced, updates deal_status
+      // → Finance Dashboard & Client Directory stay in sync automatically.
+      if (invoiceData.clientName || invoiceData.clientCompany) {
+        const syncClient = async () => {
+          const clientName = invoiceData.clientName || invoiceData.clientCompany || "";
+          const clientCompany = invoiceData.clientCompany || invoiceData.clientName || "";
+          const now = new Date().toISOString();
+
+          // 1. Try to find existing client by email or company name
+          let existingId: string | null = null;
+          if (invoiceData.clientEmail) {
+            const { data } = await (supabase as any).from("clients").select("id, total_invoiced").eq("email", invoiceData.clientEmail).maybeSingle();
+            if (data) existingId = data.id;
+          }
+          if (!existingId && clientCompany) {
+            const { data } = await (supabase as any).from("clients").select("id, total_invoiced").ilike("company", clientCompany).maybeSingle();
+            if (data) existingId = data.id;
+          }
+
+          if (existingId) {
+            // 2a. Client exists — fetch current total then increment
+            const { data: current } = await (supabase as any).from("clients").select("total_invoiced").eq("id", existingId).single();
+            const newTotal = (current?.total_invoiced || 0) + total;
+            await (supabase as any).from("clients").update({
+              name: clientName,
+              company: clientCompany,
+              email: invoiceData.clientEmail || undefined,
+              address: invoiceData.clientAddress || undefined,
+              city: invoiceData.clientCity || undefined,
+              postcode: invoiceData.clientPostcode || undefined,
+              deal_status: "won",
+              status: "active",
+              last_contact_date: now,
+              total_invoiced: newTotal,
+            }).eq("id", existingId);
+          } else {
+            // 2b. New client — insert with invoice total as starting value
+            await (supabase as any).from("clients").insert({
+              name: clientName,
+              company: clientCompany,
+              email: invoiceData.clientEmail || null,
+              address: invoiceData.clientAddress || null,
+              city: invoiceData.clientCity || null,
+              postcode: invoiceData.clientPostcode || null,
+              deal_status: "won",
+              status: "active",
+              last_contact_date: now,
+              total_invoiced: total,
+              total_deliveries: 0,
+            });
+          }
+        };
+
+        syncClient().catch(err => console.error("Client sync failed:", err));
+      }
+
+      toast.success(`Invoice generated & saved! ${invoiceData.clientCompany || invoiceData.clientName} — ${invoiceData.currency || "₦"}${total.toLocaleString()}`);
     },
     pageStyle: `
       @page {

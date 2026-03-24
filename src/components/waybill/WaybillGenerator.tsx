@@ -77,6 +77,62 @@ export const WaybillGenerator = () => {
       }).then(({ error }: any) => {
         if (error) console.error("Failed to save waybill to transactions:", error);
       });
+
+      // Auto-push to Document Repository
+      (supabase as any).from("documents").insert({
+        name: `WB${waybillData.waybillNumber} — ${waybillData.deliveredTo}.pdf`,
+        type: "pdf",
+        size: "~1KB",
+        url: `#waybill-${waybillData.waybillNumber}`,
+        department: "Operations",
+        created_by: profile?.full_name || "System",
+      }).then(({ error }: any) => {
+        if (error) console.error("Failed to auto-save waybill to documents:", error);
+      });
+
+      // ── Smart Recipient Sync ──────────────────────────────────────────────
+      // Records the delivery against the recipient in the CRM:
+      //   • Upserts them as a client (active)
+      //   • Increments their total_deliveries counter
+      //   • Updates last_contact_date → Client Directory stays live
+      if (waybillData.deliveredTo) {
+        const syncRecipient = async () => {
+          const now = new Date().toISOString();
+          const recipientName = waybillData.deliveredTo;
+          const recipientAddress = waybillData.deliveryAddress || null;
+
+          // 1. Find existing client by company name (waybills rarely have email)
+          const { data: existing } = await (supabase as any)
+            .from("clients")
+            .select("id, total_deliveries")
+            .ilike("company", recipientName)
+            .maybeSingle();
+
+          if (existing) {
+            // 2a. Update delivery count + last contact
+            await (supabase as any).from("clients").update({
+              last_contact_date: now,
+              total_deliveries: (existing.total_deliveries || 0) + 1,
+              status: "active",
+            }).eq("id", existing.id);
+          } else {
+            // 2b. New recipient — insert as active client
+            await (supabase as any).from("clients").insert({
+              name: recipientName,
+              company: recipientName,
+              address: recipientAddress,
+              status: "active",
+              deal_status: "lead",
+              last_contact_date: now,
+              total_invoiced: 0,
+              total_deliveries: 1,
+            });
+          }
+        };
+
+        syncRecipient().catch(err => console.error("Recipient sync failed:", err));
+      }
+
       toast.success(`Waybill generated & saved! Delivery to ${waybillData.deliveredTo} — ${itemCount} item${itemCount !== 1 ? 's' : ''}`);
     },
     pageStyle: `

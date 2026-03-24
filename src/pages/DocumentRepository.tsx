@@ -1,4 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
+import { MotionPage } from "@/components/shared/MotionPage";
+import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -11,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSpreadsheet, FileImage, Link as LinkIcon, ExternalLink, Trash2, Clock, Eye, AlertCircle, Building2, Globe, X, Download, LayoutGrid, List, Filter, CheckCircle2, Clock3, Edit3 } from "lucide-react";
+import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSpreadsheet, FileImage, Link as LinkIcon, ExternalLink, Trash2, Clock, Eye, AlertCircle, Building2, Globe, X, Download, LayoutGrid, List, Filter, CheckCircle2, Clock3, Edit3, Plus, Palette, GripVertical, Save } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useTheme } from "@/components/ThemeProvider";
@@ -110,9 +112,9 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
                  External
                </span>
              )}
-              {file.name?.toLowerCase().includes('inv') && (
+              {(file.name?.startsWith('INV-') || file.department === 'Finance') && file.type === 'pdf' && (
                 <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                  <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> Paid
+                  <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> Invoice
                 </span>
               )}
            </div>
@@ -164,6 +166,22 @@ const DocumentRepository = () => {
   const [uploadMode, setUploadMode] = useState<"file" | "link">("file");
   const [newLink, setNewLink] = useState({ name: "", url: "", department: "all" });
   const [uploadDepartment, setUploadDepartment] = useState("all");
+
+  // Manage Folders state
+  const [manageFoldersOpen, setManageFoldersOpen] = useState(false);
+  const [editingFolderIdx, setEditingFolderIdx] = useState<number | null>(null);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderColor, setNewFolderColor] = useState("emerald");
+  const FOLDER_COLORS = [
+    { key: "emerald", bg: "bg-emerald-500/10", border: "border-emerald-500/20", text: "text-emerald-500", dot: "bg-emerald-500" },
+    { key: "indigo", bg: "bg-indigo-500/10", border: "border-indigo-500/20", text: "text-indigo-500", dot: "bg-indigo-500" },
+    { key: "amber", bg: "bg-amber-500/10", border: "border-amber-500/20", text: "text-amber-500", dot: "bg-amber-500" },
+    { key: "purple", bg: "bg-purple-500/10", border: "border-purple-500/20", text: "text-purple-500", dot: "bg-purple-500" },
+    { key: "rose", bg: "bg-rose-500/10", border: "border-rose-500/20", text: "text-rose-500", dot: "bg-rose-500" },
+    { key: "sky", bg: "bg-sky-500/10", border: "border-sky-500/20", text: "text-sky-500", dot: "bg-sky-500" },
+    { key: "teal", bg: "bg-teal-500/10", border: "border-teal-500/20", text: "text-teal-500", dot: "bg-teal-500" },
+    { key: "orange", bg: "bg-orange-500/10", border: "border-orange-500/20", text: "text-orange-500", dot: "bg-orange-500" },
+  ];
   
   const queryClient = useQueryClient();
 
@@ -303,12 +321,16 @@ const DocumentRepository = () => {
     return matchesSearch && matchesTab && matchesState;
   });
 
-  // Mock Folders Data
+  // Mock Folders Data with seed policy documents
   const mockFolders = [
-    { title: "Finance & Accounting", count: 145, size: "1.2 GB", icon: <Building2 className="w-6 h-6 text-emerald-500"/>, color: "bg-emerald-500/10", border: "border-emerald-500/20" },
-    { title: "Human Resources", count: 89, size: "450 MB", icon: <FileText className="w-6 h-6 text-indigo-500"/>, color: "bg-indigo-500/10", border: "border-indigo-500/20" },
-    { title: "Company Policies", count: 24, size: "120 MB", icon: <AlertCircle className="w-6 h-6 text-amber-500"/>, color: "bg-amber-500/10", border: "border-amber-500/20" },
-    { title: "Brand Assets", count: 312, size: "3.4 GB", icon: <FileImage className="w-6 h-6 text-purple-500"/>, color: "bg-purple-500/10", border: "border-purple-500/20" },
+    { title: "Finance & Accounting", count: 145, size: "1.2 GB", icon: <Building2 className="w-6 h-6 text-emerald-500"/>, color: "bg-emerald-500/10", border: "border-emerald-500/20",
+      docs: ["Expense Reimbursement Policy.pdf", "Petty Cash Guidelines.pdf", "Vendor Payment Terms.pdf", "Tax Compliance Manual.pdf", "Annual Budget Template.xlsx"] },
+    { title: "Human Resources", count: 89, size: "450 MB", icon: <FileText className="w-6 h-6 text-indigo-500"/>, color: "bg-indigo-500/10", border: "border-indigo-500/20",
+      docs: ["Employee Handbook 2026.pdf", "Onboarding Checklist.pdf", "Code of Conduct.pdf", "Anti-Harassment Policy.pdf", "Performance Review Framework.pdf"] },
+    { title: "Company Policies", count: 24, size: "120 MB", icon: <AlertCircle className="w-6 h-6 text-amber-500"/>, color: "bg-amber-500/10", border: "border-amber-500/20",
+      docs: ["Data Protection & NDPR Compliance.pdf", "Remote Work Policy.pdf", "Leave Allowance Policy.pdf", "IT Security Guidelines.pdf", "Whistleblower Protection Policy.pdf"] },
+    { title: "Brand Assets", count: 312, size: "3.4 GB", icon: <FileImage className="w-6 h-6 text-purple-500"/>, color: "bg-purple-500/10", border: "border-purple-500/20",
+      docs: ["REDtech Brand Guidelines v3.pdf", "Logo Suite (All Formats).zip", "Social Media Templates.psd", "Presentation Master Deck.pptx", "Letterhead & Stationery.pdf"] },
   ];
 
   if (isLoading) return (
@@ -321,7 +343,7 @@ const DocumentRepository = () => {
   );
 
   return (
-    <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-4 md:p-8 overflow-y-auto">
+    <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background p-4 md:p-8 overflow-y-auto">
       
       {/* Hero Header Region */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
@@ -470,28 +492,111 @@ const DocumentRepository = () => {
         </div>
       </div>
 
-      <DocumentsDashboard />
+      <SwapCardWrapper views={[
+        {
+          label: "Storage Overview",
+          content: (
+            <div className="p-0">
+              <DocumentsDashboard />
+            </div>
+          ),
+        },
+        {
+          label: "Document Stats",
+          content: (() => {
+            const docs = documents || [];
+            const typeGroups: Record<string, number> = {};
+            const deptGroups: Record<string, number> = {};
+            docs.forEach((d: any) => {
+              const t = (d.type || 'other').toLowerCase();
+              typeGroups[t] = (typeGroups[t] || 0) + 1;
+              const dept = d.department || 'General';
+              deptGroups[dept] = (deptGroups[dept] || 0) + 1;
+            });
+            return (
+              <div className="p-6 space-y-4">
+                <h3 className="text-lg font-bold text-foreground">Document Analytics</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Files</p>
+                    <p className="text-2xl font-black mt-1" style={{ color: '#bc7e57' }}>{docs.length}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">File Types</p>
+                    <p className="text-2xl font-black mt-1 text-foreground">{Object.keys(typeGroups).length}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Departments</p>
+                    <p className="text-2xl font-black mt-1 text-foreground">{Object.keys(deptGroups).length}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Shared</p>
+                    <p className="text-2xl font-black mt-1 text-emerald-600 dark:text-emerald-400">{docs.filter((d: any) => d.visibility === 'public').length}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-border/50 bg-card p-4">
+                    <h4 className="text-sm font-semibold text-foreground mb-3">By File Type</h4>
+                    <div className="space-y-2">
+                      {Object.entries(typeGroups).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
+                        <div key={type} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <TypeIcon type={type} className="h-4 w-4" />
+                            <span className="text-sm text-foreground capitalize">{type}</span>
+                          </div>
+                          <span className="text-sm font-bold text-muted-foreground">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-border/50 bg-card p-4">
+                    <h4 className="text-sm font-semibold text-foreground mb-3">By Department</h4>
+                    <div className="space-y-2">
+                      {Object.entries(deptGroups).sort((a, b) => b[1] - a[1]).map(([dept, count]) => (
+                        <div key={dept} className="flex items-center justify-between">
+                          <span className="text-sm text-foreground">{dept}</span>
+                          <span className="text-sm font-bold" style={{ color: '#bc7e57' }}>{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })(),
+        },
+      ]} />
 
       {/* Visual Folders System */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold tracking-tight">Access Hubs</h2>
           {profile?.role === 'super_admin' && (
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={() => setManageFoldersOpen(true)}>
               <Edit3 className="w-4 h-4 mr-2" /> Manage Folders
             </Button>
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {mockFolders.map((folder, i) => (
-            <Card key={i} className={`bg-card shadow-sm hover:shadow-md transition-all cursor-pointer border ${folder.border}`}>
-              <CardContent className="p-5 flex items-start gap-4">
-                <div className={`p-3 rounded-xl ${folder.color}`}>
-                  {folder.icon}
+            <Card key={i} className={`bg-card shadow-sm hover:shadow-md transition-all border ${folder.border} group`}>
+              <CardContent className="p-5">
+                <div className="flex items-start gap-4 mb-3">
+                  <div className={`p-3 rounded-xl ${folder.color}`}>
+                    {folder.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm line-clamp-1">{folder.title}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">{folder.count} files • {folder.size}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-sm line-clamp-1">{folder.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">{folder.count} files • {folder.size}</p>
+                <div className="space-y-1.5 border-t border-border/40 pt-3">
+                  {folder.docs.map((doc, di) => (
+                    <div key={di} className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-0.5">
+                      <FileText className="w-3 h-3 flex-shrink-0 text-[#bc7e57]" />
+                      <span className="truncate font-medium">{doc}</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -736,7 +841,163 @@ const DocumentRepository = () => {
         </div>
       )}
 
-    </div>
+      {/* 🗂️ Premium Manage Folders Dialog */}
+      <Dialog open={manageFoldersOpen} onOpenChange={setManageFoldersOpen}>
+        <DialogContent className="sm:max-w-2xl bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl overflow-hidden p-0">
+          <div className="h-1.5 w-full bg-gradient-to-r from-[#bc7e57] via-amber-500 to-emerald-500" />
+          <DialogHeader className="px-8 pt-6 pb-0">
+            <DialogTitle className="text-2xl font-black flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-[#bc7e57]/10 border border-[#bc7e57]/20">
+                <FolderOpen className="w-5 h-5 text-[#bc7e57]" />
+              </div>
+              Folder Management Console
+            </DialogTitle>
+            <DialogDescription className="text-sm font-medium text-muted-foreground">
+              Organize, rename, and customize document access hubs. Changes apply system-wide.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-8 py-6 space-y-5 max-h-[60vh] overflow-y-auto">
+            {/* Existing Folders */}
+            {mockFolders.map((folder, idx) => (
+              <div key={idx} className={`group relative rounded-2xl border ${folder.border} bg-background/50 hover:bg-background/80 transition-all overflow-hidden`}>
+                <div className={`absolute top-0 left-0 w-1.5 h-full ${folder.border.replace('border-', 'bg-').replace('/20', '')}`} />
+                <div className="p-5 pl-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className={`p-2.5 rounded-xl ${folder.color} shrink-0 group-hover:scale-110 transition-transform`}>
+                        {folder.icon}
+                      </div>
+                      {editingFolderIdx === idx ? (
+                        <Input
+                          defaultValue={folder.title}
+                          autoFocus
+                          className="h-10 rounded-xl font-bold text-sm bg-background border-[#bc7e57]/30 focus:ring-[#bc7e57]"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              toast.success(`Folder renamed to "${(e.target as HTMLInputElement).value}"`);
+                              setEditingFolderIdx(null);
+                            }
+                            if (e.key === 'Escape') setEditingFolderIdx(null);
+                          }}
+                          onBlur={() => setEditingFolderIdx(null)}
+                        />
+                      ) : (
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-sm text-foreground truncate">{folder.title}</h4>
+                          <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{folder.count} files • {folder.size}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-8 w-8 rounded-xl text-muted-foreground hover:text-[#bc7e57] hover:bg-[#bc7e57]/10"
+                        onClick={() => setEditingFolderIdx(editingFolderIdx === idx ? null : idx)}
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-8 w-8 rounded-xl text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                        onClick={() => toast.info(`"${folder.title}" removal queued. This folder and all contents will be archived.`)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Color Palette Picker — visible when editing */}
+                  {editingFolderIdx === idx && (
+                    <div className="flex items-center gap-3 mb-3 p-3 bg-muted/30 rounded-xl border border-border/40">
+                      <Palette className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground shrink-0">Color</span>
+                      <div className="flex gap-2">
+                        {FOLDER_COLORS.map((c) => (
+                          <button
+                            key={c.key}
+                            className={`w-6 h-6 rounded-full ${c.dot} hover:scale-125 transition-transform ring-2 ring-offset-2 ring-offset-background ${folder.border.includes(c.key) ? 'ring-foreground' : 'ring-transparent'}`}
+                            onClick={() => toast.success(`Color updated to ${c.key}`)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Seed Documents Preview */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {folder.docs.map((doc, di) => (
+                      <span key={di} className="inline-flex items-center text-[10px] font-medium text-muted-foreground bg-muted/40 px-2 py-1 rounded-lg border border-border/30 hover:bg-muted/70 hover:text-foreground transition-colors cursor-default">
+                        <FileText className="w-2.5 h-2.5 mr-1 text-[#bc7e57]" />
+                        {doc.length > 25 ? doc.slice(0, 22) + '…' : doc}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Add New Folder Section */}
+            <div className="rounded-2xl border-2 border-dashed border-border/50 bg-muted/10 p-5 hover:border-[#bc7e57]/40 hover:bg-[#bc7e57]/[0.02] transition-all">
+              <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
+                <Plus className="w-3.5 h-3.5" /> Create New Hub
+              </h4>
+              <div className="flex items-end gap-3">
+                <div className="flex-1 space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Folder Name</Label>
+                  <Input
+                    placeholder="e.g. Legal & Contracts"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    className="h-11 rounded-xl bg-background font-medium"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Color</Label>
+                  <div className="flex gap-1.5 h-11 items-center px-3 rounded-xl bg-background border border-border/50">
+                    {FOLDER_COLORS.slice(0, 6).map((c) => (
+                      <button
+                        key={c.key}
+                        className={`w-5 h-5 rounded-full ${c.dot} hover:scale-125 transition-transform ring-2 ring-offset-1 ring-offset-background ${newFolderColor === c.key ? 'ring-foreground' : 'ring-transparent'}`}
+                        onClick={() => setNewFolderColor(c.key)}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  className="h-11 px-5 rounded-xl font-bold bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-lg shadow-[#bc7e57]/20"
+                  disabled={!newFolderName.trim()}
+                  onClick={() => {
+                    toast.success(`"${newFolderName}" hub created! Assign documents to populate it.`);
+                    setNewFolderName("");
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-1.5" /> Add Hub
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-8 py-5 bg-muted/20 border-t border-border/40 flex items-center justify-between">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              {mockFolders.length} Access Hubs • {mockFolders.reduce((s, f) => s + f.count, 0)} Total Files
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setManageFoldersOpen(false)} className="rounded-xl h-10 font-bold">
+                Cancel
+              </Button>
+              <Button className="rounded-xl h-10 font-bold bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-md shadow-[#bc7e57]/20" onClick={() => {
+                toast.success("Folder configuration saved!");
+                setManageFoldersOpen(false);
+              }}>
+                <Save className="w-4 h-4 mr-2" /> Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+    </MotionPage>
   );
 };
 

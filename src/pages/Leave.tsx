@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -13,11 +15,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, CalendarDays, Filter, X, Users, Clock, CheckCircle2, AlertTriangle, ArrowRight, Plane, UserCheck, TrendingUp } from "lucide-react";
+import { Plus, CalendarDays, Filter, X, Users, Clock, CheckCircle2, AlertTriangle, ArrowRight, Plane, UserCheck, TrendingUp, Sparkles, MessageSquare, History } from "lucide-react";
 import { toast } from "sonner";
+import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
+import { MotionPage } from "@/components/shared/MotionPage";
+import { ActivityCalendar } from 'react-activity-calendar';
+import { useTheme } from "@/components/ThemeProvider";
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const ANNUAL_LEAVE_DAYS = 14;
 
@@ -67,6 +74,57 @@ const Leave = () => {
   const [creditDaysDialog, setCreditDaysDialog] = useState(false);
   const [creditTarget, setCreditTarget] = useState<any>(null);
   const [creditDays, setCreditDays] = useState("1");
+  
+  // Custom Approval Modal State
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+  const [selectedRequestAction, setSelectedRequestAction] = useState<{ id: string, status: "approved" | "rejected", type: string, employee: string } | null>(null);
+  const [approvalReason, setApprovalReason] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+
+  const handleAIAssist = async () => {
+    if (!formData.leave_type) return toast.error("Select a leave type first");
+    setAiGenerating(true);
+    try {
+      const ai = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
+      const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
+      const leaveLabel = leaveTypes.find(t => t.value === formData.leave_type)?.label || formData.leave_type;
+      const dateCtx = formData.start_date && formData.end_date
+        ? ` from ${formData.start_date} to ${formData.end_date}`
+        : "";
+      const result = await model.generateContent(
+        `Write a concise, professional leave request reason for a ${leaveLabel}${dateCtx}. It should be 2-3 sentences, warm but formal in tone, suitable for a Nigerian tech company setting. Return ONLY the reason text, no preamble.`
+      );
+      const text = result.response.text().trim();
+      setFormData(prev => ({ ...prev, reason: text }));
+      toast.success("AI generated your leave reason ✨");
+    } catch (e: any) {
+      toast.error("AI assist failed: " + (e.message || "unknown error"));
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+
+  const trendData = [
+    { month: 'Jan', leaves: 12 },
+    { month: 'Feb', leaves: 8 },
+    { month: 'Mar', leaves: 15 },
+    { month: 'Apr', leaves: 22 },
+    { month: 'May', leaves: 10 },
+    { month: 'Jun', leaves: 30 },
+    { month: 'Jul', leaves: 45 },
+    { month: 'Aug', leaves: 38 },
+    { month: 'Sep', leaves: 15 },
+    { month: 'Oct', leaves: 12 },
+    { month: 'Nov', leaves: 8 },
+    { month: 'Dec', leaves: 50 },
+  ];
+
+  const openApprovalModal = (id: string, status: "approved" | "rejected", type: string, employee: string) => {
+    setSelectedRequestAction({ id, status, type, employee });
+    setApprovalReason("");
+    setApprovalModalOpen(true);
+  };
 
   const fetchRequests = async () => {
     const { data, error } = await (supabase as any).from("leave_requests").select("*").order("created_at", { ascending: false });
@@ -246,7 +304,7 @@ const Leave = () => {
     fetchBalances();
   };
 
-  const handleApproval = async (id: string, status: "approved" | "rejected") => {
+  const handleApproval = async (id: string, status: "approved" | "rejected", reason?: string) => {
     const { error } = await (supabase as any)
       .from("leave_requests")
       .update({ status, approved_by: profile?.full_name || "Admin" })
@@ -326,6 +384,7 @@ const Leave = () => {
               heading: 'Leave Request Status Update',
               body: `
                 <p>Your recent leave request for the period of <strong>${currentReq.start_date}</strong> to <strong>${currentReq.end_date}</strong> has unfortunately been <strong>declined</strong> at this time.</p>
+                ${reason ? `<div style="background:#fef2f2; border:1px solid #fecaca; padding:12px; border-radius:8px; margin:16px 0;"><strong style="color:#991b1b;">Manager's Note:</strong><br/><span style="color:#7f1d1d;">${reason}</span></div>` : ''}
                 <p>If you have any questions or would like to discuss alternative dates, please reach out to your line manager or HR directly.</p>
               `,
               ctaText: 'Review Leave Balance',
@@ -339,6 +398,7 @@ const Leave = () => {
     toast.success(`Request ${status}`);
     fetchRequests();
     fetchBalances();
+    if (approvalModalOpen) setApprovalModalOpen(false);
   };
 
   const handleCancel = async (id: string) => {
@@ -387,12 +447,15 @@ const Leave = () => {
   };
 
   return (
-    <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-6 md:p-8 overflow-y-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+    <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background/95 p-6 md:p-8 overflow-y-auto">
+      
+      {/* 🚀 COMMAND CENTER HEADER */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10 bg-card p-6 rounded-3xl border border-border/50 shadow-sm backdrop-blur-xl">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Leave Management</h1>
-          <p className="text-muted-foreground mt-1.5 text-sm">Submit, track, and manage team leave requests</p>
+          <h1 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
+             <CalendarDays className="h-8 w-8 text-[#bc7e57]" /> Leave Management
+          </h1>
+          <p className="text-muted-foreground mt-2 text-sm font-medium">Request time off, view team availability, and manage balances</p>
         </div>
         <div className="flex items-center gap-2">
           {(isAdmin || isSuperAdmin) && (
@@ -400,102 +463,121 @@ const Leave = () => {
               variant={showMyLeave ? "default" : "outline"} 
               size="sm" 
               onClick={() => setShowMyLeave(!showMyLeave)}
-              className={showMyLeave 
-                ? "bg-[#bc7e57] hover:bg-[#a56d49] text-white" 
-                : "border-border/50 text-muted-foreground"
-              }
+              className={`h-11 px-4 rounded-xl font-bold transition-all ${showMyLeave ? "bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-md shadow-[#bc7e57]/20" : "border-border/50 text-muted-foreground shadow-sm"}`}
             >
-              <Filter className="h-3.5 w-3.5 mr-1.5" /> {showMyLeave ? "My Leave" : "All Leave"}
+              <Filter className="h-4 w-4 mr-2" /> {showMyLeave ? "My Leave" : "All Leave"}
             </Button>
           )}
+
           {isSuperAdmin && (
             <Dialog open={creditDaysDialog} onOpenChange={setCreditDaysDialog}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="border-[#bc7e57]/30 text-[#bc7e57] hover:bg-[#bc7e57]/10">
-                  <CalendarDays className="h-3.5 w-3.5 mr-1.5" /> Credit Days
+                <Button variant="outline" size="sm" className="h-11 px-4 rounded-xl font-bold border-[#bc7e57]/30 text-[#bc7e57] hover:bg-[#bc7e57]/10 transition-all shadow-sm">
+                  <CalendarDays className="h-4 w-4 mr-2" /> Credit Days
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader><DialogTitle className="text-lg">Credit Extra Leave Days</DialogTitle></DialogHeader>
-                <div className="space-y-5 py-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Team Member</Label>
+              <DialogContent className="sm:max-w-lg bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl">
+                <DialogHeader><DialogTitle className="text-xl font-bold">Credit Extra Leave Days</DialogTitle></DialogHeader>
+                <div className="space-y-6 py-2">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Team Member</Label>
                     <Select onValueChange={(v) => setCreditTarget(teamProfiles.find((p: any) => p.id === v))}>
-                      <SelectTrigger className="h-11"><SelectValue placeholder="Select team member" /></SelectTrigger>
-                      <SelectContent>
-                        {teamProfiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
+                      <SelectTrigger className="h-12 bg-background border-border/50 focus:ring-[#bc7e57] rounded-xl font-medium"><SelectValue placeholder="Select team member" /></SelectTrigger>
+                      <SelectContent className="rounded-xl border-border/50">
+                        {teamProfiles.map((p: any) => <SelectItem key={p.id} value={p.id} className="cursor-pointer font-medium">{p.full_name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Extra Days to Credit</Label>
-                    <Input type="number" min="1" max="30" value={creditDays} onChange={e => setCreditDays(e.target.value)} className="h-11" />
-                    <p className="text-xs text-muted-foreground">Added on top of the standard 14-day annual allowance.</p>
+                  <div className="space-y-3">
+                    <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Extra Days</Label>
+                    <Input type="number" min="1" max="30" value={creditDays} onChange={e => setCreditDays(e.target.value)} className="h-12 bg-background border-border/50 text-lg font-bold rounded-xl" />
+                    <p className="text-xs font-semibold text-muted-foreground/70">Added on top of the standard {ANNUAL_LEAVE_DAYS}-day annual allowance.</p>
                   </div>
-                  <Button onClick={handleCreditDays} className="w-full h-11 bg-[#bc7e57] hover:bg-[#a56d49] text-white">
-                    Credit Days to {creditTarget?.full_name || 'Member'}
+                  <Button onClick={handleCreditDays} className="w-full h-12 rounded-xl text-base font-bold bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-lg shadow-[#bc7e57]/20">
+                    Confirm Credit
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
           )}
+
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#bc7e57] hover:bg-[#a56d49] text-white h-9 gap-1.5">
-                <Plus className="h-4 w-4" /> Request Leave
+              <Button className="bg-[#bc7e57] hover:bg-[#a56d49] text-white h-11 px-6 rounded-xl shadow-lg hover:shadow-[#bc7e57]/20 transition-all text-sm font-bold gap-2">
+                <Plane className="h-4 w-4" /> Request Time Off
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle className="text-lg">Submit Leave Request</DialogTitle>
+            <DialogContent className="sm:max-w-xl bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-[#bc7e57]" />
+              <DialogHeader className="px-2 pt-4">
+                <DialogTitle className="text-2xl font-black">Book Time Off</DialogTitle>
+                <p className="text-sm font-medium text-muted-foreground">Submit your leave request for manager approval.</p>
               </DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-5 py-4">
+              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6 py-2 px-2">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Leave Type</Label>
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Leave Type</Label>
                   <Select value={formData.leave_type} onValueChange={(v) => setFormData({ ...formData, leave_type: v })}>
-                    <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {leaveTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    <SelectTrigger className="h-12 bg-background rounded-xl font-bold"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl border-border/50">
+                      {leaveTypes.map(t => <SelectItem key={t.value} value={t.value} className="cursor-pointer font-medium">{t.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Start Date</Label>
-                    <Input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} className="h-11" />
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Start Date</Label>
+                    <Input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} className="h-12 bg-background rounded-xl font-medium" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">End Date</Label>
-                    <Input type="date" required value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} className="h-11" />
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</Label>
+                    <Input type="date" required value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} className="h-12 bg-background rounded-xl font-medium" />
                   </div>
                 </div>
 
-                {/* Live Day Count Preview */}
                 {formDaysPreview > 0 && (
-                  <div className={`flex items-center justify-between p-3.5 rounded-xl border ${formExceedsBalance ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30' : 'bg-muted/30 border-border/40'}`}>
-                    <span className="text-sm font-medium">
-                      {formDaysPreview} day{formDaysPreview !== 1 ? 's' : ''} selected
+                  <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-colors ${formExceedsBalance ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30' : 'bg-[#bc7e57]/5 border-[#bc7e57]/20'}`}>
+                    <span className={`text-base font-black ${formExceedsBalance ? 'text-red-600 dark:text-red-400' : 'text-[#bc7e57]'}`}>
+                      {formDaysPreview} day{formDaysPreview !== 1 ? 's' : ''} total
                     </span>
-                    {formExceedsBalance && (
-                      <span className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1 font-medium">
-                        <AlertTriangle className="h-3 w-3" /> Exceeds balance ({daysRemaining} remaining)
+                    {formExceedsBalance ? (
+                      <span className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5 font-bold">
+                        <AlertTriangle className="h-4 w-4" /> Exceeds balance ({daysRemaining} left)
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground font-bold flex items-center gap-1.5">
+                         <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Sufficient Balance
                       </span>
                     )}
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Reason {formData.leave_type === 'other' ? '(Required)' : '(Optional)'}</Label>
+                <div className="space-y-2 relative">
+                  <div className="flex items-center justify-between">
+                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reason {formData.leave_type === 'other' ? '(Required)' : '(Optional)'}</Label>
+                     <Button
+                       type="button"
+                       variant="ghost"
+                       size="sm"
+                       className="h-6 text-[10px] px-2 font-bold text-[#bc7e57] hover:bg-[#bc7e57]/10 hover:text-[#bc7e57]"
+                       onClick={handleAIAssist}
+                       disabled={aiGenerating}
+                     >
+                       {aiGenerating
+                         ? <><span className="w-2.5 h-2.5 border border-[#bc7e57] border-t-transparent rounded-full animate-spin mr-1" />Generating...</>
+                         : <><Sparkles className="w-3 h-3 mr-1" />Use AI Assistant</>}
+                     </Button>
+
+                  </div>
                   <Textarea 
                     value={formData.reason} 
                     onChange={(e) => setFormData({ ...formData, reason: e.target.value })} 
-                    placeholder={formData.leave_type === 'other' ? 'Please specify the type of leave and reason...' : 'Reason for leave...'} 
+                    placeholder={formData.leave_type === 'other' ? 'Please specify the reason...' : 'Add a note for your manager...'} 
                     rows={3} 
                     required={formData.leave_type === 'other'}
-                    className="resize-none"
+                    className="resize-none bg-background rounded-xl px-4 py-3 placeholder:font-medium font-medium"
                   />
                 </div>
-                <Button type="submit" className="w-full h-11 bg-[#bc7e57] hover:bg-[#a56d49] text-white font-medium">
+                <Button type="submit" disabled={formExceedsBalance} className="w-full h-12 rounded-xl text-base font-bold bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-lg shadow-[#bc7e57]/20 disabled:opacity-50 disabled:shadow-none transition-all">
                   Submit Request
                 </Button>
               </form>
@@ -504,280 +586,407 @@ const Leave = () => {
         </div>
       </div>
 
-      {/* ═══════ STAT CARDS ═══════ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {/* Annual Leave Balance */}
-        <Card className="border-l-[3px] border-l-[#bc7e57] bg-card">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Annual Balance</p>
-              <div className="h-9 w-9 rounded-lg bg-[#bc7e57]/10 flex items-center justify-center">
-                <CalendarDays className="h-4.5 w-4.5 text-[#bc7e57]" />
-              </div>
-            </div>
-            <div className="flex items-baseline gap-2 mb-3">
-              <span className={`text-3xl font-bold tracking-tight ${daysRemaining <= 3 ? 'text-red-500' : 'text-foreground'}`}>{daysRemaining}</span>
-              <span className="text-sm text-muted-foreground">of {ANNUAL_LEAVE_DAYS} days</span>
-            </div>
-            <Progress value={100 - usagePercent} className="h-1.5 mb-2" />
-            <p className="text-[11px] text-muted-foreground">{totalDaysUsed} used this year</p>
-          </CardContent>
-        </Card>
-
-        {/* Pending Requests */}
-        <Card className="bg-card">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Pending</p>
-              <div className="h-9 w-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Clock className="h-4.5 w-4.5 text-amber-500" />
-              </div>
-            </div>
-            <span className={`text-3xl font-bold tracking-tight ${myPendingCount > 0 ? 'text-amber-500' : 'text-foreground'}`}>{myPendingCount}</span>
-            <p className="text-[11px] text-muted-foreground mt-2">{myPendingCount > 0 ? 'Awaiting review' : 'No pending requests'}</p>
-          </CardContent>
-        </Card>
-
-        {/* Approved This Year */}
-        <Card className="bg-card">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Approved</p>
-              <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" />
-              </div>
-            </div>
-            <span className="text-3xl font-bold tracking-tight text-foreground">{myApprovedRequests.length}</span>
-            <p className="text-[11px] text-muted-foreground mt-2">{totalDaysUsed} total days taken</p>
-          </CardContent>
-        </Card>
-
-        {/* Next Leave / Who's Out */}
-        <Card className="bg-card">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                {nextUpcoming ? 'Next Leave' : 'Who\'s Out'}
-              </p>
-              <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <Plane className="h-4.5 w-4.5 text-blue-500" />
-              </div>
-            </div>
-            {nextUpcoming ? (
-              <>
-                <span className="text-3xl font-bold tracking-tight text-foreground">{daysUntilNext}d</span>
-                <p className="text-[11px] text-muted-foreground mt-2">
-                  {formatDate(nextUpcoming.start_date)} — {formatDate(nextUpcoming.end_date)}
-                </p>
-              </>
-            ) : (
-              <>
-                <span className="text-3xl font-bold tracking-tight text-foreground">{staffOnLeaveToday.length}</span>
-                <p className="text-[11px] text-muted-foreground mt-2">
-                  {staffOnLeaveToday.length > 0 ? 'staff members out today' : 'Everyone is available'}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ═══════ WHO'S OUT TODAY — Super Admin ═══════ */}
-      {(isSuperAdmin || isAdmin) && staffOnLeaveToday.length > 0 && (
-        <div className="mb-8 rounded-2xl border border-border/60 bg-card p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <UserCheck className="h-4 w-4 text-blue-500" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm text-foreground">Currently Out of Office</h3>
-              <p className="text-[11px] text-muted-foreground">{staffOnLeaveToday.length} staff member{staffOnLeaveToday.length !== 1 ? 's' : ''} on leave today</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {staffOnLeaveToday.map((person, i) => (
-              <div key={i} className="flex items-center gap-2.5 bg-muted/30 rounded-xl px-3.5 py-2 border border-border/40">
-                <div className="h-7 w-7 rounded-full bg-[#bc7e57]/15 flex items-center justify-center text-[10px] font-bold text-[#bc7e57]">
-                  {getInitials(person.full_name)}
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-foreground leading-tight">{person.full_name}</p>
-                  <p className="text-[10px] text-muted-foreground capitalize">
-                    {leaveTypes.find(t => t.value === person.leave_type)?.label || person.leave_type} • Returns {formatDate(person.end_date)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ═══════ TABBED VIEWS ═══════ */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 flex-1">
-        <TabsList className="bg-muted/50 p-1 rounded-xl">
-          <TabsTrigger value="my-leave" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <CalendarDays className="h-4 w-4" /> Leave Requests
-          </TabsTrigger>
-          {(isSuperAdmin || isAdmin) && (
-            <TabsTrigger value="team-overview" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Users className="h-4 w-4" /> Team Overview
-            </TabsTrigger>
-          )}
-        </TabsList>
-
-        {/* ═══════ MY LEAVE TAB — TIMELINE VIEW ═══════ */}
-        <TabsContent value="my-leave">
-          {loading ? (
-            <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
-              <span className="animate-spin rounded-full h-5 w-5 border-2 border-[#bc7e57] border-t-transparent"/>
-              <span className="text-sm">Loading requests...</span>
-            </div>
-          ) : filteredRequests.length === 0 ? (
-            <EmptyState
-              illustration="leave"
-              heading="No leave requests yet"
-              subtext={showMyLeave ? "You haven't submitted any leave requests. Use the button above to request time off." : "No leave requests have been submitted yet."}
-              ctaText={showMyLeave ? "Request Leave" : undefined}
-              onCta={showMyLeave ? () => setDialogOpen(true) : undefined}
-            />
-          ) : (
-            <div className="space-y-3">
-              {filteredRequests.map((req) => {
-                const sc = statusConfig[req.status] || statusConfig.cancelled;
-                const days = getDaysCount(req.start_date, req.end_date);
-                const typeLabel = leaveTypes.find(t => t.value === req.leave_type)?.label || req.leave_type;
-                const isOwn = req.user_id === profile?.id || req.employee_id === profile?.full_name;
-
-                return (
-                  <div key={req.id} className="group rounded-xl border border-border/50 bg-card hover:border-border/80 transition-all duration-200 overflow-hidden">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5">
-                      {/* Left: Status dot + Info */}
-                      <div className="flex items-start gap-4 flex-1 min-w-0">
-                        <div className={`h-10 w-10 shrink-0 rounded-xl ${sc.bg} flex items-center justify-center mt-0.5`}>
-                          <div className={`h-2.5 w-2.5 rounded-full ${sc.dot}`} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-semibold text-sm text-foreground">{req.employee_id}</h4>
-                            <Badge variant="secondary" className="text-[10px] font-medium px-2 py-0 capitalize bg-muted/50 text-muted-foreground">{typeLabel}</Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-                            <span>{formatDate(req.start_date)}</span>
-                            <ArrowRight className="h-3 w-3" />
-                            <span>{formatDate(req.end_date)}</span>
-                            <span className="text-[#bc7e57] font-semibold ml-1">{days}d</span>
-                          </div>
-                          {req.reason && (
-                            <p className="text-xs text-muted-foreground/70 mt-1.5 truncate max-w-sm">{req.reason}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Right: Status + Actions */}
-                      <div className="flex items-center gap-3 shrink-0 sm:pl-4">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${sc.bg} ${sc.text}`}>
-                          <div className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
-                          {req.status}
-                        </span>
-
-                        {req.status === "pending" && (isAdmin || isSuperAdmin) && (
-                          <div className="flex gap-1.5">
-                            <Button size="sm" variant="outline" className="h-8 px-3 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800/30 dark:hover:bg-emerald-900/20" onClick={() => handleApproval(req.id, "approved")}>
-                              Approve
-                            </Button>
-                            <Button size="sm" variant="outline" className="h-8 px-3 text-xs text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800/30 dark:hover:bg-red-900/20" onClick={() => handleApproval(req.id, "rejected")}>
-                              Reject
-                            </Button>
-                          </div>
-                        )}
-                        {(req.status === "pending" || req.status === "approved") && isOwn && (
-                          <Button size="sm" variant="ghost" className="h-8 px-2 text-xs text-muted-foreground hover:text-red-500" onClick={() => handleCancel(req.id)}>
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 mb-8">
+        
+        {/* 📊 LEFT COLUMN: Analytics & Timeline (8 cols) */}
+        <div className="xl:col-span-8 space-y-8 flex flex-col">
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* 📈 Visual PTO Balance Ring */}
+            <Card className="col-span-1 border-border/60 shadow-lg bg-card rounded-3xl overflow-hidden relative group">
+              <CardContent className="p-6 flex flex-col items-center justify-center min-h-[220px]">
+                <h3 className="text-xs uppercase tracking-widest font-bold text-muted-foreground mb-4">PTO Balance</h3>
+                <div className="relative w-32 h-32 flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-muted/20" />
+                    <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="12" fill="transparent"
+                      strokeDasharray={351.85}
+                      strokeDashoffset={351.85 - (usagePercent / 100) * 351.85}
+                      className="text-[#bc7e57] transition-all duration-1000 ease-out drop-shadow-md" 
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-4xl font-black text-foreground">{daysRemaining}</span>
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground mt-0.5 tracking-wider">Left</span>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* ═══════ TEAM OVERVIEW TAB ═══════ */}
-        {(isSuperAdmin || isAdmin) && (
-          <TabsContent value="team-overview">
-            <Card className="border-border/50">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2.5 text-base">
-                    <Users className="h-5 w-5 text-[#bc7e57]" /> Team Annual Leave ({currentYear})
-                  </CardTitle>
-                  <Badge variant="outline" className="text-xs font-medium border-border/40">{ANNUAL_LEAVE_DAYS} days / year</Badge>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Team Member</TableHead>
-                      <TableHead className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Department</TableHead>
-                      <TableHead className="text-xs font-semibold uppercase tracking-widest text-muted-foreground text-center">Used</TableHead>
-                      <TableHead className="text-xs font-semibold uppercase tracking-widest text-muted-foreground text-center">Left</TableHead>
-                      <TableHead className="text-xs font-semibold uppercase tracking-widest text-muted-foreground text-center">Pending</TableHead>
-                      <TableHead className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Usage</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {teamLeaveData.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="p-0"><EmptyState illustration="staff" heading="No team members" subtext="Team members will appear once assigned profiles."/></TableCell></TableRow>
-                    ) : (
-                      teamLeaveData.map((member: any) => {
-                        const pct = Math.round((member.daysUsed / ANNUAL_LEAVE_DAYS) * 100);
-                        const isDanger = member.daysRemaining <= 3;
-                        return (
-                          <TableRow key={member.id} className="group">
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0">
-                                  {getInitials(member.full_name)}
-                                </div>
-                                <span className="font-medium text-sm">{member.full_name}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{member.department || '—'}</TableCell>
-                            <TableCell className="text-center text-sm font-semibold">{member.daysUsed}</TableCell>
-                            <TableCell className="text-center">
-                              <span className={`text-sm font-bold ${isDanger ? 'text-red-500' : 'text-emerald-600'}`}>{member.daysRemaining}</span>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {member.pendingRequests > 0 ? (
-                                <span className="inline-flex items-center justify-center h-6 min-w-[24px] px-2 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-semibold">{member.pendingRequests}</span>
-                              ) : <span className="text-muted-foreground text-sm">—</span>}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2.5 min-w-[120px]">
-                                <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
-                                  <div 
-                                    className={`h-full rounded-full transition-all ${isDanger ? 'bg-red-400' : 'bg-[#bc7e57]'}`}
-                                    style={{ width: `${Math.min(pct, 100)}%` }}
-                                  />
-                                </div>
-                                <span className={`text-[11px] font-medium w-8 text-right ${isDanger ? 'text-red-500' : 'text-muted-foreground'}`}>{pct}%</span>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
+                <div className="w-full flex justify-between text-xs mt-6 font-bold text-muted-foreground px-2 bg-muted/40 py-2 rounded-xl">
+                   <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#bc7e57]"></div> Used: {totalDaysUsed}</span>
+                   <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div> Total: {ANNUAL_LEAVE_DAYS}</span>
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        )}
-      </Tabs>
-    </div>
+
+            {/* 📊 Quick Stats side-by-side */}
+            <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-6">
+              <Card className="border-border/60 shadow-sm bg-card rounded-3xl hover:shadow-md transition-shadow group">
+                <CardContent className="p-6 flex flex-col h-full justify-center relative overflow-hidden">
+                  <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
+                     <Clock className="w-40 h-40 text-amber-500" />
+                  </div>
+                  <div className="h-12 w-12 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6 shadow-inner ring-1 ring-amber-500/20">
+                    <Clock className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <h3 className="text-xs font-bold text-muted-foreground tracking-widest uppercase mb-1">Awaiting Review</h3>
+                  <div className="flex items-end gap-3">
+                    <p className="text-5xl font-black">{myPendingCount}</p>
+                    <p className="text-sm font-bold text-amber-500 mb-2">Request{myPendingCount !== 1 ? 's' : ''}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/60 shadow-sm bg-card rounded-3xl hover:shadow-md transition-shadow group">
+                <CardContent className="p-6 flex flex-col h-full justify-center relative overflow-hidden">
+                  <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
+                     <TrendingUp className="w-40 h-40 text-emerald-500" />
+                  </div>
+                  <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6 shadow-inner ring-1 ring-emerald-500/20">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                  </div>
+                  <h3 className="text-xs font-bold text-muted-foreground tracking-widest uppercase mb-1">Total Leaves YTD</h3>
+                  <div className="flex items-end gap-3">
+                    <p className="text-5xl font-black">{myApprovedRequests.length}</p>
+                    <p className="text-sm font-bold text-emerald-500 mb-2">Approved</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          <SwapCardWrapper views={[
+            {
+               label: "Upcoming Leave Timeline",
+              content: (
+                 <div className="p-6">
+                   <h3 className="text-lg font-black mb-6">Upcoming Leaves Feed</h3>
+                   {filteredRequests.filter(r => r.status === 'approved' && r.start_date > today).length === 0 ? (
+                     <div className="py-10 text-center text-muted-foreground"><p>No upcoming approved leaves mapped.</p></div>
+                   ) : (
+                     <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
+                       {filteredRequests.filter(r => r.status === 'approved' && r.start_date > today).sort((a,b) => a.start_date.localeCompare(b.start_date)).map((req, i) => (
+                         <div key={req.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                             <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-background bg-emerald-500 text-white shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm z-10">
+                                <Plane className="w-4 h-4" />
+                             </div>
+                             <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-card border border-border/50 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex items-center justify-between mb-1">
+                                   <h4 className="font-bold text-sm">{req.employee_id}</h4>
+                                   <Badge variant="outline" className="text-[10px] bg-muted/50">{leaveTypes.find(t=>t.value===req.leave_type)?.label || req.leave_type}</Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground font-medium">{formatDate(req.start_date)} — {formatDate(req.end_date)} ({getDaysCount(req.start_date, req.end_date)} days)</p>
+                             </div>
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                 </div>
+              )
+            },
+            {
+               label: "Complete Ledger",
+               content: (
+                 <div className="p-6 overflow-x-auto">
+                   <Table>
+                     <TableHeader>
+                       <TableRow>
+                         <TableHead>Employee</TableHead>
+                         <TableHead>Type</TableHead>
+                         <TableHead>Duration</TableHead>
+                         <TableHead>Status</TableHead>
+                       </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                       {filteredRequests.map(req => {
+                         const sc = statusConfig[req.status] || statusConfig.cancelled;
+                         return (
+                           <TableRow key={req.id}>
+                             <TableCell className="font-bold text-xs">{req.employee_id}</TableCell>
+                             <TableCell className="text-xs text-muted-foreground">{leaveTypes.find(t=>t.value===req.leave_type)?.label || req.leave_type}</TableCell>
+                             <TableCell className="text-xs font-medium">{formatDate(req.start_date)} — {formatDate(req.end_date)}</TableCell>
+                             <TableCell>
+                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${sc.bg} ${sc.text}`}>
+                                  {req.status}
+                               </span>
+                             </TableCell>
+                           </TableRow>
+                         )
+                       })}
+                     </TableBody>
+                   </Table>
+                 </div>
+               )
+            },
+            {
+               label: "Leave Trends",
+               content: (
+                 <div className="p-6 h-full flex flex-col">
+                   <h3 className="text-lg font-black mb-6">Annual Leave Trends</h3>
+                   <div className="flex-1 min-h-[300px]">
+                     <ResponsiveContainer width="100%" height="100%">
+                       <AreaChart data={trendData}>
+                         <defs>
+                           <linearGradient id="colorLeaves" x1="0" y1="0" x2="0" y2="1">
+                             <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.3}/>
+                             <stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/>
+                           </linearGradient>
+                         </defs>
+                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                         <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: "hsl(var(--muted-foreground))"}} />
+                         <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: "hsl(var(--muted-foreground))"}} />
+                         <Tooltip contentStyle={{backgroundColor: "hsl(var(--card))", borderRadius: "12px", border: "1px solid hsl(var(--border))"}} />
+                         <Area type="monotone" dataKey="leaves" stroke="#bc7e57" strokeWidth={3} fillOpacity={1} fill="url(#colorLeaves)" />
+                       </AreaChart>
+                     </ResponsiveContainer>
+                   </div>
+                 </div>
+               )
+            },
+            {
+               label: "Attendance Heatmap",
+               content: (
+                 <div className="p-6">
+                   <h3 className="text-lg font-black mb-6 flex items-center gap-2"><History className="w-5 h-5 text-emerald-500" /> Yearly Leave Heatmap</h3>
+                   <div className="p-4 bg-background rounded-2xl border border-border/50">
+                      <ActivityCalendar 
+                         data={(() => {
+                           const map: Record<string, number> = {};
+                           (requests || []).forEach((l: any) => {
+                             if (!l.start_date) return;
+                             const start = new Date(l.start_date);
+                             const end = l.end_date ? new Date(l.end_date) : start;
+                             const intensity = l.status === 'approved' ? 4 : l.status === 'pending' ? 2 : 1;
+                             for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                               map[d.toISOString().split('T')[0]] = intensity;
+                             }
+                           });
+                           const result: { date: string; count: number; level: 0|1|2|3|4 }[] = [];
+                           const today = new Date();
+                           const yearAgo = new Date(today);
+                           yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+                           for (let d = new Date(yearAgo); d <= today; d.setDate(d.getDate() + 1)) {
+                             const key = d.toISOString().split('T')[0];
+                             const level = (map[key] || 0) as 0|1|2|3|4;
+                             result.push({ date: key, count: level, level });
+                           }
+                           return result;
+                         })()}
+                         theme={{
+                           dark: ['#1a1a2e', '#3b3116', '#6b5b2e', '#0d4429', '#26a641'],
+                           light: ['#ebedf0', '#fef3c7', '#fcd34d', '#9be9a8', '#40c463'],
+                         }}
+                         colorScheme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+                         blockSize={14}
+                         blockRadius={3}
+                         fontSize={12}
+                         labels={{
+                           totalCount: '{{count}} leave days in the last year',
+                         }}
+                       />
+                   </div>
+                 </div>
+               )
+            },
+            {
+               label: "Leave Policies & Nigerian Holidays",
+               content: (
+                 <div className="p-6 space-y-6">
+                    <h3 className="text-lg font-black mb-2 flex items-center gap-2">Company Leave Policies</h3>
+                    <div className="space-y-4">
+                       <div className="p-4 bg-background rounded-2xl border border-border/50">
+                          <h4 className="font-bold text-sm text-foreground mb-1">Annual Leave Qualification</h4>
+                          <p className="text-xs text-muted-foreground leading-relaxed">All full-time employees are entitled to 14 days of paid annual leave per calendar year. Prorated for mid-year hires.</p>
+                       </div>
+                       <div className="p-4 bg-background rounded-2xl border border-border/50">
+                          <h4 className="font-bold text-sm text-foreground mb-1">Sick Leave</h4>
+                          <p className="text-xs text-muted-foreground leading-relaxed">Medical certificate required for sick leaves extending beyond 2 consecutive operational days.</p>
+                       </div>
+                    </div>
+
+                    <div>
+                       <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-emerald-600 dark:text-emerald-400">🇳🇬 Nigerian Public Holidays 2026</h3>
+                       <p className="text-xs text-muted-foreground mb-4">These days are fully compensated and are automatically excluded from leave balance deductions.</p>
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {[
+                             { date: "Jan 1", name: "New Year's Day", type: "National" },
+                             { date: "Mar 20", name: "Eid el-Maulud", type: "Religious" },
+                             { date: "Apr 3", name: "Good Friday", type: "Religious" },
+                             { date: "Apr 6", name: "Easter Monday", type: "Religious" },
+                             { date: "May 1", name: "Workers' Day", type: "National" },
+                             { date: "May 27", name: "Children's Day", type: "National" },
+                             { date: "Jun 12", name: "Democracy Day", type: "National" },
+                             { date: "Jul 7-8", name: "Eid el-Fitr", type: "Religious" },
+                             { date: "Sep 13-14", name: "Eid el-Kabir", type: "Religious" },
+                             { date: "Oct 1", name: "Independence Day", type: "National" },
+                             { date: "Oct 4", name: "Eid el-Maulud", type: "Religious" },
+                             { date: "Dec 25", name: "Christmas Day", type: "Religious" },
+                             { date: "Dec 26", name: "Boxing Day", type: "National" },
+                          ].map((h, i) => (
+                             <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${h.type === 'National' ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-900/30' : 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30'}`}>
+                                <div className="flex items-center gap-3">
+                                   <span className={`text-xs font-black px-2 py-1 rounded-lg ${h.type === 'National' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'}`}>{h.date}</span>
+                                   <span className="text-sm font-semibold text-foreground">{h.name}</span>
+                                </div>
+                                <span className={`text-[9px] font-bold uppercase tracking-widest ${h.type === 'National' ? 'text-emerald-500' : 'text-blue-500'}`}>{h.type}</span>
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+                 </div>
+               )
+            },
+            {
+               label: "Calendar View",
+               content: (
+                 <div className="p-6">
+                    <h3 className="text-lg font-black mb-6 flex items-center gap-2"><CalendarDays className="w-5 h-5 text-[#bc7e57]" /> Leave Calendar</h3>
+                    <div className="grid grid-cols-7 gap-2 mb-2">
+                       {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=><div key={d} className="text-center text-xs font-bold uppercase tracking-widest text-muted-foreground">{d}</div>)}
+                    </div>
+                    <div className="grid grid-cols-7 gap-2">
+                       {Array.from({length: 31}).map((_, i) => {
+                          const hasLeave = [5, 12, 13, 22].includes(i + 1);
+                          return (
+                             <div key={i} className={`aspect-square rounded-xl border flex flex-col p-1.5 transition-colors ${hasLeave ? 'bg-[#bc7e57]/10 border-[#bc7e57]/30' : 'bg-background border-border/50 hover:bg-muted/50'}`}>
+                                <span className={`text-xs font-bold ${hasLeave ? 'text-[#bc7e57]' : 'text-muted-foreground'}`}>{i + 1}</span>
+                                {hasLeave && <div className="mt-auto w-full h-1 bg-[#bc7e57] rounded-full" />}
+                             </div>
+                          )
+                       })}
+                    </div>
+                 </div>
+               )
+            }
+          ]} className="rounded-3xl shadow-sm border border-border/50 bg-card overflow-hidden" minHeight="500px" />
+
+        </div>
+
+        {/* 📋 RIGHT COLUMN: Team Absence Board & Action Queue (4 cols) */}
+        <div className="xl:col-span-4 space-y-8 flex flex-col">
+           <Card className="border-border/60 shadow-lg bg-[#bc7e57]/5 backdrop-blur-xl rounded-3xl overflow-hidden shrink-0">
+             <CardHeader className="bg-[#bc7e57]/10 pb-4 border-b border-[#bc7e57]/10">
+               <CardTitle className="text-lg font-bold flex items-center gap-2 text-[#bc7e57]">
+                 <Users className="w-5 h-5" /> Team Absence Board
+               </CardTitle>
+             </CardHeader>
+             <CardContent className="p-5">
+                {staffOnLeaveToday.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-border/50">
+                      <Sparkles className="w-6 h-6 text-emerald-500" />
+                    </div>
+                    <p className="font-bold text-foreground">Everyone's Here</p>
+                    <p className="text-xs text-muted-foreground font-medium">Full team availability today</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Currently Out ({staffOnLeaveToday.length})</p>
+                    <div className="space-y-3">
+                      {staffOnLeaveToday.map((person, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-background/50 p-3 rounded-2xl border border-border/50 shadow-sm relative overflow-hidden group">
+                          <div className="absolute top-0 left-0 w-1 h-full bg-[#bc7e57]" />
+                          <div className="h-10 w-10 shrink-0 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-xs font-black text-[#bc7e57] ml-1">
+                            {getInitials(person.full_name)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-foreground">{person.full_name}</p>
+                            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                               <ArrowRight className="w-3 h-3"/> Returns {formatDate(person.end_date)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+             </CardContent>
+           </Card>
+
+           {/* 🛡️ Manager Pending Queue */}
+           {(isAdmin || isSuperAdmin) && (
+              <Card className="border-border/60 shadow-lg bg-card rounded-3xl overflow-hidden flex-1 flex flex-col">
+                <CardHeader className="bg-muted/30 pb-4 border-b border-border/50">
+                  <CardTitle className="text-lg font-bold flex items-center justify-between">
+                    <div className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-amber-500" /> Action Queue</div>
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200 text-xs px-2 py-0">
+                      {requests.filter(r => r.status === 'pending').length}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 flex-1">
+                  <ScrollArea className="h-[400px]">
+                    <div className="divide-y divide-border/50">
+                      {requests.filter(r => r.status === 'pending').map(req => (
+                        <div key={req.id} className="p-5 hover:bg-muted/10 transition-colors">
+                           <div className="flex justify-between items-start mb-2">
+                             <span className="font-bold text-sm">{req.employee_id}</span>
+                             <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground bg-muted px-2 py-0.5 rounded-sm">{leaveTypes.find(t=>t.value===req.leave_type)?.label || req.leave_type}</span>
+                           </div>
+                           <p className="text-xs text-muted-foreground font-medium mb-4">{formatDate(req.start_date)} - {formatDate(req.end_date)} ({getDaysCount(req.start_date, req.end_date)} days)</p>
+                           
+                           {req.reason && (
+                              <p className="text-xs text-muted-foreground/80 italic border-l-2 border-border pl-2 mb-4">"{req.reason}"</p>
+                           )}
+
+                           <div className="flex gap-2">
+                             <Button size="sm" onClick={() => handleApproval(req.id, "approved")} className="flex-1 h-9 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shadow-md shadow-emerald-500/20">Approve</Button>
+                             <Button size="sm" onClick={() => openApprovalModal(req.id, "rejected", req.leave_type, req.employee_id)} variant="outline" className="flex-1 h-9 text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200 text-xs font-bold bg-background">Deny...</Button>
+                           </div>
+                        </div>
+                      ))}
+                      {requests.filter(r => r.status === 'pending').length === 0 && (
+                        <div className="p-8 text-center text-muted-foreground font-medium flex flex-col items-center">
+                           <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-3">
+                              <CheckCircle2 className="w-6 h-6 text-muted-foreground/50" />
+                           </div>
+                           <p className="text-sm">No pending requests.</p>
+                           <p className="text-xs mt-1">You're all caught up!</p>
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+           )}
+        </div>
+      </div>
+
+      {/* Rejection / Approval Modal for Managers */}
+      <Dialog open={approvalModalOpen} onOpenChange={setApprovalModalOpen}>
+        <DialogContent className="sm:max-w-lg bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-red-500" />
+          <DialogHeader className="pt-4 px-2">
+            <DialogTitle className="text-xl font-black text-red-600 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5" /> Deny Leave Request
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 px-2 py-2">
+             <div className="bg-red-50 dark:bg-red-900/10 p-3 rounded-xl border border-red-200 dark:border-red-800/30">
+                <p className="text-sm font-medium text-red-900 dark:text-red-300">
+                  You are about to deny a <strong>{selectedRequestAction?.type}</strong> request for <strong>{selectedRequestAction?.employee}</strong>.
+                </p>
+             </div>
+             <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reason for Denial (Optional)</Label>
+                <Textarea 
+                   value={approvalReason} 
+                   onChange={(e) => setApprovalReason(e.target.value)} 
+                   placeholder="Provide a reason or alternative dates to the employee..." 
+                   rows={3} 
+                   className="resize-none bg-background rounded-xl font-medium placeholder:font-medium"
+                />
+                <p className="text-[10px] text-muted-foreground font-medium">This reason will be included in the automated email sent to the employee.</p>
+             </div>
+             <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setApprovalModalOpen(false)} className="flex-1 rounded-xl h-11 font-bold">Cancel</Button>
+                <Button onClick={() => selectedRequestAction && handleApproval(selectedRequestAction.id, "rejected", approvalReason)} className="flex-1 rounded-xl h-11 bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-600/20">
+                   Confirm Denial
+                </Button>
+             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </MotionPage>
   );
 };
 

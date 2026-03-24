@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { MotionPage } from "@/components/shared/MotionPage";
+import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -226,7 +228,7 @@ const Clients = () => {
   };
 
   return (
-    <div className="flex-1 w-full flex flex-col min-h-screen bg-background p-6 md:p-8 overflow-y-auto">
+    <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background p-6 md:p-8 overflow-y-auto">
       {/* ═══════ HEADER ═══════ */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
@@ -336,7 +338,52 @@ const Clients = () => {
       </div>
 
       {/* ═══════ EXECUTIVE DASHBOARD (STAT CARDS & CHARTS) ═══════ */}
-      <ClientDashboard clients={clients} profiles={profiles} />
+      <SwapCardWrapper views={[
+        {
+          label: "CRM Dashboard",
+          content: (
+            <div className="p-0">
+              <ClientDashboard clients={clients} profiles={profiles} />
+            </div>
+          ),
+        },
+        {
+          label: "Pipeline Value",
+          content: (() => {
+            const statusCounts = dealStatuses.map(s => ({
+              ...s,
+              count: clients.filter(c => c.deal_status === s.id).length,
+              value: clients.filter(c => c.deal_status === s.id).reduce((sum, c) => sum + (((c as any).deal_value as number) || 0), 0),
+            }));
+            const totalValue = statusCounts.reduce((s, c) => s + c.value, 0);
+            return (
+              <div className="p-6 space-y-4">
+                <h3 className="text-lg font-bold text-foreground">Deal Pipeline Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {statusCounts.map(s => (
+                    <div key={s.id} className="rounded-xl border border-border/50 bg-card p-4 text-center">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{s.label}</p>
+                      <p className="text-2xl font-black mt-1 text-foreground">{s.count}</p>
+                      <p className="text-xs text-muted-foreground mt-1">₦{(s.value / 1_000_000).toFixed(1)}M</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-foreground">Total Pipeline</span>
+                    <span className="text-lg font-black" style={{ color: '#bc7e57' }}>₦{(totalValue / 1_000_000).toFixed(1)}M</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span>Won: <strong className="text-emerald-600 dark:text-emerald-400">{pipelineValue.won}</strong></span>
+                    <span>Active: <strong className="text-blue-600 dark:text-blue-400">{pipelineValue.active}</strong></span>
+                    <span>Win Rate: <strong style={{ color: '#bc7e57' }}>{pipelineValue.winRate}%</strong></span>
+                  </div>
+                </div>
+              </div>
+            );
+          })(),
+        },
+      ]} />
 
       {/* ═══════ VIEW CONTROLS & SEARCH ═══════ */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -608,7 +655,7 @@ const Clients = () => {
           )}
         </>
       )}
-    </div>
+    </MotionPage>
   );
 };
 

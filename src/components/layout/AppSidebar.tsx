@@ -2,11 +2,14 @@
 import { 
   FileText, Truck, Users, CheckSquare, CalendarDays, 
   LayoutDashboard, LogOut, BarChart3, FolderOpen, TrendingUp, Megaphone,
-  Moon, Sun, Shield, Clock, UserCog
+  Moon, Sun, Shield, Clock, UserCog, UsersRound, HardDrive
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Progress } from "@/components/ui/progress";
 import {
   Sidebar,
   SidebarContent,
@@ -40,6 +43,7 @@ const businessModules = [
   { title: "Document Repository", icon: FolderOpen, path: "/documents" },
   { title: "Operations Dashboard", icon: TrendingUp, path: "/ops-dashboard" },
   { title: "Social Media Hub", icon: Megaphone, path: "/social" },
+  { title: "Team Directory", icon: UsersRound, path: "/team" },
 ];
 
 const adminModules = [
@@ -53,6 +57,48 @@ const roleLabels: Record<string, string> = {
   team_member: "Team Member",
   viewer: "Viewer",
 };
+
+function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
+  const { data: storageInfo } = useQuery({
+    queryKey: ["storage-usage"],
+    queryFn: async () => {
+      // List all files in the documents bucket to estimate usage
+      const { data, error } = await supabase.storage.from("documents").list("", { limit: 1000 });
+      if (error) return { usedBytes: 0, totalBytes: 1_073_741_824 }; // 1 GB default
+      const totalSize = (data || []).reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
+      return { usedBytes: totalSize, totalBytes: 1_073_741_824 }; // 1 GB Supabase free tier
+    },
+    staleTime: 5 * 60 * 1000, // cache for 5 minutes
+  });
+
+  const usedMB = ((storageInfo?.usedBytes || 0) / (1024 * 1024)).toFixed(1);
+  const totalGB = ((storageInfo?.totalBytes || 1_073_741_824) / (1024 * 1024 * 1024)).toFixed(0);
+  const pct = storageInfo ? Math.min(100, (storageInfo.usedBytes / storageInfo.totalBytes) * 100) : 0;
+
+  if (isCollapsed) {
+    return (
+      <div className="flex justify-center mb-2" title={`${usedMB} MB / ${totalGB} GB used`}>
+        <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center">
+          <HardDrive className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-muted/20 p-3 mb-2">
+      <div className="flex items-center gap-2 mb-2">
+        <HardDrive className="h-3.5 w-3.5 text-[#bc7e57]" />
+        <span className="text-[11px] font-semibold text-foreground">Storage</span>
+      </div>
+      <Progress value={pct} className="h-1.5 mb-1.5" />
+      <div className="flex justify-between text-[10px] text-muted-foreground">
+        <span>{usedMB} MB used</span>
+        <span>{totalGB} GB total</span>
+      </div>
+    </div>
+  );
+}
 
 export function AppSidebar() {
   const location = useLocation();
@@ -141,6 +187,9 @@ export function AppSidebar() {
             </div>
           </div>
         )}
+        {/* Storage Management Box */}
+        <StorageBox isCollapsed={isCollapsed} />
+
         <Button 
           variant="outline" 
           size="sm" 

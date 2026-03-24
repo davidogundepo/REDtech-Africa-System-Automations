@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, Target, Clock, CheckCircle2, AlertTriangle, Users, CalendarDays, Activity, BarChart3 } from "lucide-react";
+import { Award, Target, Clock, CheckCircle2, AlertTriangle, Users, CalendarDays, Activity, BarChart3, MapPin } from "lucide-react";
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
+
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { AttendanceHeatmap } from "@/components/attendance/AttendanceHeatmap";
 import { getUpcomingHolidays, isNigerianHoliday } from "@/lib/nigerian-holidays";
@@ -219,8 +220,65 @@ export const TeamOverviewCards = ({
                 </div>
               ),
             },
+            {
+              label: "📍 Staff Location Map",
+              content: (() => {
+                // Parse GPS coordinates stored in clock-in notes as [📌 lat, lng]
+                const geoPattern = /\[📌\s*(-?\d+\.\d+),\s*(-?\d+\.\d+)\]/;
+                const staffWithGPS = allRecords
+                  .map((r: any) => {
+                    const match = r.notes?.match(geoPattern);
+                    if (!match) return null;
+                    const staffName = allProfiles?.find((p: any) => p.id === r.user_id)?.full_name || "Staff";
+                    return { name: staffName, lat: parseFloat(match[1]), lng: parseFloat(match[2]), status: r.status };
+                  })
+                  .filter(Boolean) as { name: string; lat: number; lng: number; status: string }[];
+
+                // Default to Lagos if no GPS data yet
+                const centerLat = staffWithGPS.length > 0 ? staffWithGPS[0].lat : 6.5244;
+                const centerLng = staffWithGPS.length > 0 ? staffWithGPS[0].lng : 3.3792;
+                const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${centerLng - 0.05},${centerLat - 0.04},${centerLng + 0.05},${centerLat + 0.04}&layer=mapnik&marker=${centerLat},${centerLng}`;
+
+                return (
+                  <div className="flex flex-col gap-3 mt-1">
+                    <div className="relative rounded-xl overflow-hidden border border-border/40 shadow-sm" style={{ height: 180 }}>
+                      <iframe
+                        src={mapUrl}
+                        className="w-full h-full"
+                        loading="lazy"
+                        title="Staff Location Map"
+                        style={{ border: 0, filter: 'var(--map-filter, none)' }}
+                        sandbox="allow-scripts allow-same-origin"
+                      />
+                      <div className="absolute top-2 left-2 bg-card/90 backdrop-blur-sm border border-border/50 rounded-lg px-2.5 py-1.5 shadow-md">
+                        <p className="text-[10px] font-bold text-foreground flex items-center gap-1.5">
+                          <MapPin className="h-3 w-3 text-[#bc7e57]" />
+                          {staffWithGPS.length} GPS signal{staffWithGPS.length !== 1 ? 's' : ''} today
+                        </p>
+                      </div>
+                    </div>
+                    {staffWithGPS.length > 0 ? (
+                      <div className="space-y-1.5 max-h-[80px] overflow-y-auto pr-1">
+                        {staffWithGPS.map((s, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg bg-muted/20 border border-border/20">
+                            <span className="flex items-center gap-1.5 font-medium">
+                              <span className={`h-2 w-2 rounded-full ${s.status === 'present' ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                              {s.name}
+                            </span>
+                            <span className="text-muted-foreground font-mono text-[10px]">{s.lat.toFixed(4)}, {s.lng.toFixed(4)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground text-center py-2">No GPS-enabled clock-ins yet today. Staff must allow location access when clocking in.</p>
+                    )}
+                  </div>
+                );
+              })(),
+            },
           ]}
         />
+
 
         {/* Employee of the Month */}
         <SwapCardWrapper

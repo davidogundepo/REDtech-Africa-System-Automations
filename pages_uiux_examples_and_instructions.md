@@ -361,3 +361,5 @@ P.S. AND INSTRUCTIONS YOU MUST FOLLOW:
     Always take up space, if creating modals make it wide and large and well data filled, not small and unprofessional, looking cheap. Alway have this in mind amongst others take up space, make it look premium and elegant and simplicity please.
 
     Seamless, "Mission Control" orchestration,	Prototyping, visual tasks, and UI-to-code	Production-grade code and complex debugging
+
+    Please be aware, if there are libraries that we can use instead of building things from scratch please use those libraries [examples, graphs, charts, designs, typography, database, kafka and whatnot] they are  probably more intuitive captivating  than what we can build from scratch  for example Syncfusion tailwind all those kind of things
