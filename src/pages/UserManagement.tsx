@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus, Clock, MapPin, Key, Trash2, Plus, ToggleLeft, ToggleRight, AlertTriangle } from "lucide-react";
+import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus, Clock, MapPin, Key, Trash2, Plus, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { MotionPage } from "@/components/shared/MotionPage";
@@ -576,47 +576,70 @@ const UserManagement = () => {
                   <UserPlus className="h-4 w-4 mr-2" /> Create Staff Profile
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl font-black">Register New Staff</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider">Full Name</Label>
-                    <Input placeholder="John Doe" value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider">Work Email</Label>
-                    <Input type="email" placeholder="john@redtech.africa" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider">Role</Label>
-                      <Select value={newUser.role} onValueChange={(v: any) => setNewUser({...newUser, role: v})}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(roleLabels).map(([val, label]) => <SelectItem key={val} value={val}>{label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+              <DialogContent className="p-0 gap-0 max-w-[95vw] sm:max-w-5xl overflow-hidden bg-background shadow-2xl border-border/40">
+                {/* Two-column layout */}
+                <div className="flex flex-col md:flex-row min-h-[560px]">
+                  {/* LEFT: Brand panel */}
+                  <div className="hidden md:flex flex-col justify-between w-80 shrink-0 bg-gradient-to-b from-[#1a0e06] via-[#0f0905] to-[#080503] p-10 relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, #bc7e57 0%, transparent 60%), radial-gradient(circle at 80% 80%, #bc7e5740 0%, transparent 50%)' }} />
+                    <div className="relative z-10">
+                      <div className="h-12 w-12 rounded-2xl bg-[#bc7e57]/20 border border-[#bc7e57]/30 flex items-center justify-center mb-8">
+                        <UserPlus className="h-6 w-6 text-[#bc7e57]" />
+                      </div>
+                      <h2 className="text-2xl font-black text-white mb-3 leading-tight">Register New<br />Staff Member</h2>
+                      <p className="text-sm text-white/50 leading-relaxed mb-10">Create a platform account for your team. They’ll receive an email invite automatically.</p>
+                      <div className="space-y-5">
+                        {[{ n: '01', t: 'Fill in staff details', d: 'Name, email and department' }, { n: '02', t: 'Assign role & access', d: 'Set permissions level' }, { n: '03', t: 'System sends invite', d: 'Auto-email with login link' }].map(s => (
+                          <div key={s.n} className="flex gap-4 items-start">
+                            <span className="text-[10px] font-black text-[#bc7e57] bg-[#bc7e57]/10 rounded-lg px-2 py-1 mt-0.5 shrink-0 tracking-widest">{s.n}</span>
+                            <div><p className="text-xs font-bold text-white/80">{s.t}</p><p className="text-[10px] text-white/35 mt-0.5">{s.d}</p></div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider">Department</Label>
-                      <Select value={newUser.department} onValueChange={v => setNewUser({...newUser, department: v})}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                    <p className="relative z-10 text-[10px] text-white/20 font-medium tracking-widest uppercase">REDtech Africa &bull; RAC Automations</p>
+                  </div>
+                  {/* RIGHT: Form */}
+                  <div className="flex-1 p-8 md:p-12 overflow-y-auto">
+                    <DialogHeader className="mb-8">
+                      <DialogTitle className="text-3xl font-black text-foreground">New Staff Profile</DialogTitle>
+                      <p className="text-muted-foreground text-sm mt-1">Complete all fields to generate the account and trigger the invitation email.</p>
+                    </DialogHeader>
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Full Name</Label>
+                          <Input placeholder="Dr. Amaka Okonkwo" value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} className="h-12 text-base font-medium" />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Work Email</Label>
+                          <Input type="email" placeholder="amaka@redtechafrica.com" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} className="h-12 text-base font-medium" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Access Role</Label>
+                          <Select value={newUser.role} onValueChange={(v: any) => setNewUser({...newUser, role: v})}>
+                            <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                            <SelectContent>{Object.entries(roleLabels).map(([val, label]) => <SelectItem key={val} value={val}>{label}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Department</Label>
+                          <Select value={newUser.department} onValueChange={v => setNewUser({...newUser, department: v})}>
+                            <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                            <SelectContent>{departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Temporary Password</Label>
+                          <Input type="password" placeholder="Leave blank to use default" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="h-12 text-base" />
+                          <p className="text-[11px] text-muted-foreground">Defaults to <code className="bg-muted px-1 rounded">RACStaff2026!</code> if left blank. Staff should change on first login.</p>
+                        </div>
+                      </div>
+                      <Button className="w-full h-14 bg-[#bc7e57] hover:bg-[#a66c4a] text-white font-black text-base rounded-xl shadow-lg shadow-[#bc7e57]/20 mt-2" onClick={() => createUserMutation.mutate()} disabled={createUserMutation.isPending}>
+                        {createUserMutation.isPending ? "Creating account..." : <>Create Account & Send Invitation →</>}
+                      </Button>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider">Temporary Password</Label>
-                    <Input type="password" placeholder="RACStaff2026!" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
-                    <p className="text-[10px] text-muted-foreground italic">Defaults to RACStaff2026! if left blank.</p>
-                  </div>
-                  <Button className="w-full bg-[#bc7e57] font-bold py-6 text-lg mt-4" onClick={() => createUserMutation.mutate()} disabled={createUserMutation.isPending}>
-                    {createUserMutation.isPending ? "Generating Account..." : "Create & Send Invitation"}
-                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -839,98 +862,94 @@ const UserManagement = () => {
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit User: {editingUser?.full_name}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> Email</Label>
-              <Input value={editingUser?.email || ""} disabled className="bg-muted" />
-            </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2"><Shield className="h-3.5 w-3.5" /> Role</Label>
-              <Select value={editRole} onValueChange={(v) => setEditRole(v as UserRole)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="super_admin">Super Admin</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="team_member">Team Member</SelectItem>
-                  <SelectItem value="viewer">Viewer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> Department</Label>
-              <Select value={editDepartment} onValueChange={setEditDepartment}>
-                <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
-                <SelectContent>
-                  {departments.map(d => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
+        <DialogContent className="p-0 gap-0 max-w-[95vw] sm:max-w-5xl overflow-hidden bg-background shadow-2xl border-border/40">
+          <div className="flex flex-col md:flex-row min-h-[520px]">
+            {/* LEFT: User context panel */}
+            <div className="hidden md:flex flex-col justify-between w-72 shrink-0 bg-gradient-to-b from-[#0d0a08] to-[#1a120a] p-10 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(ellipse at top, #bc7e5740, transparent 70%)' }} />
+              <div className="relative z-10">
+                <div className="h-20 w-20 rounded-3xl bg-[#bc7e57]/10 border-2 border-[#bc7e57]/30 flex items-center justify-center mb-6 text-3xl font-black text-[#bc7e57]">
+                  {(editingUser?.full_name || 'U').charAt(0).toUpperCase()}
+                </div>
+                <h3 className="text-xl font-black text-white mb-1">{editingUser?.full_name}</h3>
+                <p className="text-sm text-white/40 mb-2">{editingUser?.email}</p>
+                <div className="inline-flex items-center gap-2 bg-[#bc7e57]/10 rounded-lg px-3 py-1.5 mt-1">
+                  <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[11px] font-black text-[#bc7e57] uppercase tracking-widest">{editingUser?.department || 'No dept'}</span>
+                </div>
+                <div className="mt-10 space-y-3">
+                  <p className="text-[10px] font-black text-white/25 uppercase tracking-widest mb-4">Editing permissions</p>
+                  {['Role & access level', 'Department assignment', 'Work schedule & location', 'Clock-in requirement'].map(item => (
+                    <div key={item} className="flex items-center gap-3">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <span className="text-[11px] text-white/50 font-medium">{item}</span>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {/* Work Schedule Config */}
-            <div className="space-y-3">
-              <Label className="flex items-center gap-2 text-sm font-medium">
-                ⏰ Work Schedule
-                <span className="text-xs font-normal text-muted-foreground">(affects performance score)</span>
-              </Label>
-              <div className="flex gap-1.5 flex-wrap">
-                {(['mon','tue','wed','thu','fri','sat','sun'] as const).map(day => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => setEditWorkDays(prev => ({ ...prev, [day]: !prev[day] }))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                      editWorkDays[day]
-                        ? 'bg-[#bc7e57] text-white border-[#bc7e57]'
-                        : 'bg-muted text-muted-foreground border-border hover:border-[#bc7e57]/50'
-                    }`}
-                  >
-                    {day.charAt(0).toUpperCase() + day.slice(1)}
-                  </button>
-                ))}
+                </div>
               </div>
-              <div className="flex gap-2">
-                {(['office','hybrid','remote'] as const).map(mode => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setEditWorkMode(mode)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all capitalize ${
-                      editWorkMode === mode
-                        ? 'bg-[#bc7e57]/10 text-[#bc7e57] border-[#bc7e57]/50'
-                        : 'bg-muted text-muted-foreground border-border hover:border-[#bc7e57]/30'
-                    }`}
-                  >
-                    {mode === 'office' ? '🏢 Office' : mode === 'hybrid' ? '🔀 Hybrid' : '🏠 Remote'}
-                  </button>
-                ))}
+              <p className="relative z-10 text-[10px] text-white/20 font-medium tracking-widest uppercase">REDtech Africa &bull; RAC Admin</p>
+            </div>
+            {/* RIGHT: Edit form */}
+            <div className="flex-1 p-8 md:p-12 overflow-y-auto">
+              <DialogHeader className="mb-8">
+                <DialogTitle className="text-3xl font-black">Edit User Profile</DialogTitle>
+                <p className="text-muted-foreground text-sm mt-1">Changes take effect across the platform immediately after saving.</p>
+              </DialogHeader>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> Email Address</Label>
+                  <Input value={editingUser?.email || ''} disabled className="bg-muted h-12 text-base font-medium opacity-60" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2"><Shield className="h-3.5 w-3.5" /> Access Role</Label>
+                    <Select value={editRole} onValueChange={(v) => setEditRole(v as UserRole)}>
+                      <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="super_admin">Super Admin</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="team_member">Team Member</SelectItem>
+                        <SelectItem value="viewer">Viewer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> Department</Label>
+                    <Select value={editDepartment} onValueChange={setEditDepartment}>
+                      <SelectTrigger className="h-12"><SelectValue placeholder="Select department" /></SelectTrigger>
+                      <SelectContent>{departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Work Days</Label>
+                  <div className="flex gap-2 flex-wrap">
+                    {(['mon','tue','wed','thu','fri','sat','sun'] as const).map(day => (
+                      <button key={day} type="button" onClick={() => setEditWorkDays(prev => ({ ...prev, [day]: !prev[day] }))} className={`px-4 py-2 rounded-xl text-xs font-black border transition-all ${ editWorkDays[day] ? 'bg-[#bc7e57] text-white border-[#bc7e57]' : 'bg-muted text-muted-foreground border-border hover:border-[#bc7e57]/50' }`}>
+                        {day.charAt(0).toUpperCase() + day.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-3">
+                    {(['office','hybrid','remote'] as const).map(mode => (
+                      <button key={mode} type="button" onClick={() => setEditWorkMode(mode)} className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-all capitalize ${ editWorkMode === mode ? 'bg-[#bc7e57]/10 text-[#bc7e57] border-[#bc7e57]/50' : 'bg-muted text-muted-foreground border-border hover:border-[#bc7e57]/30' }`}>
+                        {mode === 'office' ? '🏢 Office' : mode === 'hybrid' ? '🔀 Hybrid' : '🏠 Remote'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/30 border border-border/50">
+                  <div>
+                    <p className="text-sm font-black">Clock-in Required</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Does this staff member need to log daily attendance?</p>
+                  </div>
+                  <PremiumToggle checked={editClockInRequired} onChange={() => setEditClockInRequired(!editClockInRequired)} />
+                </div>
+                <Button onClick={handleSaveEdit} className="w-full h-14 font-black text-base rounded-xl" style={{ backgroundColor: '#bc7e57', color: 'white' }} disabled={updateUserMutation.isPending}>
+                  {updateUserMutation.isPending ? 'Syncing changes...' : 'Save Profile Changes →'}
+                </Button>
               </div>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/50">
-               <div className="space-y-0.5">
-                  <Label className="text-sm font-bold">Clock-in Required</Label>
-                  <p className="text-[10px] text-muted-foreground">Is this staff required to log daily attendance?</p>
-               </div>
-               <button 
-                  type="button"
-                  onClick={() => setEditClockInRequired(!editClockInRequired)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${editClockInRequired ? 'bg-[#bc7e57]' : 'bg-muted-foreground/30'}`}
-               >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editClockInRequired ? 'translate-x-6' : 'translate-x-1'}`} />
-               </button>
-            </div>
-            <Button
-              onClick={handleSaveEdit}
-              className="w-full h-12 font-bold text-lg"
-              style={{ backgroundColor: '#bc7e57', color: 'white' }}
-              disabled={updateUserMutation.isPending}
-            >
-              {updateUserMutation.isPending ? "Syncing Changes..." : "Save User Profile"}
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -986,66 +1005,66 @@ const UserManagement = () => {
 
       {/* ── DEPARTMENT MANAGER ──────────────────────────────────── */}
       <Card className="mt-8 border-border/40 bg-card/60 backdrop-blur-xl shadow-xl overflow-hidden">
-        <CardHeader className="border-b border-border/30 pb-4">
-          <CardTitle className="flex items-center gap-2 text-xl font-black">
-            <Building2 className="h-5 w-5 text-[#bc7e57]" /> Department Manager
-          </CardTitle>
-          <p className="text-xs text-muted-foreground font-medium mt-1">Create, toggle, or delete departments. Changes reflect everywhere instantly.</p>
-        </CardHeader>
-        <CardContent className="p-6">
-          {/* Add new department */}
-          <div className="flex gap-3 mb-6">
+        <CardHeader className="border-b border-border/30 pb-5 flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-2xl font-black">
+              <Building2 className="h-6 w-6 text-[#bc7e57]" /> Department Manager
+            </CardTitle>
+            <p className="text-xs text-muted-foreground font-medium mt-1.5">Create, toggle, or remove departments. All changes propagate everywhere instantly.</p>
+          </div>
+          {/* Inline add form */}
+          <div className="flex gap-3 items-center">
             <Input
-              placeholder="New department name e.g. Legal, Creative..."
+              placeholder="New department name..."
               value={newDeptName}
               onChange={e => setNewDeptName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && newDeptName.trim()) { addDepartment(newDeptName); setNewDeptName(''); } }}
-              className="flex-1"
+              className="w-52 h-11 text-sm"
             />
             <Button
               onClick={() => { if (newDeptName.trim()) { addDepartment(newDeptName); setNewDeptName(''); } }}
-              className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white font-bold px-5"
+              className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white font-black h-11 px-5 shadow-lg shadow-[#bc7e57]/20"
             >
               <Plus className="h-4 w-4 mr-2" /> Add
             </Button>
           </div>
-
-          {/* Department list */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {allDepts.map(dept => (
               <div
                 key={dept.id}
-                className={`flex items-center justify-between rounded-xl border px-4 py-3 transition-all ${
-                  dept.isActive ? 'border-border/50 bg-card' : 'border-border/20 bg-muted/20 opacity-60'
+                className={`group relative rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-xl ${
+                  dept.isActive
+                    ? 'border-border/50 bg-card hover:border-[#bc7e57]/20 hover:shadow-[#bc7e57]/5'
+                    : 'border-border/20 bg-muted/20'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: dept.color }} />
-                  <span className={`text-sm font-semibold ${dept.isActive ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
-                    {dept.name}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    title={dept.isActive ? 'Disable department' : 'Enable department'}
-                    onClick={() => toggleDepartment(dept.id)}
-                  >
-                    {dept.isActive
-                      ? <ToggleRight className="h-4 w-4 text-emerald-500" />
-                      : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    title="Delete department"
-                    onClick={() => deleteDepartment(dept.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                {/* Color accent bar */}
+                <div className="absolute inset-x-0 top-0 h-1.5 transition-opacity" style={{ background: `linear-gradient(90deg, ${dept.color}, ${dept.color}60)`, opacity: dept.isActive ? 1 : 0.3 }} />
+                <div className="p-5 pt-8">
+                  <div className="flex items-start justify-between mb-5">
+                    <div>
+                      <div className="h-11 w-11 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: dept.color + '18', border: `1.5px solid ${dept.color}30` }}>
+                        <Building2 className="h-5 w-5" style={{ color: dept.color }} />
+                      </div>
+                      <p className={`font-black text-base tracking-tight ${dept.isActive ? 'text-foreground' : 'text-muted-foreground/50 line-through'}`}>{dept.name}</p>
+                      <p className={`text-[10px] uppercase tracking-widest font-bold mt-1 ${ dept.isActive ? 'text-emerald-500' : 'text-muted-foreground/40' }`}>{dept.isActive ? '● Active' : '○ Disabled'}</p>
+                    </div>
+                    <Button
+                      variant="ghost" size="icon"
+                      className="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all rounded-xl"
+                      onClick={() => deleteDepartment(dept.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-border/30">
+                    <span className={`text-[11px] font-bold ${ dept.isActive ? 'text-muted-foreground' : 'text-muted-foreground/40' }`}>
+                      {dept.isActive ? 'Visible everywhere' : 'Hidden from system'}
+                    </span>
+                    <PremiumToggle checked={dept.isActive} onChange={() => toggleDepartment(dept.id)} size="sm" />
+                  </div>
                 </div>
               </div>
             ))}
@@ -1093,34 +1112,66 @@ const UserManagement = () => {
 
       {/* Wipe confirmation dialog */}
       <Dialog open={wipeDialogOpen} onOpenChange={setWipeDialogOpen}>
-        <DialogContent className="sm:max-w-md border-red-500/30">
-          <DialogHeader>
-            <DialogTitle className="text-red-600 flex items-center gap-2 text-xl font-black">
-              <AlertTriangle className="h-5 w-5" /> Confirm Data Wipe
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 p-4 text-sm text-red-800 dark:text-red-300">
-              <p className="font-black mb-1">This will permanently delete ALL test data from the system.</p>
-              <p>This action <strong>cannot be undone</strong> and the wipe button will be permanently disabled afterwards.</p>
+        <DialogContent className="p-0 gap-0 max-w-[95vw] sm:max-w-4xl overflow-hidden bg-background shadow-2xl border-red-500/20">
+          <div className="flex flex-col md:flex-row">
+            {/* LEFT: Dramatic warning panel */}
+            <div className="hidden md:flex flex-col justify-between w-80 shrink-0 bg-gradient-to-b from-red-950 to-[#0a0000] p-10 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 50% 30%, #ef4444 0%, transparent 60%)' }} />
+              <div className="relative z-10">
+                <div className="h-16 w-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-8">
+                  <AlertTriangle className="h-8 w-8 text-red-400" />
+                </div>
+                <h2 className="text-2xl font-black text-white mb-3 leading-tight">Danger Zone</h2>
+                <p className="text-sm text-white/50 mb-10 leading-relaxed">This action is permanent and irreversible. Take a moment to confirm you’re ready.</p>
+                <div className="space-y-4">
+                  {['tasks', 'clients', 'transactions', 'leave records', 'attendance', 'documents', 'notifications'].map(t => (
+                    <div key={t} className="flex items-center gap-3">
+                      <div className="h-1.5 w-1.5 rounded-full bg-red-400 shrink-0" />
+                      <span className="text-xs text-white/40 capitalize font-medium">{t} will be wiped</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-8 p-4 rounded-xl bg-white/5 border border-white/10">
+                  <p className="text-[11px] text-white/60 font-bold uppercase tracking-widest mb-1">Protected</p>
+                  <p className="text-xs text-white/40">✔️ User accounts preserved<br/>✔️ Budget structures preserved</p>
+                </div>
+              </div>
+              <p className="relative z-10 text-[10px] text-white/20 font-medium tracking-widest uppercase">REDtech Africa &bull; Super Admin Only</p>
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider">Type <span className="text-red-600 font-black">WIPE</span> to confirm</Label>
-              <Input
-                value={wipeConfirmInput}
-                onChange={e => setWipeConfirmInput(e.target.value)}
-                placeholder="Type WIPE here"
-                className="border-red-300 focus:border-red-500"
-              />
+            {/* RIGHT: Confirmation form */}
+            <div className="flex-1 p-8 md:p-12">
+              <DialogHeader className="mb-8">
+                <DialogTitle className="text-3xl font-black text-red-600">Confirm Data Wipe</DialogTitle>
+                <p className="text-muted-foreground text-sm mt-2">This will permanently delete ALL test and dummy data from the platform. The wipe button will be disabled forever after this action.</p>
+              </DialogHeader>
+              <div className="space-y-6">
+                <div className="rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 p-6">
+                  <p className="font-black text-red-800 dark:text-red-300 mb-2 text-base">Before you proceed, confirm:</p>
+                  <ul className="space-y-2 text-sm text-red-700 dark:text-red-400">
+                    <li>• The post-launch meeting is complete</li>
+                    <li>• All team members are aware of the reset</li>
+                    <li>• Real data entry is ready to begin</li>
+                  </ul>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-black uppercase tracking-widest">Type <span className="text-red-600 font-black bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded font-mono">WIPE</span> to unlock</Label>
+                  <Input
+                    value={wipeConfirmInput}
+                    onChange={e => setWipeConfirmInput(e.target.value)}
+                    placeholder="Type WIPE here to enable the button"
+                    className="h-14 text-lg font-bold border-2 border-red-200 dark:border-red-800/40 focus:border-red-500"
+                  />
+                </div>
+                <Button
+                  variant="destructive"
+                  className="w-full h-14 font-black text-base rounded-xl bg-red-600 hover:bg-red-700 transition-all duration-200 disabled:opacity-30"
+                  disabled={wipeConfirmInput !== 'WIPE' || wiping}
+                  onClick={handleDataWipe}
+                >
+                  {wiping ? 'Wiping system data...' : '🗑 Permanently Wipe All Test Data'}
+                </Button>
+              </div>
             </div>
-            <Button
-              variant="destructive"
-              className="w-full font-black py-6 text-base bg-red-600 hover:bg-red-700"
-              disabled={wipeConfirmInput !== 'WIPE' || wiping}
-              onClick={handleDataWipe}
-            >
-              {wiping ? 'Wiping system...' : '🗑 Confirm: Wipe All Test Data'}
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
