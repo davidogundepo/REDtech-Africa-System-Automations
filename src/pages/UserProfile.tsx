@@ -24,6 +24,7 @@ import { ActivityCalendar } from 'react-activity-calendar';
 import { ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, BarChart, Bar } from "recharts";
 import { useTheme } from "@/components/ThemeProvider";
 import { CalendarHeart } from "lucide-react";
+import { useDepartmentNames } from "@/lib/departments";
 
 const rewardsTiers = [
   { name: "Bronze", threshold: 50, color: "#cd7f32" },
@@ -47,7 +48,7 @@ const UserProfile = () => {
   const tooltipBg = theme === "dark" ? "#1f2937" : "#ffffff";
   const tooltipBorder = theme === "dark" ? "#374151" : "#e5e7eb";
 
-  const departments = ["Finance", "Operations", "Delivery Ops", "Resourcing", "HR", "Business Dev", "Marketing", "Executive", "Engineering", "Design"];
+  const departments = useDepartmentNames(); // dynamic from DepartmentProvider
 
   // Fetch the user's tasks
   const { data: tasks } = useQuery({

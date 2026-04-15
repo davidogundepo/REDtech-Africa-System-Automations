@@ -24,6 +24,7 @@ import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { format } from "date-fns";
 import { MotionPage } from "@/components/shared/MotionPage";
+import { useDepartmentNames } from "@/lib/departments";
 
 interface Task {
   id: string;
@@ -49,7 +50,6 @@ interface Profile {
   is_active: boolean;
 }
 
-const departments = ["Finance", "Operations", "Delivery Ops", "Resourcing", "HR", "Business Dev", "Marketing"];
 const priorities = ["low", "medium", "high", "urgent"];
 const statuses = ["pending", "in-progress", "completed", "overdue"];
 
@@ -64,6 +64,7 @@ const emptyTask = { title: "", description: "", due_date: "", priority: "medium"
 
 const Tasks = () => {
   const { profile, canEdit, isSuperAdmin, isAdmin } = useAuth();
+  const departments = useDepartmentNames(); // dynamic from DepartmentProvider
   const [tasks, setTasks] = useState<Task[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");

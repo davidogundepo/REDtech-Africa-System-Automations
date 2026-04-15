@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDepartments, useDepartmentNames } from "@/lib/departments";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, UserRole } from "@/lib/auth-context";
@@ -14,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus, Clock, MapPin, Key } from "lucide-react";
+import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus, Clock, MapPin, Key, Trash2, Plus, ToggleLeft, ToggleRight, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { MotionPage } from "@/components/shared/MotionPage";
@@ -37,10 +38,42 @@ const roleLabels: Record<string, string> = {
   viewer: "Viewer",
 };
 
-const departments = ["Finance", "Operations", "Delivery Ops", "Resourcing", "HR", "Business Dev", "Marketing", "Executive"];
+
 
 const UserManagement = () => {
   const { isSuperAdmin, profile: currentProfile, loading } = useAuth();
+  const departments = useDepartmentNames();
+  const { departments: allDepts, addDepartment, deleteDepartment, toggleDepartment } = useDepartments();
+
+  // Department Manager state
+  const [newDeptName, setNewDeptName] = useState("");
+
+  // Data Reset state
+  const WIPE_LS_KEY = 'rac_data_wipe_done';
+  const [wipeDialogOpen, setWipeDialogOpen] = useState(false);
+  const [wipeConfirmInput, setWipeConfirmInput] = useState("");
+  const [wiping, setWiping] = useState(false);
+  const [wipeAlreadyDone] = useState(() => !!localStorage.getItem(WIPE_LS_KEY));
+
+  const handleDataWipe = async () => {
+    if (wipeConfirmInput !== 'WIPE') return;
+    setWiping(true);
+    try {
+      const tables = ['tasks','clients','transactions','leave_requests','leave_balances','attendance_records','documents','social_posts','ai_chats','payment_requests','notifications'];
+      for (const table of tables) {
+        // Delete all rows — use gt id trick to bypass empty-filter guard
+        await (supabase as any).from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      }
+      localStorage.setItem(WIPE_LS_KEY, new Date().toISOString());
+      setWipeDialogOpen(false);
+      toast.success('✅ All test data wiped. System is clean and ready for real data!');
+      queryClient.invalidateQueries();
+    } catch (e: any) {
+      toast.error('Wipe failed: ' + e.message);
+    } finally {
+      setWiping(false);
+    }
+  };
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -950,6 +983,148 @@ const UserManagement = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── DEPARTMENT MANAGER ──────────────────────────────────── */}
+      <Card className="mt-8 border-border/40 bg-card/60 backdrop-blur-xl shadow-xl overflow-hidden">
+        <CardHeader className="border-b border-border/30 pb-4">
+          <CardTitle className="flex items-center gap-2 text-xl font-black">
+            <Building2 className="h-5 w-5 text-[#bc7e57]" /> Department Manager
+          </CardTitle>
+          <p className="text-xs text-muted-foreground font-medium mt-1">Create, toggle, or delete departments. Changes reflect everywhere instantly.</p>
+        </CardHeader>
+        <CardContent className="p-6">
+          {/* Add new department */}
+          <div className="flex gap-3 mb-6">
+            <Input
+              placeholder="New department name e.g. Legal, Creative..."
+              value={newDeptName}
+              onChange={e => setNewDeptName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && newDeptName.trim()) { addDepartment(newDeptName); setNewDeptName(''); } }}
+              className="flex-1"
+            />
+            <Button
+              onClick={() => { if (newDeptName.trim()) { addDepartment(newDeptName); setNewDeptName(''); } }}
+              className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white font-bold px-5"
+            >
+              <Plus className="h-4 w-4 mr-2" /> Add
+            </Button>
+          </div>
+
+          {/* Department list */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {allDepts.map(dept => (
+              <div
+                key={dept.id}
+                className={`flex items-center justify-between rounded-xl border px-4 py-3 transition-all ${
+                  dept.isActive ? 'border-border/50 bg-card' : 'border-border/20 bg-muted/20 opacity-60'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: dept.color }} />
+                  <span className={`text-sm font-semibold ${dept.isActive ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
+                    {dept.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    title={dept.isActive ? 'Disable department' : 'Enable department'}
+                    onClick={() => toggleDepartment(dept.id)}
+                  >
+                    {dept.isActive
+                      ? <ToggleRight className="h-4 w-4 text-emerald-500" />
+                      : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    title="Delete department"
+                    onClick={() => deleteDepartment(dept.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── DATA RESET (DANGER ZONE) ──────────────────────────────── */}
+      <Card className="mt-6 mb-8 border-red-500/20 bg-red-500/5 backdrop-blur-xl shadow-xl overflow-hidden">
+        <CardHeader className="border-b border-red-500/10 pb-4">
+          <CardTitle className="flex items-center gap-2 text-xl font-black text-red-600">
+            <AlertTriangle className="h-5 w-5" /> Danger Zone — Data Reset
+          </CardTitle>
+          <p className="text-xs text-muted-foreground font-medium mt-1">Permanently wipe all test/dummy data. This cannot be undone.</p>
+        </CardHeader>
+        <CardContent className="p-6">
+          {wipeAlreadyDone ? (
+            <div className="flex items-center gap-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-5 py-4">
+              <div className="h-10 w-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-lg">✅</span>
+              </div>
+              <div>
+                <p className="font-bold text-emerald-700 dark:text-emerald-400">System already wiped</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Test data was cleared on {localStorage.getItem(WIPE_LS_KEY) ? new Date(localStorage.getItem(WIPE_LS_KEY)!).toLocaleString('en-GB') : '—'}. This button is now permanently disabled.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex-1">
+                <p className="text-sm font-bold text-foreground">Wipe all test data</p>
+                <p className="text-xs text-muted-foreground mt-1">Clears: tasks, clients, transactions, leave records, attendance, documents, social posts, AI chats, payment requests, notifications.</p>
+                <p className="text-xs font-bold text-amber-600 mt-1">⚠ User accounts and budget structures are preserved.</p>
+              </div>
+              <Button
+                variant="destructive"
+                className="shrink-0 font-black px-6 bg-red-600 hover:bg-red-700"
+                onClick={() => setWipeDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Wipe Test Data
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Wipe confirmation dialog */}
+      <Dialog open={wipeDialogOpen} onOpenChange={setWipeDialogOpen}>
+        <DialogContent className="sm:max-w-md border-red-500/30">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2 text-xl font-black">
+              <AlertTriangle className="h-5 w-5" /> Confirm Data Wipe
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 p-4 text-sm text-red-800 dark:text-red-300">
+              <p className="font-black mb-1">This will permanently delete ALL test data from the system.</p>
+              <p>This action <strong>cannot be undone</strong> and the wipe button will be permanently disabled afterwards.</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider">Type <span className="text-red-600 font-black">WIPE</span> to confirm</Label>
+              <Input
+                value={wipeConfirmInput}
+                onChange={e => setWipeConfirmInput(e.target.value)}
+                placeholder="Type WIPE here"
+                className="border-red-300 focus:border-red-500"
+              />
+            </div>
+            <Button
+              variant="destructive"
+              className="w-full font-black py-6 text-base bg-red-600 hover:bg-red-700"
+              disabled={wipeConfirmInput !== 'WIPE' || wiping}
+              onClick={handleDataWipe}
+            >
+              {wiping ? 'Wiping system...' : '🗑 Confirm: Wipe All Test Data'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </MotionPage>
   );
 };

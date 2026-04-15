@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ModuleToggleProvider, useModuleToggles } from "@/lib/module-toggles";
+import { DepartmentProvider } from "@/lib/departments";
 import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
 import Waybill from "./pages/Waybill";
@@ -92,7 +93,9 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <ModuleToggleProvider>
-              <AppRoutes />
+              <DepartmentProvider>
+                <AppRoutes />
+              </DepartmentProvider>
             </ModuleToggleProvider>
           </AuthProvider>
         </BrowserRouter>
