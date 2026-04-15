@@ -132,7 +132,7 @@ const GoalRing = ({ label, percent, color, icon: Icon }: any) => (
 );
 
 const Dashboard = () => {
-  const { profile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
 
   // Fetch live stats
   const { data: taskCount } = useQuery({
@@ -188,11 +188,8 @@ const Dashboard = () => {
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   
-  // Use useMemo to prevent greeting switching on re-renders, but since we don't import useMemo, we'll just use a stable determinism or allow random re-render for now. 
-  // Actually, random string is fine for a playground, but let's just stick to timeGreeting to prevent blinking on refresh state loads
-  
-  const firstName = (profile?.full_name || "").split(" ")[0] || "User";
-  const exactGreeting = `${timeGreeting}, ${firstName} 👋`;
+  // Never fall back to "User" while auth is still loading
+  const firstName = authLoading ? "" : (profile?.full_name || "").split(" ")[0] || "There";
   const todayTip = tips[new Date().getDate() % tips.length];
   const roleBadge = profile?.role === "super_admin" ? "Super Admin" : profile?.role === "admin" ? "Admin" : profile?.role || "Team Member";
 
@@ -244,8 +241,13 @@ const Dashboard = () => {
           <Badge className="w-fit bg-white/20 hover:bg-white/30 text-white border-none backdrop-blur-md mb-4 py-1.5 px-3">
              <CalendarDays className="w-3.5 h-3.5 mr-2" /> {format(new Date(), "EEEE, MMMM d, yyyy")}
           </Badge>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-4 text-white drop-shadow-lg">
-             {exactGreeting}
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-4 text-white drop-shadow-lg flex items-baseline gap-4 flex-wrap">
+            <span>{timeGreeting},</span>
+            {authLoading ? (
+              <span className="inline-block h-12 w-44 rounded-xl bg-white/20 animate-pulse" />
+            ) : (
+              <span>{firstName} 👋</span>
+            )}
           </h1>
           <p className="text-white/80 text-lg md:text-xl font-medium max-w-xl leading-relaxed">
             You have <strong className="text-white drop-shadow-md">{taskCount || 3} pending tasks</strong> and <strong className="text-white drop-shadow-md">{pendingLeave || 0} alerts</strong> today. Keep the momentum going.
