@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { MotionPage } from "@/components/shared/MotionPage";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -283,22 +284,23 @@ const Clients = () => {
   };
 
   const handleExportClients = () => {
-    const headers = ["Name", "Company", "Email", "Deal Status", "Industry", "Total Invoiced"];
-    const csvContent = [
-      headers.join(","),
-      ...clients.map(c => [
-        `"${c.name}"`, `"${c.company || ''}"`, `"${c.email || ''}"`, `"${c.deal_status}"`, `"${c.industry || ''}"`, c.total_invoiced || 0
-      ].join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `RAC_Client_Directory_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Client report generated! 📥");
+    const rows = clients.map(c => ({
+      "Name": c.name,
+      "Company": c.company || "",
+      "Email": c.email || "",
+      "Deal Status": c.deal_status,
+      "Industry": c.industry || "",
+      "City": c.city || "",
+      "Total Invoiced (NGN)": c.total_invoiced || 0,
+      "Total Deliveries": c.total_deliveries || 0,
+      "Status": c.status || "",
+      "Last Contact": c.last_contact_date || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Clients");
+    XLSX.writeFile(wb, `RAC_Client_Directory_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    toast.success("Client directory exported as Excel! 📥");
   };
 
   const handleMetricClick = (status: string) => {

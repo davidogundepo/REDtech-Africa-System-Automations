@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -93,22 +94,23 @@ const Tasks = () => {
   useEffect(() => { fetchTasks(); fetchProfiles(); }, []);
 
   const handleExportTasks = () => {
-    const headers = ["Title", "Description", "Assigned To", "Status", "Priority", "Department", "Due Date"];
-    const csvContent = [
-      headers.join(","),
-      ...filtered.map(t => [
-        `"${t.title}"`, `"${t.description || ''}"`, `"${t.assigned_to || ''}"`, `"${t.status}"`, `"${t.priority}"`, `"${t.department || ''}"`, `"${t.due_date || ''}"`
-      ].join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `RAC_Task_Report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Task report generated! 📥");
+    const rows = filtered.map(t => ({
+      "Title": t.title,
+      "Description": t.description || "",
+      "Assigned To": t.assigned_to || "",
+      "Status": t.status,
+      "Priority": t.priority,
+      "Department": t.department || "",
+      "Due Date": t.due_date || "",
+      "Subtasks Total": (t.subtasks || []).length,
+      "Subtasks Done": (t.subtasks || []).filter((s: any) => s.completed).length,
+      "Blockers": (t.blocker_notes || []).length,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Tasks");
+    XLSX.writeFile(wb, `RAC_Task_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    toast.success("Task report exported as Excel! 📥");
   };
 
   const getInitials = (name: string) => (name || "").split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
@@ -119,14 +121,18 @@ const Tasks = () => {
     const { error } = await (supabase as any).from("tasks").update({ subtasks: updatedSubtasks }).eq("id", taskId);
     if (error) { toast.error("Failed to add subtask"); return; }
     setNewSubtaskTitle("");
-    fetchTasks();
-    toast.success("Subtask added");
+    // Sync subtask dialog state immediately so the new subtask appears
+    setSubtaskDialogOpen(prev => prev ? { ...prev, subtasks: updatedSubtasks } : null);
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, subtasks: updatedSubtasks } : t));
+    toast.success("Subtask added ✅");
   };
 
   const toggleSubtask = async (taskId: string, subtasks: any[], subtaskId: string) => {
     const updated = subtasks.map(s => s.id === subtaskId ? { ...s, completed: !s.completed } : s);
     await (supabase as any).from("tasks").update({ subtasks: updated }).eq("id", taskId);
-    fetchTasks();
+    // Sync immediately — no need to refetch whole list for a checkbox toggle
+    setSubtaskDialogOpen(prev => prev ? { ...prev, subtasks: updated } : null);
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, subtasks: updated } : t));
   };
 
   const handleSubmit = async () => {
@@ -246,14 +252,51 @@ const Tasks = () => {
       at: new Date().toISOString(),
     }];
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("tasks")
       .update({ blocker_notes: updatedNotes })
       .eq("id", blockerDialogTask.id);
     
     if (error) { toast.error("Failed to add note"); return; }
     
-    toast.success(`Note added, ${(profile?.full_name || "").split(" ")[0]}! 📝`);
+    // 🚨 Notify the task assigner when a blocker is logged
+    if (blockerDialogTask.assigned_to_user_id) {
+      // Find the person who CREATED / assigned this task — notify them
+      // We notify the assignee's manager by looking for an admin, but for now
+      // we notify the task's assigned_to_user_id if they didn't log it themselves
+      const assignerProfile = profiles.find(p => p.id === blockerDialogTask.assigned_to_user_id);
+      if (assignerProfile && assignerProfile.id !== profile?.id) {
+        // In-app notification
+        (supabase as any).from("notifications").insert({
+          user_id: assignerProfile.id,
+          title: "🚨 Blocker Logged on Your Task",
+          message: `"${blockerDialogTask.title}" — ${newBlockerNote.slice(0, 100)}`,
+          type: "warning",
+          link: "/tasks",
+        }).then();
+        // Email notification
+        sendNotificationEmail({
+          to: assignerProfile.email,
+          subject: `🚨 Blocker Logged: ${blockerDialogTask.title}`,
+          html: brandedEmailTemplate({
+            recipientName: assignerProfile.full_name,
+            heading: "A Blocker Has Been Logged",
+            body: `
+              <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+                <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Task</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${blockerDialogTask.title}</td></tr>
+                <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Logged By</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${profile?.full_name || 'A team member'}</td></tr>
+                <tr><td style="padding:10px 14px; font-weight:600; color:#1a1a2e;">Blocker Note</td><td style="padding:10px 14px; color:#dc2626;">${newBlockerNote}</td></tr>
+              </table>
+              <p>Please review and resolve this blocker to keep the task on track.</p>
+            `,
+            ctaText: "View Task",
+            ctaUrl: "https://ractools.vercel.app/tasks",
+          })
+        });
+      }
+    }
+
+    toast.success(`Blocker logged! ${blockerDialogTask.assigned_to ? `${blockerDialogTask.assigned_to.split(" ")[0]} has been notified. 🚨` : '📝'}`);
     setNewBlockerNote("");
     setBlockerDialogTask(null);
     fetchTasks();

@@ -269,9 +269,8 @@ export function AppSidebar() {
   const isCollapsed = state === "collapsed";
   const { isModuleEnabledByPath, disabledModules, toggleModule } = useModuleToggles();
 
-  // Super Admin always sees everything; others see only enabled modules
+  // All roles respect module toggles — super admin can re-enable via the module manager
   const filterModules = (items: typeof coreModules) => {
-    if (isSuperAdmin) return items;
     return items.filter(item => isModuleEnabledByPath(item.path));
   };
 

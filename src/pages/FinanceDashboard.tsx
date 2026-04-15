@@ -3,13 +3,14 @@ import { MotionPage } from "@/components/shared/MotionPage";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { format, parseISO, subDays } from "date-fns";
 import { useTheme } from "@/components/ThemeProvider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
-import { ArrowUpRight, ArrowDownRight, Banknote, CreditCard, Activity, Calendar as CalendarIcon, Wallet, Plus, Download, Trash2, CheckCircle2, XCircle, Sparkles, RefreshCw, Box } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Banknote, CreditCard, Activity, Calendar as CalendarIcon, Wallet, Plus, Download, Trash2, CheckCircle2, XCircle, Sparkles, RefreshCw, Box, FileText } from "lucide-react";
 import { FinanceCharts } from "@/components/finance/FinanceCharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -146,8 +147,20 @@ const FinanceDashboard = () => {
       return data || [];
     }
   });
+  // 5. Fetch Invoices (auto-written by InvoiceGenerator on PDF download)
+  const { data: invoices, isLoading: loadingInvoices } = useQuery({
+    queryKey: ['finance-invoices'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('transactions')
+        .select('*')
+        .eq('category', 'Invoice')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
-  // Export to CSV function
+
   const handleExportCSV = () => {
     if (!transactions || transactions.length === 0) {
       toast.error("No data to export");
@@ -164,22 +177,20 @@ const FinanceDashboard = () => {
       return;
     }
 
-    const headers = ["Date", "Type", "Category", "Amount (NGN)", "Description", "Created By"];
-    const csvContent = [
-      headers.join(","),
-      ...filteredTxs.map(t => [
-        t.date, t.type, t.category, t.amount, `"${t.description || ''}"`, `"${t.created_by}"`
-      ].join(","))
-    ].join("\n");
+    const rows = filteredTxs.map(t => ({
+      "Date": t.date,
+      "Type": t.type,
+      "Category": t.category,
+      "Amount (NGN)": t.amount,
+      "Description": t.description || "",
+      "Created By": t.created_by,
+    }));
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `RAC_Finance_Export_${exportPeriodFrom}_to_${exportPeriodTo}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`Export ready for ${exportPeriodFrom} to ${exportPeriodTo}! 📥`);
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Transactions");
+    XLSX.writeFile(wb, `RAC_Finance_Export_${exportPeriodFrom}_to_${exportPeriodTo}.xlsx`);
+    toast.success(`Finance report exported as Excel for ${exportPeriodFrom} to ${exportPeriodTo}! 📥`);
   };
 
   // Import from CSV function
@@ -612,6 +623,10 @@ const FinanceDashboard = () => {
 
       <Tabs defaultValue="transactions" className="w-full">
         <TabsList className="mb-6 flex-wrap h-auto gap-2 border-b border-border bg-transparent w-full justify-start rounded-none">
+          <TabsTrigger value="invoices" className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3 flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5 text-emerald-500" /> Invoices
+            {invoices && invoices.length > 0 && <span className="ml-1 bg-emerald-500/20 text-emerald-600 text-[10px] font-black px-1.5 py-0.5 rounded-full">{invoices.length}</span>}
+          </TabsTrigger>
           <TabsTrigger value="transactions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Ledger</TabsTrigger>
           <TabsTrigger value="recurring" className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3 flex items-center">
             <RefreshCw className="w-3.5 h-3.5 mr-2 text-indigo-500" /> Recurring
@@ -623,6 +638,71 @@ const FinanceDashboard = () => {
           {(isAdmin || isSuperAdmin) && <TabsTrigger value="budgets" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Budgets Tracker</TabsTrigger>}
           {(isAdmin || isSuperAdmin) && <TabsTrigger value="recycle" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Recycle Bin</TabsTrigger>}
         </TabsList>
+
+        {/* ── INVOICES TAB ──────────────────────────────────────────── */}
+        <TabsContent value="invoices" className="space-y-6">
+          <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-border/30 pb-4">
+              <div>
+                <CardTitle className="text-xl font-black">Invoice Ledger</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1 font-medium">Auto-synced from Invoice Generator on every PDF download</p>
+              </div>
+              <a href="/invoice">
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md">
+                  <Plus className="w-4 h-4 mr-2" /> New Invoice
+                </Button>
+              </a>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loadingInvoices ? (
+                <div className="flex items-center justify-center py-16"><div className="h-6 w-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>
+              ) : !invoices || invoices.length === 0 ? (
+                <div className="py-16 text-center">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="text-sm font-bold text-muted-foreground">No invoices yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Generate your first invoice to see it appear here automatically.</p>
+                  <a href="/invoice"><Button size="sm" className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">Open Invoice Generator</Button></a>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader className="bg-muted/30">
+                    <TableRow>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6">Invoice / Client</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider">Date</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider">Category</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-right pr-6">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices.map((inv: any) => (
+                      <TableRow key={inv.id} className="hover:bg-muted/10 transition-colors">
+                        <TableCell className="pl-6 py-4">
+                          <p className="font-bold text-sm text-foreground">{inv.description?.split('|')[0]?.trim() || '—'}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{inv.description?.split('|')[1]?.trim() || ''}</p>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm font-medium text-foreground">{inv.date ? format(parseISO(inv.date), 'MMM d, yyyy') : '—'}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold text-[10px] uppercase tracking-wider">Invoice</Badge>
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <span className="text-base font-black text-emerald-600">₦{Number(inv.amount || 0).toLocaleString()}</span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+            {invoices && invoices.length > 0 && (
+              <div className="px-6 py-4 border-t border-border/30 bg-muted/10 flex items-center justify-between">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{invoices.length} invoice{invoices.length !== 1 ? 's' : ''} total</span>
+                <span className="text-lg font-black text-emerald-600">₦{invoices.reduce((s: number, i: any) => s + Number(i.amount || 0), 0).toLocaleString()} total billed</span>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
 
         <TabsContent value="transactions" className="space-y-6">
           <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl">

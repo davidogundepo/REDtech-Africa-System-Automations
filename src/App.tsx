@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
-import { ModuleToggleProvider } from "@/lib/module-toggles";
+import { ModuleToggleProvider, useModuleToggles } from "@/lib/module-toggles";
 import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
 import Waybill from "./pages/Waybill";
@@ -44,6 +44,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Guards a route — redirects to "/" if the module is disabled
+function ModuleGuard({ path, children }: { path: string; children: React.ReactNode }) {
+  const { isModuleEnabledByPath, loading } = useModuleToggles();
+  if (loading) return null;
+  if (!isModuleEnabledByPath(path)) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<Auth />} />
@@ -52,20 +60,20 @@ const AppRoutes = () => (
         <AppLayout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/invoice" element={<Index />} />
-            <Route path="/waybill" element={<Waybill />} />
-            <Route path="/clients" element={<Clients />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/leave" element={<Leave />} />
-            <Route path="/finance-dashboard" element={<FinanceDashboard />} />
-            <Route path="/documents" element={<DocumentRepository />} />
-            <Route path="/ops-dashboard" element={<OpsDashboard />} />
-            <Route path="/social" element={<SocialMediaHub />} />
+            <Route path="/invoice" element={<ModuleGuard path="/invoice"><Index /></ModuleGuard>} />
+            <Route path="/waybill" element={<ModuleGuard path="/waybill"><Waybill /></ModuleGuard>} />
+            <Route path="/clients" element={<ModuleGuard path="/clients"><Clients /></ModuleGuard>} />
+            <Route path="/tasks" element={<ModuleGuard path="/tasks"><Tasks /></ModuleGuard>} />
+            <Route path="/leave" element={<ModuleGuard path="/leave"><Leave /></ModuleGuard>} />
+            <Route path="/finance-dashboard" element={<ModuleGuard path="/finance-dashboard"><FinanceDashboard /></ModuleGuard>} />
+            <Route path="/documents" element={<ModuleGuard path="/documents"><DocumentRepository /></ModuleGuard>} />
+            <Route path="/ops-dashboard" element={<ModuleGuard path="/ops-dashboard"><OpsDashboard /></ModuleGuard>} />
+            <Route path="/social" element={<ModuleGuard path="/social"><SocialMediaHub /></ModuleGuard>} />
             <Route path="/users" element={<UserManagement />} />
             <Route path="/utilisation" element={<StaffUtilisation />} />
-            <Route path="/attendance" element={<Attendance />} />
+            <Route path="/attendance" element={<ModuleGuard path="/attendance"><Attendance /></ModuleGuard>} />
             <Route path="/profile" element={<UserProfile />} />
-            <Route path="/team" element={<TeamDirectory />} />
+            <Route path="/team" element={<ModuleGuard path="/team"><TeamDirectory /></ModuleGuard>} />
             <Route path="/partnerships" element={<PartnershipGenerator />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

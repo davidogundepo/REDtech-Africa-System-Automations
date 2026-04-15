@@ -3,6 +3,7 @@ import {
   BarChart3, FolderOpen, TrendingUp, Megaphone,
   ArrowRight, Sparkles, Target, Zap, Clock, Shield, Briefcase, Activity, Rocket, Download, ListTodo
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
@@ -172,26 +173,16 @@ const Dashboard = () => {
   });
 
   const handleExportDashboard = () => {
-    const headers = ["Module", "Count", "Status"];
     const rows = [
-      ["Tasks", taskCount || 0, "Active"],
-      ["Clients", clientCount || 0, "CRM Active"],
-      ["Leave Requests", pendingLeave || 0, "Pending Approval"],
+      { "Module": "Tasks", "Count": taskCount || 0, "Status": "Active" },
+      { "Module": "Clients", "Count": clientCount || 0, "Status": "CRM Active" },
+      { "Module": "Leave Requests", "Count": pendingLeave || 0, "Status": "Pending Approval" },
     ];
-    
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(r => r.join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `RAC_Dashboard_Report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Dashboard report generated! 📥");
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Dashboard Summary");
+    XLSX.writeFile(wb, `RAC_Dashboard_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    toast.success("Dashboard report exported as Excel! 📥");
   };
 
   const hour = new Date().getHours();

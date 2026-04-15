@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { MotionPage } from "@/components/shared/MotionPage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -76,27 +77,17 @@ const OpsDashboard = () => {
     const totalIssues = metrics?.reduce((sum, m) => sum + m.issues, 0) || 0;
     const activeDeliveriesMap = metrics && metrics.length > 0 ? metrics[metrics.length-1].deliveries : 0;
 
-    const headers = ["Category", "Metric", "Value", "Period"];
     const rows = [
-      ["Deliveries", "Total Deliveries", totalDeliveries, `${dateFrom} to ${dateTo}`],
-      ["Issues", "Total Issues", totalIssues, `${dateFrom} to ${dateTo}`],
-      ["Status", "Active Deliveries", activeDeliveriesMap, `${dateFrom} to ${dateTo}`],
-      ["Services", "Top Revenue", "₦145,000", `${dateFrom} to ${dateTo}`],
+      { "Category": "Deliveries", "Metric": "Total Deliveries", "Value": totalDeliveries, "Period": `${dateFrom} to ${dateTo}` },
+      { "Category": "Issues", "Metric": "Total Issues", "Value": totalIssues, "Period": `${dateFrom} to ${dateTo}` },
+      { "Category": "Status", "Metric": "Active Deliveries", "Value": activeDeliveriesMap, "Period": `${dateFrom} to ${dateTo}` },
+      { "Category": "Services", "Metric": "Top Revenue", "Value": "₦145,000", "Period": `${dateFrom} to ${dateTo}` },
     ];
-    
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(r => r.join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `REDtech_Ops_Report_${dateFrom}_to_${dateTo}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`Ops report spooled for ${dateFrom} to ${dateTo}! 📊`);
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ops Report");
+    XLSX.writeFile(wb, `REDtech_Ops_Report_${dateFrom}_to_${dateTo}.xlsx`);
+    toast.success(`Ops report exported as Excel for ${dateFrom} to ${dateTo}! 📊`);
   };
 
   const performanceData = useMemo(() => {
