@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useDepartments, useDepartmentNames } from "@/lib/departments";
+import { PremiumToggle } from "@/components/ui/premium-toggle";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, UserRole } from "@/lib/auth-context";

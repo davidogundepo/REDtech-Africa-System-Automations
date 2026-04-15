@@ -28,9 +28,10 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import companyLogo from "@/assets/company-logo.png";
 import { useModuleToggles } from "@/lib/module-toggles";
-import { Settings2, ToggleLeft, ToggleRight } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ALL_MODULES, type ModuleKey } from "@/lib/module-toggles";
+import { PremiumToggle } from "@/components/ui/premium-toggle";
 
 const coreModules = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/" },
@@ -395,57 +396,71 @@ export function AppSidebar() {
                 <span>Manage Modules</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[560px] rounded-3xl border-border/30 shadow-2xl p-0 overflow-hidden">
-              {/* Hero Header */}
-              <div className="bg-gradient-to-br from-[#bc7e57]/10 via-background to-background border-b border-border/30 p-8">
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="h-14 w-14 rounded-2xl bg-[#bc7e57]/15 flex items-center justify-center shadow-lg border border-[#bc7e57]/20">
-                    <Settings2 className="h-7 w-7 text-[#bc7e57]" />
+            <DialogContent className="p-0 gap-0 max-w-[95vw] sm:max-w-5xl overflow-hidden bg-background shadow-2xl border-border/40">
+              <div className="flex flex-col md:flex-row min-h-[560px]">
+                {/* LEFT: Brand panel */}
+                <div className="hidden md:flex flex-col justify-between w-64 shrink-0 bg-gradient-to-b from-[#1a0e06] via-[#0f0905] to-[#080503] p-8 relative overflow-hidden">
+                  <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, #bc7e5720 0%, transparent 60%)' }} />
+                  <div className="relative z-10">
+                    <div className="h-12 w-12 rounded-2xl bg-[#bc7e57]/15 border border-[#bc7e57]/30 flex items-center justify-center mb-6">
+                      <Settings2 className="h-6 w-6 text-[#bc7e57]" />
+                    </div>
+                    <h2 className="text-xl font-black text-white mb-2 leading-tight">Module<br/>Manager</h2>
+                    <p className="text-xs text-white/45 leading-relaxed mb-8">Control exactly which tools are visible to your team. Changes are instant and org-wide.</p>
+                    <div className="space-y-4">
+                      {[{ e: '⚡', t: 'Instant effect', d: 'No refresh needed' }, { e: '👥', t: 'Org-wide', d: 'Affects all staff' }, { e: '🔒', t: 'Super Admin only', d: 'Protected control' }].map(s => (
+                        <div key={s.t} className="flex gap-3 items-start">
+                          <span className="text-sm mt-0.5">{s.e}</span>
+                          <div><p className="text-xs font-bold text-white/75">{s.t}</p><p className="text-[10px] text-white/35 mt-0.5">{s.d}</p></div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-black tracking-tight">Module Manager</h2>
-                    <p className="text-sm text-muted-foreground font-medium">Control module visibility for all staff</p>
+                  <p className="relative z-10 text-[10px] text-white/20 font-medium tracking-widest uppercase">RAC System Control</p>
+                </div>
+                {/* RIGHT: Module list */}
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="p-8 pb-5 border-b border-border/30">
+                    <h2 className="text-2xl font-black">System Modules</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Toggle modules on or off. Disabled modules hide instantly for all users.</p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                    {ALL_MODULES.map((mod) => {
+                      const enabled = !disabledModules.includes(mod.key);
+                      return (
+                        <div
+                          key={mod.key}
+                          className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all duration-200 ${
+                            enabled
+                              ? 'border-[#bc7e57]/25 bg-[#bc7e57]/5'
+                              : 'border-border/30 bg-muted/20 opacity-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${ enabled ? 'bg-[#bc7e57]/15' : 'bg-muted/40' }`}>
+                              <Settings2 className={`h-4 w-4 ${ enabled ? 'text-[#bc7e57]' : 'text-muted-foreground/40' }`} />
+                            </div>
+                            <div>
+                              <p className={`font-black text-sm ${ enabled ? 'text-foreground' : 'text-muted-foreground/50 line-through' }`}>{mod.label}</p>
+                              <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${ enabled ? 'text-emerald-500' : 'text-muted-foreground/40' }`}>{enabled ? '● Visible' : '○ Hidden'}</p>
+                            </div>
+                          </div>
+                          <PremiumToggle
+                            size="md"
+                            checked={enabled}
+                            onChange={() => {
+                              toggleModule(mod.key);
+                              toast.success(enabled ? `${mod.label} hidden from all staff` : `${mod.label} restored for all staff`);
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="border-t border-border/30 px-8 py-4 bg-muted/10 shrink-0">
+                    <p className="text-[11px] text-muted-foreground font-medium">Dashboard &amp; Profile are always visible and cannot be disabled.</p>
                   </div>
                 </div>
-              </div>
-              <div className="p-6 space-y-3 max-h-[55vh] overflow-y-auto">
-                {ALL_MODULES.map((mod) => {
-                  const enabled = !disabledModules.includes(mod.key);
-                  return (
-                    <button
-                      key={mod.key}
-                      onClick={() => {
-                        toggleModule(mod.key);
-                        toast.success(
-                          enabled
-                            ? `${mod.label} hidden from all staff`
-                            : `${mod.label} restored for all staff`
-                        );
-                      }}
-                      className={`flex items-center justify-between w-full p-4 rounded-xl border transition-all ${
-                        enabled
-                          ? 'border-[#bc7e57]/20 bg-[#bc7e57]/5 hover:bg-[#bc7e57]/10 shadow-sm'
-                          : 'border-border/50 bg-muted/30 opacity-60 hover:opacity-80'
-                      }`}
-                    >
-                      <span className={`text-sm font-bold ${
-                        enabled ? 'text-foreground' : 'text-muted-foreground line-through'
-                      }`}>
-                        {mod.label}
-                      </span>
-                      {enabled ? (
-                        <ToggleRight className="h-6 w-6 text-[#bc7e57]" />
-                      ) : (
-                        <ToggleLeft className="h-6 w-6 text-muted-foreground" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="border-t border-border/30 p-4 bg-muted/10">
-                <p className="text-[11px] text-muted-foreground text-center font-medium">
-                  Dashboard & Profile are always visible and cannot be disabled.
-                </p>
               </div>
             </DialogContent>
           </Dialog>
@@ -457,56 +472,71 @@ export function AppSidebar() {
                 <Settings2 className="h-4 w-4" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[560px] rounded-3xl border-border/30 shadow-2xl p-0 overflow-hidden">
-              <div className="bg-gradient-to-br from-[#bc7e57]/10 via-background to-background border-b border-border/30 p-8">
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="h-14 w-14 rounded-2xl bg-[#bc7e57]/15 flex items-center justify-center shadow-lg border border-[#bc7e57]/20">
-                    <Settings2 className="h-7 w-7 text-[#bc7e57]" />
+            <DialogContent className="p-0 gap-0 max-w-[95vw] sm:max-w-5xl overflow-hidden bg-background shadow-2xl border-border/40">
+              <div className="flex flex-col md:flex-row min-h-[560px]">
+                {/* LEFT: Brand panel */}
+                <div className="hidden md:flex flex-col justify-between w-64 shrink-0 bg-gradient-to-b from-[#1a0e06] via-[#0f0905] to-[#080503] p-8 relative overflow-hidden">
+                  <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, #bc7e5720 0%, transparent 60%)' }} />
+                  <div className="relative z-10">
+                    <div className="h-12 w-12 rounded-2xl bg-[#bc7e57]/15 border border-[#bc7e57]/30 flex items-center justify-center mb-6">
+                      <Settings2 className="h-6 w-6 text-[#bc7e57]" />
+                    </div>
+                    <h2 className="text-xl font-black text-white mb-2 leading-tight">Module<br/>Manager</h2>
+                    <p className="text-xs text-white/45 leading-relaxed mb-8">Control exactly which tools are visible to your team. Changes are instant and org-wide.</p>
+                    <div className="space-y-4">
+                      {[{ e: '⚡', t: 'Instant effect', d: 'No refresh needed' }, { e: '👥', t: 'Org-wide', d: 'Affects all staff' }, { e: '🔒', t: 'Super Admin only', d: 'Protected control' }].map(s => (
+                        <div key={s.t} className="flex gap-3 items-start">
+                          <span className="text-sm mt-0.5">{s.e}</span>
+                          <div><p className="text-xs font-bold text-white/75">{s.t}</p><p className="text-[10px] text-white/35 mt-0.5">{s.d}</p></div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-black tracking-tight">Module Manager</h2>
-                    <p className="text-sm text-muted-foreground font-medium">Control module visibility for all staff</p>
+                  <p className="relative z-10 text-[10px] text-white/20 font-medium tracking-widest uppercase">RAC System Control</p>
+                </div>
+                {/* RIGHT: Module list */}
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="p-8 pb-5 border-b border-border/30">
+                    <h2 className="text-2xl font-black">System Modules</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Toggle modules on or off. Disabled modules hide instantly for all users.</p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                    {ALL_MODULES.map((mod) => {
+                      const enabled = !disabledModules.includes(mod.key);
+                      return (
+                        <div
+                          key={mod.key}
+                          className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all duration-200 ${
+                            enabled
+                              ? 'border-[#bc7e57]/25 bg-[#bc7e57]/5'
+                              : 'border-border/30 bg-muted/20 opacity-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${ enabled ? 'bg-[#bc7e57]/15' : 'bg-muted/40' }`}>
+                              <Settings2 className={`h-4 w-4 ${ enabled ? 'text-[#bc7e57]' : 'text-muted-foreground/40' }`} />
+                            </div>
+                            <div>
+                              <p className={`font-black text-sm ${ enabled ? 'text-foreground' : 'text-muted-foreground/50 line-through' }`}>{mod.label}</p>
+                              <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${ enabled ? 'text-emerald-500' : 'text-muted-foreground/40' }`}>{enabled ? '● Visible' : '○ Hidden'}</p>
+                            </div>
+                          </div>
+                          <PremiumToggle
+                            size="md"
+                            checked={enabled}
+                            onChange={() => {
+                              toggleModule(mod.key);
+                              toast.success(enabled ? `${mod.label} hidden from all staff` : `${mod.label} restored for all staff`);
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="border-t border-border/30 px-8 py-4 bg-muted/10 shrink-0">
+                    <p className="text-[11px] text-muted-foreground font-medium">Dashboard &amp; Profile are always visible and cannot be disabled.</p>
                   </div>
                 </div>
-              </div>
-              <div className="p-6 space-y-3 max-h-[55vh] overflow-y-auto">
-                {ALL_MODULES.map((mod) => {
-                  const enabled = !disabledModules.includes(mod.key);
-                  return (
-                    <button
-                      key={mod.key}
-                      onClick={() => {
-                        toggleModule(mod.key);
-                        toast.success(
-                          enabled
-                            ? `${mod.label} hidden from all staff`
-                            : `${mod.label} restored for all staff`
-                        );
-                      }}
-                      className={`flex items-center justify-between w-full p-4 rounded-xl border transition-all ${
-                        enabled
-                          ? 'border-[#bc7e57]/20 bg-[#bc7e57]/5 hover:bg-[#bc7e57]/10 shadow-sm'
-                          : 'border-border/50 bg-muted/30 opacity-60 hover:opacity-80'
-                      }`}
-                    >
-                      <span className={`text-sm font-bold ${
-                        enabled ? 'text-foreground' : 'text-muted-foreground line-through'
-                      }`}>
-                        {mod.label}
-                      </span>
-                      {enabled ? (
-                        <ToggleRight className="h-6 w-6 text-[#bc7e57]" />
-                      ) : (
-                        <ToggleLeft className="h-6 w-6 text-muted-foreground" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="border-t border-border/30 p-4 bg-muted/10">
-                <p className="text-[11px] text-muted-foreground text-center font-medium">
-                  Dashboard & Profile are always visible and cannot be disabled.
-                </p>
               </div>
             </DialogContent>
           </Dialog>
