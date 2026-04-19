@@ -49,14 +49,19 @@ export function ViewerRestricted({ action = "perform this action" }: ViewerRestr
         await sendNotificationEmail({
           to: "ayomide@redtechafrica.com",
           subject: `Role Upgrade Request — ${profile?.full_name || "Viewer"}`,
-          html: brandedEmailTemplate(`
-            <h2>Role Upgrade Request</h2>
-            <p><strong>${profile?.full_name || "A viewer"}</strong> (${profile?.email || ""}) is requesting a role upgrade on the RAC Automations Dashboard.</p>
-            <div style="background: #f8f4f0; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #bc7e57;">
-              <p style="margin: 0; font-style: italic;">"${message}"</p>
-            </div>
-            <p>You can manage roles in <a href="https://ractools.vercel.app/users" style="color: #bc7e57;">User Management</a>.</p>
-          `),
+          html: brandedEmailTemplate({
+            recipientName: "Ayomide",
+            heading: "Role Upgrade Request",
+            body: `
+              <p><strong>${profile?.full_name || "A viewer"}</strong> (${profile?.email || ""}) is requesting a role upgrade on the RAC Automations Dashboard.</p>
+              <div style="background: #f8f4f0; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #bc7e57;">
+                <p style="margin: 0; font-style: italic;">"${message}"</p>
+              </div>
+              <p>You can manage roles in User Management.</p>
+            `,
+            ctaText: "Manage Roles",
+            ctaUrl: "https://ractools.vercel.app/users",
+          }),
         });
       } catch (emailErr) {
         console.error("Email sending failed:", emailErr);

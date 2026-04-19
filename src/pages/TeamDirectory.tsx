@@ -34,7 +34,7 @@ const TeamDirectory = () => {
     queryKey: ["team-directory"],
     queryFn: async () => {
       // @ts-ignore — Supabase deep generic chain exceeds TS recursion limit
-      const { data, error } = await supabase.from("profiles").select("*").eq("status", "active").order("full_name");
+      const { data, error } = await supabase.from("profiles").select("*").eq("is_active", true).order("full_name");
       if (error) throw error;
       return (data as any[]) || [];
     },

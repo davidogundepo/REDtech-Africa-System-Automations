@@ -103,6 +103,9 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -188,6 +191,167 @@ main, [role="main"] {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Sidebar collapse discovery pulse — disappears after 4s */
+.sidebar-discovery {
+  animation: sidebar-pulse 1.5s ease-in-out 3;
+  animation-fill-mode: forwards;
+  opacity: 0;
+  animation-delay: 1s;
+}
+@keyframes sidebar-pulse {
+  0%, 100% { opacity: 0; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* GRADE-A PREMIUM UI POLISH — ALL CONTROLS & SURFACES       */
+/* ═══════════════════════════════════════════════════════════ */
+
+/* Premium Switch / Toggle — gradient pill with glow */
+button[role="switch"] {
+  transition: background-color 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+button[role="switch"][data-state="checked"] {
+  background: linear-gradient(135deg, #bc7e57 0%, #d4956b 100%) !important;
+  border-color: #bc7e57 !important;
+  box-shadow: 0 0 12px rgba(188, 126, 87, 0.3), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+}
+button[role="switch"] > span {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04) !important;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* Premium Table Rows — elegant hover with subtle left accent */
+table tbody tr {
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+table tbody tr:hover {
+  background: hsl(var(--muted) / 0.4) !important;
+}
+
+/* Premium Dialog / Modal — frosted glass backdrop */
+[data-state="open"][role="dialog"],
+[data-radix-collection-item] {
+  animation: dialog-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes dialog-enter {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Premium Tooltip styling — sharp, instant, crisp */
+[role="tooltip"] {
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid hsl(var(--border) / 0.4) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.08) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.02em !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  animation: tooltip-in 0.12s ease-out forwards !important;
+  transform-origin: left center !important;
+}
+@keyframes tooltip-in {
+  from { opacity: 0; transform: translateX(-4px) scale(0.96); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+/* Sidebar tooltip overrides — zero delay, tight to icon */
+[data-sidebar="menu-button"] + [role="tooltip"],
+.sidebar-tooltip {
+  transition-delay: 0ms !important;
+}
+
+/* Premium Input Focus — warm glow instead of generic blue ring */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="combobox"]:focus-visible {
+  box-shadow: 0 0 0 3px rgba(188, 126, 87, 0.15), 0 1px 2px rgba(0,0,0,0.06) !important;
+  border-color: #bc7e57 !important;
+}
+
+/* Premium Progress Bar — gradient fill with subtle shine */
+[role="progressbar"] > div {
+  background: linear-gradient(90deg, #bc7e57 0%, #d4a574 60%, #bc7e57 100%) !important;
+  background-size: 200% 100% !important;
+  animation: progress-shimmer 3s ease-in-out infinite !important;
+  border-radius: inherit !important;
+}
+@keyframes progress-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Premium Select Trigger */
+[data-slot="select-trigger"],
+button[role="combobox"] {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+[data-slot="select-trigger"]:hover,
+button[role="combobox"]:hover {
+  border-color: hsl(var(--muted-foreground) / 0.3) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+}
+
+/* Premium Tabs — smooth underline transition */
+[role="tab"] {
+  transition: color 0.25s ease, border-color 0.25s ease, background-color 0.25s ease !important;
+  position: relative;
+}
+
+/* Premium Separator / Divider lines */
+[data-slot="separator"],
+hr {
+  border: none !important;
+  height: 1px !important;
+  background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent) !important;
+}
+
+/* Premium Card inner spacing consistency */
+[data-slot="card-content"] {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11" !important;
+}
+
+/* Premium Avatar / Initials circles */
+.rounded-full[class*="items-center"][class*="justify-center"][class*="font-bold"] {
+  text-rendering: optimizeLegibility !important;
+}
+
+/* Dark mode premium shadows */
+.dark [data-slot="card"]:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25), 0 0 0 1px hsl(var(--border) / 0.5) !important;
+}
+
+/* Premium chart container polish */
+.recharts-wrapper {
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.04));
+}
+.recharts-cartesian-grid line {
+  stroke: hsl(var(--border)) !important;
+  stroke-opacity: 0.4 !important;
+}
+.recharts-tooltip-wrapper {
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1)) !important;
+}
+
+/* Elegant number font for stats/metrics */
+.font-mono, .font-black, [class*="text-3xl"], [class*="text-4xl"], [class*="text-2xl"] {
+  font-feature-settings: "tnum", "lnum" !important;
+}
+
+/* Premium popover/dropdown appearance */
+[data-radix-popper-content-wrapper] {
+  animation: popover-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+@keyframes popover-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @media print {

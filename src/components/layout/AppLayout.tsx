@@ -18,9 +18,9 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
+      <SidebarInset className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out h-screen overflow-hidden">
           <Header aiOpen={aiOpen} setAiOpen={setAiOpen} />
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background/50 h-[calc(100vh-4rem)]">
+          <main className="flex-1 overflow-y-auto bg-background/50">
             <div key={location.pathname} className="animate-fade-in-up min-h-full w-full">
               {children}
             </div>

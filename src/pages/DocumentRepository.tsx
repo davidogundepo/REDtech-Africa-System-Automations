@@ -312,24 +312,42 @@ const DocumentRepository = () => {
       activeTab === "images" ? f.type === "image" :
       activeTab === "documents" ? ["pdf", "word", "excel", "csv", "unknown"].includes(f.type) : true;
     
-    // Mock state filter based on random attributes for demo
+    // State filter: uses 'status' column if available on the document record
     const matchesState = docState === "all" ? true :
-                         docState === "approved" ? f.id.charCodeAt(0) % 2 === 0 :
-                         docState === "waiting" ? f.id.charCodeAt(0) % 3 === 0 :
-                         docState === "draft" ? f.id.charCodeAt(0) % 5 === 0 : true;
+                         docState === "approved" ? (f as any).status === 'approved' :
+                         docState === "waiting" ? (f as any).status === 'pending' || (f as any).status === 'waiting' :
+                         docState === "draft" ? (f as any).status === 'draft' : true;
 
     return matchesSearch && matchesTab && matchesState;
   });
 
-  // Mock Folders Data with seed policy documents
+  // Compute real folder stats from actual uploaded documents
+  const allDocs = documents || [];
+  const computeFolderCount = (dept: string) => allDocs.filter((d: any) => (d.department || '').toLowerCase().includes(dept.toLowerCase())).length;
+  const computeFolderSize = (dept: string) => {
+    const files = allDocs.filter((d: any) => (d.department || '').toLowerCase().includes(dept.toLowerCase()));
+    const totalBytes = files.reduce((sum: number, f: any) => {
+      const sizeStr = f.size || '0';
+      const num = parseFloat(sizeStr);
+      if (sizeStr.includes('GB')) return sum + num * 1024 * 1024 * 1024;
+      if (sizeStr.includes('MB')) return sum + num * 1024 * 1024;
+      if (sizeStr.includes('KB')) return sum + num * 1024;
+      return sum + num;
+    }, 0);
+    if (totalBytes >= 1024 * 1024 * 1024) return `${(totalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+    if (totalBytes >= 1024 * 1024) return `${(totalBytes / (1024 * 1024)).toFixed(0)} MB`;
+    if (totalBytes > 0) return `${(totalBytes / 1024).toFixed(0)} KB`;
+    return '0 KB';
+  };
+
   const mockFolders = [
-    { title: "Finance & Accounting", count: 145, size: "1.2 GB", icon: <Building2 className="w-6 h-6 text-emerald-500"/>, color: "bg-emerald-500/10", border: "border-emerald-500/20",
+    { title: "Finance & Accounting", count: computeFolderCount("finance"), size: computeFolderSize("finance"), icon: <Building2 className="w-6 h-6 text-emerald-500"/>, color: "bg-emerald-500/10", border: "border-emerald-500/20",
       docs: ["Expense Reimbursement Policy.pdf", "Petty Cash Guidelines.pdf", "Vendor Payment Terms.pdf", "Tax Compliance Manual.pdf", "Annual Budget Template.xlsx"] },
-    { title: "Human Resources", count: 89, size: "450 MB", icon: <FileText className="w-6 h-6 text-indigo-500"/>, color: "bg-indigo-500/10", border: "border-indigo-500/20",
+    { title: "Human Resources", count: computeFolderCount("hr") + computeFolderCount("human"), size: computeFolderSize("hr"), icon: <FileText className="w-6 h-6 text-indigo-500"/>, color: "bg-indigo-500/10", border: "border-indigo-500/20",
       docs: ["Employee Handbook 2026.pdf", "Onboarding Checklist.pdf", "Code of Conduct.pdf", "Anti-Harassment Policy.pdf", "Performance Review Framework.pdf"] },
-    { title: "Company Policies", count: 24, size: "120 MB", icon: <AlertCircle className="w-6 h-6 text-amber-500"/>, color: "bg-amber-500/10", border: "border-amber-500/20",
+    { title: "Company Policies", count: computeFolderCount("polic") + computeFolderCount("legal"), size: computeFolderSize("polic"), icon: <AlertCircle className="w-6 h-6 text-amber-500"/>, color: "bg-amber-500/10", border: "border-amber-500/20",
       docs: ["Data Protection & NDPR Compliance.pdf", "Remote Work Policy.pdf", "Leave Allowance Policy.pdf", "IT Security Guidelines.pdf", "Whistleblower Protection Policy.pdf"] },
-    { title: "Brand Assets", count: 312, size: "3.4 GB", icon: <FileImage className="w-6 h-6 text-purple-500"/>, color: "bg-purple-500/10", border: "border-purple-500/20",
+    { title: "Brand Assets", count: computeFolderCount("brand") + computeFolderCount("market") + computeFolderCount("design"), size: computeFolderSize("brand"), icon: <FileImage className="w-6 h-6 text-purple-500"/>, color: "bg-purple-500/10", border: "border-purple-500/20",
       docs: ["REDtech Brand Guidelines v3.pdf", "Logo Suite (All Formats).zip", "Social Media Templates.psd", "Presentation Master Deck.pptx", "Letterhead & Stationery.pdf"] },
   ];
 
@@ -360,6 +378,20 @@ const DocumentRepository = () => {
 
         {/* Global Search and Actions */}
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full sm:w-[180px] h-11 border-border/50 font-bold text-xs uppercase tracking-widest bg-card shadow-sm rounded-full">
+              <Filter className="h-3.5 w-3.5 mr-2" />
+              <SelectValue placeholder="All Depts" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">ALL DEPTS</SelectItem>
+              <SelectItem value="Finance">FINANCE</SelectItem>
+              <SelectItem value="Operations">OPERATIONS</SelectItem>
+              <SelectItem value="HR">HR</SelectItem>
+              <SelectItem value="Marketing">MARKETING</SelectItem>
+            </SelectContent>
+          </Select>
+
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 

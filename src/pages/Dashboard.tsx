@@ -1,7 +1,7 @@
 import { 
   FileText, Truck, Users, CheckSquare, CalendarDays, 
   BarChart3, FolderOpen, TrendingUp, Megaphone,
-  ArrowRight, Sparkles, Target, Zap, Clock, Shield, Briefcase, Activity, Rocket
+  ArrowRight, Sparkles, Target, Zap, Clock, Shield, Briefcase, Activity, Rocket, Download, ListTodo
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
@@ -9,6 +9,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { MotionPage } from "@/components/shared/MotionPage";
@@ -128,7 +131,7 @@ const GoalRing = ({ label, percent, color, icon: Icon }: any) => (
 );
 
 const Dashboard = () => {
-  const { profile, isSuperAdmin, isAdmin } = useAuth();
+  const { profile } = useAuth();
 
   // Fetch live stats
   const { data: taskCount } = useQuery({
@@ -155,9 +158,44 @@ const Dashboard = () => {
     },
   });
 
+  const { data: pendingTasks } = useQuery({
+    queryKey: ["dash-pending-tasks"],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("tasks")
+        .select("id, title, priority, due_date, status")
+        .in("status", ["pending", "in-progress"])
+        .order("due_date", { ascending: true })
+        .limit(5);
+      return data || [];
+    },
+  });
+
+  const handleExportDashboard = () => {
+    const headers = ["Module", "Count", "Status"];
+    const rows = [
+      ["Tasks", taskCount || 0, "Active"],
+      ["Clients", clientCount || 0, "CRM Active"],
+      ["Leave Requests", pendingLeave || 0, "Pending Approval"],
+    ];
+    
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(r => r.join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `RAC_Dashboard_Report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Dashboard report generated! 📥");
+  };
+
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const greetings = ["Welcome back", "Hello", timeGreeting, "Greetings", "Glad to see you"];
   
   // Use useMemo to prevent greeting switching on re-renders, but since we don't import useMemo, we'll just use a stable determinism or allow random re-render for now. 
   // Actually, random string is fine for a playground, but let's just stick to timeGreeting to prevent blinking on refresh state loads
@@ -225,56 +263,97 @@ const Dashboard = () => {
           <div className="flex items-center gap-3 mt-8">
              <Badge className="bg-black/40 border-none text-white backdrop-blur-md p-2 px-4 shadow-sm font-bold text-xs"><Shield className="w-4 h-4 mr-2 text-amber-400"/> {roleBadge}</Badge>
              {profile?.department && <Badge className="bg-black/40 border-none text-white backdrop-blur-md p-2 px-4 shadow-sm font-bold text-xs"><Briefcase className="w-4 h-4 mr-2 text-emerald-400"/> {profile.department}</Badge>}
+             <Button variant="ghost" onClick={handleExportDashboard} className="bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md h-9 px-4 font-bold text-xs">
+                <Download className="w-4 h-4 mr-2" /> Export Report
+             </Button>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 mb-8">
-        {/* 📈 GOALS TRACKER (5 Cols) */}
-        <Card className="xl:col-span-5 border-border/60 shadow-lg bg-card rounded-3xl overflow-hidden relative group">
+        {/* 📈 GOALS TRACKER (4 Cols) */}
+        <Card className="xl:col-span-4 border-border/60 shadow-lg bg-card rounded-3xl overflow-hidden relative group">
           <CardHeader className="border-b border-border/40 bg-muted/20 pb-4">
             <CardTitle className="text-lg font-black flex items-center gap-2">
-               <Target className="w-5 h-5 text-[#bc7e57]" /> Performance Target Tracker
+               <Target className="w-5 h-5 text-[#bc7e57]" /> Performance Tracker
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent className="p-6">
             <div className="flex justify-between items-center gap-2">
                <GoalRing label="Your Goal" percent={78} color="text-amber-500" icon={Zap} />
-               <GoalRing label="Dept Goal" percent={62} color="text-emerald-500" icon={Users} />
                <GoalRing label="Org Goal" percent={85} color="text-[#bc7e57]" icon={Rocket} />
             </div>
-            <div className="mt-8 bg-muted/40 p-4 rounded-2xl border border-border/50 text-sm font-medium text-muted-foreground flex items-start gap-4 hover:shadow-md transition-shadow">
-               <div className="w-10 h-10 bg-amber-500/10 rounded-full flex items-center justify-center shrink-0">
-                 <Sparkles className="w-5 h-5 text-amber-500" />
+            <div className="mt-6 bg-muted/40 p-4 rounded-2xl border border-border/50 text-xs font-medium text-muted-foreground flex items-start gap-3 hover:shadow-md transition-shadow">
+               <div className="w-8 h-8 bg-amber-500/10 rounded-full flex items-center justify-center shrink-0">
+                 <Sparkles className="w-4 h-4 text-amber-500" />
                </div>
-               <p className="leading-relaxed">Your individual throughput is outpacing the departmental average by <strong className="text-foreground">16%</strong>. Excellent momentum this quarter!</p>
+               <p className="leading-relaxed">Individual throughput is outpacing avg by <strong className="text-foreground">16%</strong>.</p>
             </div>
           </CardContent>
         </Card>
 
-        {/* 📊 PERFORMANCE SEGMENT (7 Cols) */}
-        <div className="xl:col-span-7">
+        {/* 📋 PENDING TASKS (4 Cols) */}
+        <Card className="xl:col-span-4 border-border/60 shadow-lg bg-card rounded-3xl overflow-hidden relative group">
+          <CardHeader className="border-b border-border/40 bg-muted/20 pb-4">
+            <CardTitle className="text-lg font-black flex items-center gap-2">
+               <ListTodo className="w-5 h-5 text-[#bc7e57]" /> Priority Tasks
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+             <ScrollArea className="h-[280px]">
+                <div className="divide-y divide-border/30">
+                   {(pendingTasks || []).map((task: any) => (
+                      <div key={task.id} className="p-4 hover:bg-muted/30 transition-colors flex items-center justify-between group/item">
+                         <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-foreground truncate">{task.title}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                               <Badge variant="outline" className={`text-[9px] uppercase font-black tracking-widest ${
+                                  task.priority === 'urgent' ? 'border-red-500 text-red-500 bg-red-500/5' : 
+                                  task.priority === 'high' ? 'border-orange-500 text-orange-500 bg-orange-500/5' : 
+                                  'border-blue-500 text-blue-500 bg-blue-500/5'
+                               }`}>
+                                  {task.priority}
+                               </Badge>
+                               <span className="text-[10px] text-muted-foreground font-medium">Due {task.due_date ? format(new Date(task.due_date), 'MMM d') : 'No date'}</span>
+                            </div>
+                         </div>
+                         <NavLink to="/tasks" className="opacity-0 group-hover/item:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                               <ArrowRight className="h-4 w-4 text-[#bc7e57]" />
+                            </Button>
+                         </NavLink>
+                      </div>
+                   ))}
+                   {(!pendingTasks || pendingTasks.length === 0) && (
+                      <div className="flex flex-col items-center justify-center h-[280px] text-muted-foreground p-8 text-center">
+                         <CheckSquare className="h-10 w-10 mb-2 opacity-20" />
+                         <p className="text-sm font-bold uppercase tracking-widest opacity-40">All clear! No pending tasks.</p>
+                      </div>
+                   )}
+                </div>
+             </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* 📊 PERFORMANCE SEGMENT (4 Cols) */}
+        <div className="xl:col-span-4">
           <SwapCardWrapper views={[
             {
-               label: "Unified Performance Map",
+               label: "Sync Map",
                content: (
                  <div className="p-6 h-full flex flex-col">
-                   <h3 className="text-lg font-black mb-6 flex items-center gap-2"><Activity className="w-5 h-5 text-emerald-500"/> Cross-Department Sync</h3>
-                   <div className="flex-1 min-h-[280px]">
+                   <h3 className="text-sm font-black mb-4 flex items-center gap-2"><Activity className="w-4 h-4 text-emerald-500"/> Cross-Dept Sync</h3>
+                   <div className="flex-1 min-h-[200px]">
                      <ResponsiveContainer width="100%" height="100%">
                        <AreaChart data={performanceData}>
                          <defs>
                            <linearGradient id="colorFin" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
-                           <linearGradient id="colorOps" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#bc7e57" stopOpacity={0.3}/><stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/></linearGradient>
-                           <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
                          </defs>
-                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                         <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: "hsl(var(--muted-foreground))"}} />
-                         <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: "hsl(var(--muted-foreground))"}} />
+                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
+                         <XAxis dataKey="month" hide />
+                         <YAxis hide />
                          <Tooltip contentStyle={{backgroundColor: "hsl(var(--card))", borderRadius: "12px", border: "1px solid hsl(var(--border))"}} />
-                         <Area type="monotone" dataKey="finance" stroke="#10b981" fillOpacity={1} fill="url(#colorFin)" strokeWidth={2} name="Finance Revenue" />
-                         <Area type="monotone" dataKey="operations" stroke="#bc7e57" fillOpacity={1} fill="url(#colorOps)" strokeWidth={2} name="Operations Output" />
-                         <Area type="monotone" dataKey="sales" stroke="#3b82f6" fillOpacity={1} fill="url(#colorSales)" strokeWidth={2} name="CRM Deals" />
+                         <Area type="monotone" dataKey="finance" stroke="#10b981" fillOpacity={1} fill="url(#colorFin)" strokeWidth={2} name="Revenue" />
                        </AreaChart>
                      </ResponsiveContainer>
                    </div>
@@ -282,18 +361,17 @@ const Dashboard = () => {
                )
             },
             {
-               label: "Health Radar",
+               label: "Health",
                content: (
                  <div className="p-6 h-full flex flex-col">
-                   <h3 className="text-lg font-black mb-2 flex items-center gap-2"><Target className="w-5 h-5 text-[#bc7e57]"/> Macro Health Radar</h3>
-                   <div className="flex-1 min-h-[280px]">
+                   <h3 className="text-sm font-black mb-2 flex items-center gap-2"><Target className="w-4 h-4 text-[#bc7e57]"/> Health Radar</h3>
+                   <div className="flex-1 min-h-[200px]">
                      <ResponsiveContainer width="100%" height="100%">
-                       <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                       <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                          <PolarGrid stroke="hsl(var(--border))" />
-                         <PolarAngleAxis dataKey="subject" tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 600}} />
+                         <PolarAngleAxis dataKey="subject" tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 600}} />
                          <PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />
-                         <Radar name="Current Quarter" dataKey="A" stroke="#bc7e57" fill="#bc7e57" fillOpacity={0.4} />
-                         <Radar name="Target" dataKey="B" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeDasharray="3 3" />
+                         <Radar name="Current" dataKey="A" stroke="#bc7e57" fill="#bc7e57" fillOpacity={0.4} />
                          <Tooltip contentStyle={{backgroundColor: "hsl(var(--card))", borderRadius: "12px", border: "1px solid hsl(var(--border))"}} />
                        </RadarChart>
                      </ResponsiveContainer>
@@ -301,7 +379,7 @@ const Dashboard = () => {
                  </div>
                )
             }
-          ]} className="rounded-3xl shadow-lg border border-border/60 bg-card h-full" minHeight="380px" />
+          ]} className="rounded-3xl shadow-lg border border-border/60 bg-card h-full" minHeight="350px" />
         </div>
       </div>
 

@@ -20,9 +20,11 @@ const DEAL_STAGE_COLORS: Record<string, string> = {
 export const ClientDashboard = ({
   clients,
   profiles,
+  onMetricClick,
 }: {
   clients: any[];
   profiles: any[];
+  onMetricClick?: (status: string) => void;
 }) => {
   // ═══════ ANALYTICS COMPUTATIONS ═══════
 
@@ -39,6 +41,10 @@ export const ClientDashboard = ({
   const totalPipelineValue = activeDeals.reduce((sum, c) => sum + getSimulatedValue(c), 0);
   const totalWonValue = wonDeals.reduce((sum, c) => sum + getSimulatedValue(c), 0);
   const avgDealSize = wonDeals.length > 0 ? Math.round(totalWonValue / wonDeals.length) : 0;
+
+  const handleCardClick = (status: string) => {
+    if (onMetricClick) onMetricClick(status);
+  };
 
   // Pie Chart: Deals by Stage
   const dealsByStage = useMemo(() => {
@@ -153,16 +159,16 @@ export const ClientDashboard = ({
       {/* ═══════ TOP KPI CARDS (8 Metrics) ═══════ */}
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
         {[
-          { label: "Total Network", value: totalLeads, icon: Users, color: "text-blue-500" },
-          { label: "Active Pipeline", value: activeDeals.length, icon: Target, color: "text-amber-500" },
-          { label: "Closed Won", value: wonDeals.length, icon: Award, color: "text-emerald-500" },
-          { label: "Win Rate", value: `${winRate}%`, icon: TrendingUp, color: "text-[#bc7e57]" },
-          { label: "Pipeline Value", value: formatMoney(totalPipelineValue), icon: Activity, color: "text-indigo-500" },
-          { label: "Revenue Won", value: formatMoney(totalWonValue), icon: Zap, color: "text-purple-500" },
-          { label: "Avg Deal Size", value: formatMoney(avgDealSize), icon: Building2, color: "text-pink-500" },
-          { label: "Avg Close Time", value: "14 Days", icon: Clock, color: "text-slate-500" },
+          { label: "Total Network", value: totalLeads, icon: Users, color: "text-blue-500", status: "all" },
+          { label: "Active Pipeline", value: activeDeals.length, icon: Target, color: "text-amber-500", status: "qualified" },
+          { label: "Closed Won", value: wonDeals.length, icon: Award, color: "text-emerald-500", status: "won" },
+          { label: "Win Rate", value: `${winRate}%`, icon: TrendingUp, color: "text-[#bc7e57]", status: "all" },
+          { label: "Pipeline Value", value: formatMoney(totalPipelineValue), icon: Activity, color: "text-indigo-500", status: "all" },
+          { label: "Revenue Won", value: formatMoney(totalWonValue), icon: Zap, color: "text-purple-500", status: "won" },
+          { label: "Avg Deal Size", value: formatMoney(avgDealSize), icon: Building2, color: "text-pink-500", status: "all" },
+          { label: "Avg Close Time", value: "14 Days", icon: Clock, color: "text-slate-500", status: "all" },
         ].map((stat, i) => (
-          <Card key={i} className="border-border/40 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
+          <Card key={i} onClick={() => handleCardClick(stat.status)} className="border-border/40 shadow-sm hover:shadow-md transition-all group overflow-hidden relative cursor-pointer">
             <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity ${stat.color}`}>
               <stat.icon className="w-10 h-10 -mr-2 -mt-2" />
             </div>
@@ -200,153 +206,190 @@ export const ClientDashboard = ({
                           <RechartsTooltip contentStyle={{ borderRadius: 8, fontSize: 12, border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", background: "hsl(var(--card))" }} />
                         </PieChart>
                       </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Total Value</span>
-                        <span className="text-lg font-black text-foreground">{totalPipelineValue > 0 ? `$${(totalPipelineValue/1000).toFixed(1)}k` : "$0"}</span>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-xl font-black text-foreground">{activeDeals.length}</span>
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Deals</span>
                       </div>
                     </div>
-                  ) : <div className="flex h-full items-center text-muted-foreground text-sm">No active deals</div>}
-                  {dealsByStage.length > 0 && (
-                     <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2 text-[10px]">
-                      {dealsByStage.map((d, i) => (
-                        <div key={i} className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }}></span><span className="text-muted-foreground">{d.name}</span> <span className="font-bold text-foreground">{d.value}</span></div>
-                      ))}
-                    </div>
-                  )}
+                  ) : <div className="h-[160px] flex items-center justify-center text-muted-foreground text-sm font-medium">No active deals</div>}
+                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
+                    {dealsByStage.map((s, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase">{s.name}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ),
             },
             {
-              label: "Deal Funnel (Bar)",
+              label: "Revenue Forecast (USD)",
               content: (
-                <div className="h-[220px] pt-4">
+                <div className="h-[220px] mt-2">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dealsByStage} layout="vertical" margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} className="opacity-20" />
-                      <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <RechartsTooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: 8, fontSize: 12, border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", background: "hsl(var(--card))" }} />
-                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                        {dealsByStage.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Bar>
-                    </BarChart>
+                    <AreaChart data={monthlyRevenue}>
+                      <defs>
+                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={BRAND} stopOpacity={0.3}/><stop offset="95%" stopColor={BRAND} stopOpacity={0}/></linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} className="opacity-30" />
+                      <XAxis dataKey="month" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <RechartsTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", fontSize: 12 }} />
+                      <Area type="monotone" dataKey="revenue" name="Actual Revenue" stroke={BRAND} fillOpacity={1} fill="url(#colorRev)" strokeWidth={2.5} />
+                      <Area type="monotone" dataKey="forecast" name="Projected Forecast" stroke="#94a3b8" strokeDasharray="5 5" fill="none" strokeWidth={1.5} />
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
-              )
+              ),
+            },
+            {
+              label: "Sales Goals & Targets",
+              content: (
+                <div className="flex flex-col items-center justify-center py-2 h-[220px]">
+                  <div className="relative w-40 h-20 overflow-hidden">
+                    <svg viewBox="0 0 100 50" className="w-full h-full">
+                      <path d="M 5 50 A 45 45 0 0 1 95 50" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/20" />
+                      <path d="M 5 50 A 45 45 0 0 1 95 50" fill="none" stroke={BRAND} strokeWidth="8"
+                        strokeDasharray={`${(winRate / 100) * 141} 141`} strokeLinecap="round" />
+                    </svg>
+                    <div className="absolute inset-x-0 bottom-0 text-center">
+                      <span className="text-2xl font-black text-foreground">{winRate}%</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#bc7e57] mt-2">Win Rate Goal</p>
+                  
+                  <div className="mt-4 w-full space-y-3">
+                    <div className="flex justify-between items-end">
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Revenue Goal</p>
+                        <p className="text-sm font-black text-foreground">$50,000</p>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Current</p>
+                        <p className="text-sm font-black text-emerald-600">{formatMoney(totalWonValue)}</p>
+                      </div>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${Math.min((totalWonValue / 50000) * 100, 100)}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ),
             }
           ]}
         />
 
-        {/* Goals Semicircle (Monthly Target) */}
+        {/* Lead Sources & Top Reps */}
         <SwapCardWrapper
-          className="md:col-span-2 border-border/40 shadow-sm"
+          className="border-border/40 shadow-sm"
           views={[
             {
-              label: "Monthly Sales Goal Progress",
+              label: "Lead Sources",
               content: (
-                <div className="flex flex-col md:flex-row items-center justify-around h-[220px] py-4">
-                  {/* Semicircle Gauge */}
-                  <div className="relative w-48 h-24 shrink-0">
-                    <svg viewBox="0 0 100 50" className="w-full h-full overflow-visible">
-                      {/* Background arc */}
-                      <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round" className="text-muted/30" />
-                      {/* Foreground arc (progress) */}
-                      <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke={BRAND} strokeWidth="12" strokeLinecap="round" 
-                        strokeDasharray={`${(wonDeals.length / Math.max(10, wonDeals.length)) * 125.6} 125.6`} 
-                        className="drop-shadow-sm transition-all duration-1000 ease-in-out" />
-                      {/* Dashes/markers along the arc */}
-                      {[0, 25, 50, 75, 100].map(val => {
-                        const angle = 180 - (val / 100) * 180;
-                        const rad = (angle * Math.PI) / 180;
-                        const x = 50 + 35 * Math.cos(rad);
-                        const y = 50 - 35 * Math.sin(rad);
-                        return (
-                          <text key={val} x={x} y={y} dominantBaseline="middle" textAnchor="middle" className="text-[6px] fill-muted-foreground font-semibold select-none">
-                            {val}
-                          </text>
-                        );
-                      })}
-                    </svg>
-                    <div className="absolute inset-x-0 bottom-[-10px] flex flex-col items-center">
-                      <span className="text-2xl font-black text-foreground">{wonDeals.length}</span>
-                      <span className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground mt-0.5">Deals Closed</span>
-                    </div>
-                  </div>
-
-                  {/* Goal Stats */}
-                  <div className="flex flex-col gap-4 mt-8 md:mt-0 min-w-[200px]">
-                    <div className="bg-muted/20 p-4 rounded-2xl border border-border/40">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Target Revenue ({new Date().toLocaleString('default', { month: 'short' })})</p>
-                      <div className="flex items-end justify-between">
-                        <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatMoney(totalWonValue)}</span>
-                        <span className="text-xs font-semibold text-muted-foreground mb-1">/ $50,000</span>
+                <div className="space-y-3 mt-2 h-[220px] overflow-y-auto pr-1">
+                  {leadSources.map((s, i) => (
+                    <div key={i} className="group cursor-default">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+                          <span className="text-xs font-bold text-foreground group-hover:text-[#bc7e57] transition-colors">{s.source}</span>
+                        </div>
+                        <span className="text-[10px] font-black text-muted-foreground">{s.count} Leads ({s.percent}%)</span>
                       </div>
-                      <div className="h-2 w-full bg-muted mt-3 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600" style={{ width: `${Math.min((totalWonValue / 50000) * 100, 100)}%` }} />
+                      <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${s.percent}%`, backgroundColor: s.color }} />
                       </div>
                     </div>
-                  </div>
+                  ))}
+                  {leadSources.length === 0 && <p className="text-sm text-muted-foreground text-center py-10 font-medium italic">No source data captured yet</p>}
                 </div>
               ),
             },
             {
-              label: "Revenue Forecast (Yearly)",
+              label: "Top Sales Representatives",
               content: (
-                <div className="h-[220px] pt-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyRevenue}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} className="opacity-20" />
-                      <XAxis dataKey="month" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tickFormatter={(val) => `$${val/1000}k`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <RechartsTooltip 
-                        formatter={(value: number) => formatMoney(value)}
-                        contentStyle={{ borderRadius: 8, fontSize: 12, border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", background: "hsl(var(--card))" }} 
-                      />
-                      <Line type="monotone" dataKey="revenue" name="Actual Won" stroke={BRAND} strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                      <Line type="monotone" dataKey="forecast" name="Forecast" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                <div className="space-y-3 mt-2 h-[220px] overflow-y-auto pr-1">
+                  {topReps.map((rep, i) => (
+                    <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 border border-border/10 hover:bg-muted/40 hover:border-[#bc7e57]/20 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-[#bc7e57] font-black text-xs border border-[#bc7e57]/20 shadow-sm">
+                          {getInitials(rep.name)}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-foreground leading-none">{rep.name}</p>
+                          <p className="text-[10px] text-muted-foreground font-medium mt-1">{rep.wonDeals} deals won</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-black text-[#bc7e57]">{formatMoney(rep.value)}</p>
+                        <Badge variant="outline" className="text-[8px] font-black h-4 px-1 mt-1 border-[#bc7e57]/20 text-[#bc7e57]/80">TOP {i + 1}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                  {topReps.length === 0 && <p className="text-sm text-muted-foreground text-center py-10 font-medium italic">No sales activity logged yet</p>}
                 </div>
-              )
-            },
+              ),
+            }
+          ]}
+        />
+
+        {/* MRR Growth & Customer Satisfaction */}
+        <SwapCardWrapper
+          className="border-border/40 shadow-sm"
+          views={[
             {
               label: "Monthly Recurring Revenue (MRR)",
               content: (
-                <div className="h-[220px] pt-4">
+                <div className="h-[220px] mt-2">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={monthlyRecurringRevenue}>
-                      <defs>
-                        <linearGradient id="colorMrr" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.4}/>
-                          <stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="colorProjected" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} className="opacity-20" />
+                    <BarChart data={monthlyRecurringRevenue}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} className="opacity-30" />
                       <XAxis dataKey="month" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tickFormatter={(val) => `$${val/1000}k`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <RechartsTooltip 
-                        formatter={(value: number) => formatMoney(value)}
-                        contentStyle={{ borderRadius: 8, fontSize: 12, border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", background: "hsl(var(--card))" }} 
-                      />
-                      <Area type="monotone" dataKey="mrr" name="Actual MRR" stroke="#bc7e57" fillOpacity={1} fill="url(#colorMrr)" strokeWidth={3} />
-                      <Area type="monotone" dataKey="projected" name="Projected MRR" stroke="#10b981" fillOpacity={1} fill="url(#colorProjected)" strokeWidth={2} strokeDasharray="4 4" />
-                    </AreaChart>
+                      <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <RechartsTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", fontSize: 12 }} />
+                      <Bar dataKey="mrr" name="Actual MRR" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="projected" name="Projected MRR" fill="#94a3b8" opacity={0.3} radius={[4, 4, 0, 0]} />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
-              )
+              ),
+            },
+            {
+              label: "Customer Success Metrics (CSAT)",
+              content: (
+                <div className="space-y-4 mt-2 h-[220px] overflow-y-auto pr-1">
+                  {csatScores.map((c, i) => (                    <div key={i} className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-xs font-bold text-foreground truncate max-w-[120px] leading-none">{c.name}</p>
+                          <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest mt-1.5">{c.industry}</p>
+                        </div>
+                        <div className="flex items-center gap-1 bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                          <Star className="w-3 h-3 fill-current" />
+                          <span className="text-xs font-black">{c.score}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <Star 
+                            key={star} 
+                            className={`w-2.5 h-2.5 ${star <= Math.round(parseFloat(c.score)) ? "text-amber-500 fill-current" : "text-muted/40"}`} 
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {csatScores.length === 0 && <p className="text-sm text-muted-foreground text-center py-10 font-medium italic">No won deals to evaluate yet</p>}
+                </div>
+              ),
             }
           ]}
         />
       </div>
 
       {/* ═══════ DASHBOARD CHARTS ROW 2 ═══════ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="hidden grid grid-cols-1 md:grid-cols-3 gap-4">
         
         {/* Top Sales Representatives */}
         <SwapCardWrapper

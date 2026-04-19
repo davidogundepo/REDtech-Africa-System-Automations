@@ -100,16 +100,24 @@ const UserProfile = () => {
     if (!file || !profile) return;
 
     const fileExt = file.name.split('.').pop();
-    const filePath = `avatars/${profile.id}.${fileExt}`;
+    const filePath = `avatars/${profile.id}_${Date.now()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
+    // Try avatars bucket first, fallback to documents bucket
+    let uploadBucket = "avatars";
+    let { error: uploadError } = await supabase.storage.from(uploadBucket).upload(filePath, file, { upsert: true });
+    if (uploadError && uploadError.message?.includes("not found")) {
+      uploadBucket = "documents";
+      const fallback = await supabase.storage.from(uploadBucket).upload(filePath, file, { upsert: true });
+      uploadError = fallback.error;
+    }
     if (uploadError) {
-      toast.error("Failed to upload: " + uploadError.message);
+      toast.error("Upload failed: " + uploadError.message);
       return;
     }
 
-    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
-    const avatarUrl = urlData.publicUrl;
+    const { data: urlData } = supabase.storage.from(uploadBucket).getPublicUrl(filePath);
+    // Add cache-busting to force browser to load the new image
+    const avatarUrl = urlData.publicUrl + "?t=" + Date.now();
 
     const { error } = await (supabase as any).from("profiles").update({ avatar_url: avatarUrl }).eq("id", profile.id);
     if (error) {
@@ -119,7 +127,8 @@ const UserProfile = () => {
 
     toast.success(`Looking good, ${profile.full_name.split(" ")[0]}! Photo updated 📸`);
     queryClient.invalidateQueries({ queryKey: ["profiles"] });
-    window.location.reload(); 
+    // Force reload to update sidebar avatar and auth context
+    setTimeout(() => window.location.reload(), 500);
   };
 
   const updateNameMutation = useMutation({

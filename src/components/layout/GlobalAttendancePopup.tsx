@@ -47,6 +47,10 @@ export function GlobalAttendancePopup() {
 
   useEffect(() => {
     if (!isLoading && profile && myRecord === null) {
+      // Skip clock-in prompt on weekends (Saturday=6, Sunday=0)
+      const dayOfWeek = new Date().getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) return;
+
       const stored = parseInt(localStorage.getItem(dismissKey) || "0", 10);
       setDismissCount(stored);
 

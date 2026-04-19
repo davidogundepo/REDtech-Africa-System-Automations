@@ -79,6 +79,8 @@ const FinanceDashboard = () => {
   const [isReqDialogOpen, setIsReqDialogOpen] = useState(false);
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState("30d");
+  const [exportPeriodFrom, setExportPeriodFrom] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
+  const [exportPeriodTo, setExportPeriodTo] = useState(format(new Date(), 'yyyy-MM-dd'));
   
   const [newTx, setNewTx] = useState({ amount: "", type: "revenue", category: "", date: format(new Date(), 'yyyy-MM-dd'), description: "" });
   const [newReq, setNewReq] = useState({ amount: "", category: "", description: "" });
@@ -151,10 +153,21 @@ const FinanceDashboard = () => {
       toast.error("No data to export");
       return;
     }
+    
+    const filteredTxs = transactions.filter(t => {
+      const txDate = t.date;
+      return txDate >= exportPeriodFrom && txDate <= exportPeriodTo;
+    });
+
+    if (filteredTxs.length === 0) {
+      toast.error("No transactions found for the selected period");
+      return;
+    }
+
     const headers = ["Date", "Type", "Category", "Amount (NGN)", "Description", "Created By"];
     const csvContent = [
       headers.join(","),
-      ...transactions.map(t => [
+      ...filteredTxs.map(t => [
         t.date, t.type, t.category, t.amount, `"${t.description || ''}"`, `"${t.created_by}"`
       ].join(","))
     ].join("\n");
@@ -162,11 +175,11 @@ const FinanceDashboard = () => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `RAC_Finance_Export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.setAttribute("download", `RAC_Finance_Export_${exportPeriodFrom}_to_${exportPeriodTo}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`Export ready, ${(profile?.full_name || "").split(" ")[0]}! Check your downloads 📥`);
+    toast.success(`Export ready for ${exportPeriodFrom} to ${exportPeriodTo}! 📥`);
   };
 
   // Import from CSV function
@@ -405,22 +418,26 @@ const FinanceDashboard = () => {
           <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Financial Performance</h1>
           <p className="text-muted-foreground mt-2">Real-time revenue, expense tracking, and approvals</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[140px] focus:ring-[#bc7e57]">
-              <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Date Range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="14d">Last 14 Days</SelectItem>
-              <SelectItem value="30d">Last 30 Days</SelectItem>
-              <SelectItem value="90d">Last 3 Months</SelectItem>
-              <SelectItem value="180d">Last 6 Months</SelectItem>
-              <SelectItem value="365d">Last Year</SelectItem>
-              <SelectItem value="all">All Time</SelectItem>
-            </SelectContent>
-          </Select>
-          
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-2xl border border-border/40 backdrop-blur-sm shadow-sm">
+            <div className="flex items-center gap-1.5">
+              <CalendarIcon className="h-4 w-4 text-[#bc7e57] shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-0.5">From</span>
+                <Input type="date" value={exportPeriodFrom} onChange={e => setExportPeriodFrom(e.target.value)} className="h-8 w-36 bg-transparent border-none text-xs font-bold focus-visible:ring-0 p-0 cursor-pointer" />
+              </div>
+            </div>
+            <div className="w-px h-8 bg-border/50" />
+            <div className="flex flex-col">
+              <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-0.5">To</span>
+              <Input type="date" value={exportPeriodTo} onChange={e => setExportPeriodTo(e.target.value)} className="h-8 w-36 bg-transparent border-none text-xs font-bold focus-visible:ring-0 p-0 cursor-pointer" />
+            </div>
+          </div>
+
+          <Button variant="outline" className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 text-[#bc7e57] disabled:opacity-50 h-10 px-4 rounded-2xl font-bold" onClick={handleExportCSV} disabled={!transactions?.length}>
+            <Download className="h-4 w-4 mr-2" /> Export CSV
+          </Button>
+
           {(isAdmin || isSuperAdmin) && (
             <div className="relative">
               <input 
@@ -431,21 +448,17 @@ const FinanceDashboard = () => {
                 onChange={handleImportCSV} 
               />
               <Label htmlFor="csv-upload" className="cursor-pointer">
-                <div className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 border-[#bc7e57]/50 hover:bg-[#bc7e57]/10">
+                <div className="inline-flex items-center justify-center rounded-2xl text-sm font-bold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 border-[#bc7e57]/50 hover:bg-[#bc7e57]/10">
                   <ArrowUpRight className="h-4 w-4 mr-2" /> Import CSV
                 </div>
               </Label>
             </div>
           )}
-
-          <Button variant="outline" className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 text-[#bc7e57] disabled:opacity-50" onClick={handleExportCSV} disabled={!transactions?.length}>
-            <Download className="h-4 w-4 mr-2" /> Export CSV
-          </Button>
           
           {canEdit && (
             <Dialog open={isReqDialogOpen} onOpenChange={setIsReqDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 text-[#bc7e57]">
+                <Button variant="outline" className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 text-[#bc7e57] h-10 px-4 rounded-2xl font-bold">
                   <CreditCard className="h-4 w-4 mr-2" /> Request Payment
                 </Button>
               </DialogTrigger>
@@ -468,7 +481,7 @@ const FinanceDashboard = () => {
           {(isAdmin || isSuperAdmin) && (
             <Dialog open={isTxDialogOpen} onOpenChange={setIsTxDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-[#bc7e57] hover:bg-[#bc7e57]/90">
+                <Button className="bg-[#bc7e57] hover:bg-[#bc7e57]/90 h-10 px-5 rounded-2xl font-bold">
                   <Plus className="h-4 w-4 mr-2" /> Add Transaction
                 </Button>
               </DialogTrigger>

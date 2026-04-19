@@ -201,7 +201,7 @@ export const InvoiceGenerator = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-background animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="flex-1 flex flex-col h-full bg-background overflow-y-auto">
       
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-20 shadow-sm backdrop-blur-md bg-card/80">
@@ -280,8 +280,8 @@ export const InvoiceGenerator = () => {
                     <Layers className="h-5 w-5 text-invoice-accent" />
                     Live Print Preview
                   </h2>
-                  <div className="bg-muted p-2 sm:p-4 rounded-2xl border border-border/50 shadow-inner overflow-auto max-h-[calc(100vh-160px)] custom-scrollbar">
-                    <div className="transform origin-top-left scale-[0.5] sm:scale-[0.6] md:scale-[0.7] lg:scale-[0.55] xl:scale-[0.65] 2xl:scale-[0.8]">
+                  <div className="bg-muted p-4 rounded-2xl border border-border/50 shadow-inner overflow-auto max-h-[calc(100vh-140px)] custom-scrollbar">
+                    <div style={{ zoom: 0.65 }} className="sm:[zoom:0.7] md:[zoom:0.75] lg:[zoom:0.6] xl:[zoom:0.7] 2xl:[zoom:0.85]">
                       <div className="shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] hover:shadow-[0_25px_65px_-15px_rgba(0,0,0,0.4)] transition-shadow duration-500 rounded-lg overflow-hidden ring-1 ring-border border-0">
                         <InvoicePreview ref={printRef} invoiceData={invoiceData} />
                       </div>

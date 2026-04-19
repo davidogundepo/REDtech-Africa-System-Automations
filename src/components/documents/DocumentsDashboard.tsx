@@ -171,13 +171,13 @@ export const DocumentsDashboard = () => {
 
   // Fragment 1: Invoice Status vs Unpaid Value
   const InvoiceStatusFragment = () => (
-    <div className="h-[300px] w-full flex flex-col pt-2">
+    <div className="h-[280px] w-full flex flex-col pt-2">
       <div className="flex justify-between items-center mb-2 px-1">
-        <h3 className="text-sm font-bold text-foreground flex items-center">
+        <h3 className="text-xs font-black uppercase tracking-widest text-foreground flex items-center">
           <FileText className="w-4 h-4 mr-2 text-[#bc7e57]" />
           Invoice & Waybill Status
         </h3>
-        <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary">Live Sync</Badge>
+        <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">Live Sync</Badge>
       </div>
       <div className="flex-1 -ml-4">
         <ResponsiveContainer width="100%" height="100%">
@@ -186,8 +186,8 @@ export const DocumentsDashboard = () => {
               data={invoiceStatusData}
               cx="50%"
               cy="50%"
-              innerRadius={60}
-              outerRadius={80}
+              innerRadius={55}
+              outerRadius={75}
               paddingAngle={5}
               dataKey="value"
             >
@@ -198,253 +198,150 @@ export const DocumentsDashboard = () => {
             <Tooltip 
               contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
               itemStyle={{ color: 'hsl(var(--foreground))' }}
-              formatter={(value) => [`${value}%`, 'Status']}
             />
-            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }}/>
           </PieChart>
         </ResponsiveContainer>
       </div>
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
+        {invoiceStatusData.map((s, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+            <span className="text-[9px] font-bold text-muted-foreground uppercase">{s.name}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 
-  const UnpaidValueFragment = () => (
-    <div className="h-[300px] w-full flex flex-col pt-2">
-      <div className="flex justify-between items-center mb-2 px-1">
-        <h3 className="text-sm font-bold text-foreground flex items-center">
-          <Activity className="w-4 h-4 mr-2 text-destructive" />
-          Unpaid Value Aging
+  // Fragment 2: Document Type Breakdown
+  const DocumentTypeFragment = () => (
+    <div className="h-[280px] w-full flex flex-col pt-2">
+      <div className="flex justify-between items-center mb-4 px-1">
+        <h3 className="text-xs font-black uppercase tracking-widest text-foreground flex items-center">
+          <Database className="w-4 h-4 mr-2 text-[#bc7e57]" />
+          Storage Distribution
         </h3>
-        <Badge variant="outline" className="text-destructive border-destructive/20 bg-destructive/5">Action Req.</Badge>
+        <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">Global</Badge>
       </div>
-      <div className="flex-1 -ml-6 mt-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={unpaidValueData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
-            <XAxis dataKey="stage" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-            <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(val) => `₦${(val/1000).toFixed(0)}k`} />
-            <Tooltip 
-              cursor={{ fill: 'hsl(var(--muted))', opacity: 0.1 }}
-              contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
-              formatter={(val: number) => [`₦${val.toLocaleString()}`, 'Amount Due']}
-            />
-            <Bar dataKey="amount" fill={COLORS.destructive} radius={[4, 4, 0, 0]} maxBarSize={40} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-
-  // Fragment 2: Document Types vs Storage Usage
-  const DocumentTypesFragment = () => (
-    <div className="h-[300px] w-full flex flex-col pt-2">
-      <div className="flex justify-between items-center mb-2 px-1">
-        <h3 className="text-sm font-bold text-foreground flex items-center">
-          <Database className="w-4 h-4 mr-2 text-indigo-500" />
-          Repository Composition
-        </h3>
-      </div>
-      <div className="flex-1 -ml-4 py-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={documentTypesData}
-              cx="50%"
-              cy="50%"
-              outerRadius={80}
-              dataKey="value"
-              labelLine={false}
-              label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-                const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
-                return (
-                  <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight="bold">
-                    {`${(percent * 100).toFixed(0)}%`}
-                  </text>
-                );
-              }}
-            >
-              {[COLORS.purple, COLORS.primary, COLORS.blue, COLORS.emerald].map((color, idx) => (
-                <Cell key={`cell-${idx}`} fill={color} />
-              ))}
-            </Pie>
-            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }} />
-            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }}/>
-          </PieChart>
-        </ResponsiveContainer>
+      <div className="flex-1 space-y-4 pr-2">
+        {documentTypesData.map((type, i) => (
+          <div key={i} className="space-y-1.5">
+            <div className="flex justify-between items-center text-[11px] font-bold text-muted-foreground uppercase tracking-tight">
+              <span>{type.name}</span>
+              <span>{type.value}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
+              <div 
+                className="h-full rounded-full transition-all duration-1000" 
+                style={{ width: `${type.value}%`, backgroundColor: Object.values(COLORS)[i % Object.values(COLORS).length] }} 
+              />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 
-  const StorageUsageFragment = () => (
-    <div className="h-[300px] w-full flex flex-col pt-2 justify-between">
-      <div className="flex justify-between items-center mb-2 px-1">
-        <h3 className="text-sm font-bold text-foreground flex items-center">
-          <Server className="w-4 h-4 mr-2 text-[#bc7e57]" />
-          Cloud Storage Quota
-        </h3>
-      </div>
-      <div className="flex-1 flex flex-col items-center justify-center">
-        <SemicircleGauge value={3.2} max={5.0} title="Used" subtitle="3.2 GB of 5.0 GB Quota" />
-        <div className="w-full flex justify-between text-xs text-muted-foreground px-8 mt-4">
-          <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-primary mr-2"></div> Documents (1.8G)</div>
-          <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-muted mr-2"></div> Media (1.4G)</div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Fragment 3: Client Acquisition vs Recent Activity
+  // Fragment 3: Client Acquisition Activity
   const ClientAcquisitionFragment = () => (
-    <div className="h-[300px] w-full flex flex-col pt-2">
+    <div className="h-[280px] w-full flex flex-col pt-2">
       <div className="flex justify-between items-center mb-2 px-1">
-        <h3 className="text-sm font-bold text-foreground flex items-center">
-          <ArrowUpRight className="w-4 h-4 mr-2 text-emerald-500" />
-          Doc-Linked Acquisition
+        <h3 className="text-xs font-black uppercase tracking-widest text-foreground flex items-center">
+          <Activity className="w-4 h-4 mr-2 text-emerald-500" />
+          Client Growth Trends
         </h3>
+        <Badge variant="outline" className="bg-emerald-50/50 border-emerald-500/20 text-emerald-600 text-[10px] font-black uppercase tracking-widest">Verified</Badge>
       </div>
-      <div className="flex-1 -ml-6 mt-4">
+      <div className="flex-1 mt-2">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={acquisitionData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart data={acquisitionData}>
             <defs>
-              <linearGradient id="colorClients" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={COLORS.secondary} stopOpacity={0.3}/>
-                <stop offset="95%" stopColor={COLORS.secondary} stopOpacity={0}/>
-              </linearGradient>
+              <linearGradient id="colorClients" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
-            <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-            <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-            <Tooltip 
-              contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
-            />
-            <Area type="monotone" dataKey="uniqueClients" name="Unique Clients" stroke={COLORS.secondary} strokeWidth={3} fillOpacity={1} fill="url(#colorClients)" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} className="opacity-30" />
+            <XAxis dataKey="month" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }} />
+            <Area type="monotone" dataKey="uniqueClients" stroke="#10b981" fillOpacity={1} fill="url(#colorClients)" strokeWidth={2.5} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>
   );
 
-  const ActivityFeedFragment = () => (
-    <div className="h-[300px] w-full flex flex-col pt-2">
-      <div className="flex justify-between items-center mb-4 px-1">
-        <h3 className="text-sm font-bold text-foreground flex items-center">
-          <Activity className="w-4 h-4 mr-2 text-sky-500" />
-          Global Activity Stream
-        </h3>
-      </div>
-      <div className="flex-1 overflow-y-auto pr-2 space-y-4">
-        {recentActivityData.map((act) => (
-          <div key={act.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors border border-border/30">
-            <div className={`p-2 rounded-md ${act.action === "Deleted" ? "bg-destructive/10 text-destructive" : act.user === "System" ? "bg-primary/10 text-primary" : "bg-card border border-border/50 text-foreground"}`}>
-               {act.action === "Uploaded" ? <Download className="w-4 h-4 rotate-180" /> : 
-                act.action === "Deleted" ? <FileText className="w-4 h-4" /> :
-                <FileText className="w-4 h-4" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
-                <span className="text-foreground">{act.user}</span> <span className="text-muted-foreground font-normal">{act.action.toLowerCase()}</span>
-              </p>
-              <p className="text-xs font-semibold text-primary truncate mt-0.5">{act.file}</p>
-            </div>
-            <div className="text-[10px] text-muted-foreground whitespace-nowrap pt-1 font-medium bg-background px-2 py-1 rounded border border-border/40">
-              {act.time}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <SwapCardWrapper 
+        className="border-border/40 shadow-sm"
+        views={[
+          { label: "Invoice Pipeline Status", content: <InvoiceStatusFragment /> },
+          { label: "Storage Breakdown", content: <DocumentTypeFragment /> }
+        ]} 
+      />
+      
+      <SwapCardWrapper 
+        className="border-border/40 shadow-sm"
+        views={[
+          { label: "Client Growth Velocity", content: <ClientAcquisitionFragment /> },
+        ]} 
+      />
 
-  // Fragment 4: Public Docs vs Lead Contributors
-  const PublicDocsFragment = () => (
-    <div className="h-[300px] w-full flex flex-col pt-2">
-      <div className="flex justify-between items-center mb-4 px-1">
-        <h3 className="text-sm font-bold text-foreground flex items-center">
-          <Folder className="w-4 h-4 mr-2 text-amber-500" />
-          Company Standard Docs
-        </h3>
-      </div>
-      <div className="grid grid-cols-2 gap-3 flex-1 overflow-y-auto pb-2">
-        {[
-          { icon: <FileText className="text-blue-500 w-5 h-5"/>, title: "Onboarding", ext: "PDF" },
-          { icon: <Activity className="text-emerald-500 w-5 h-5"/>, title: "Leave Policy", ext: "PDF" },
-          { icon: <Server className="text-purple-500 w-5 h-5"/>, title: "IT Compliance", ext: "DOCX" },
-          { icon: <FileImage className="text-amber-500 w-5 h-5"/>, title: "Brand Assets", ext: "ZIP" },
-        ].map((item, i) => (
-          <div key={i} className="flex flex-col justify-center p-4 bg-gradient-to-br from-card to-muted/20 border border-border hover:border-primary/50 rounded-xl cursor-pointer hover:shadow-md transition-all group">
-            <div className="flex justify-between items-start mb-2">
-               <div className="p-2 bg-background rounded-lg shadow-sm border border-border/50 group-hover:scale-110 transition-transform">
-                 {item.icon}
-               </div>
-               <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{item.ext}</span>
-            </div>
-            <h4 className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{item.title}</h4>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const TopContributorsFragment = () => (
-    <div className="h-[300px] w-full flex flex-col pt-2">
-      <div className="flex justify-between items-center mb-4 px-1">
-        <h3 className="text-sm font-bold text-foreground flex items-center">
-          <Award className="w-4 h-4 mr-2 text-amber-500" />
-          Top Repository Contributors
-        </h3>
-      </div>
-      <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-        {topContributorsData.map((rep, idx) => (
-          <div key={rep.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center font-bold text-primary text-xs shrink-0">
-                #{idx + 1}
+      {/* Top Contributors Card */}
+      <Card className="border-border/40 shadow-sm bg-card/40 backdrop-blur-md flex flex-col h-full overflow-hidden">
+        <CardHeader className="py-4 border-b border-border/20">
+          <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+            <Award className="w-4 h-4 text-amber-500" />
+            System Contributors
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 flex-1">
+          <div className="space-y-3">
+            {topContributorsData.map((c, i) => (
+              <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-muted/20 border border-border/10 hover:bg-muted/40 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-black border border-primary/20">
+                    {(c.name || "S")[0]}
+                  </div>
+                  <span className="text-xs font-bold text-foreground">{c.name}</span>
+                </div>
+                <Badge variant="secondary" className="text-[10px] font-black bg-background border-border/40">{c.uploads} Docs</Badge>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground truncate leading-tight">{rep.name}</p>
-                <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground font-medium">
-                   <span>Top Contributor</span>
+            ))}
+            {topContributorsData.length === 0 && <p className="text-center text-xs text-muted-foreground py-10 font-medium italic">No activity yet</p>}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity Feed */}
+      <Card className="border-border/40 shadow-sm bg-card/40 backdrop-blur-md flex flex-col h-full overflow-hidden">
+        <CardHeader className="py-4 border-b border-border/20">
+          <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+            <Activity className="w-4 h-4 text-[#bc7e57]" />
+            Real-time Feed
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 flex-1 overflow-y-auto custom-scrollbar h-[230px]">
+          <div className="space-y-4">
+            {recentActivityData.map((a, i) => (
+              <div key={i} className="flex items-start gap-3 relative group">
+                {i < recentActivityData.length - 1 && (
+                  <div className="absolute left-[13px] top-7 w-[1px] h-4 bg-border/40" />
+                )}
+                <div className="h-7 w-7 rounded-lg bg-muted/40 flex items-center justify-center border border-border/40 shrink-0 group-hover:border-primary/30 transition-colors">
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-foreground leading-tight truncate">{a.file}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 font-medium">
+                    <strong className="text-primary/80">{a.user}</strong> {a.action} • {a.time}
+                  </p>
                 </div>
               </div>
-            </div>
-            <div className="text-right shrink-0 bg-muted/40 px-2 py-1 rounded text-xs">
-              <span className="font-bold text-foreground">{rep.uploads}</span> Docs
-            </div>
+            ))}
+            {recentActivityData.length === 0 && <p className="text-center text-xs text-muted-foreground py-10 font-medium italic">Monitoring for activity...</p>}
           </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="mb-10 w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <SwapCardWrapper 
-          views={[
-            { label: "Invoice Status", content: <InvoiceStatusFragment /> },
-            { label: "Unpaid Value", content: <UnpaidValueFragment /> }
-          ]} 
-        />
-        <SwapCardWrapper 
-          views={[
-            { label: "Document Types", content: <DocumentTypesFragment /> },
-            { label: "Storage Limit", content: <StorageUsageFragment /> }
-          ]} 
-        />
-        <SwapCardWrapper 
-          views={[
-            { label: "Acquisition", content: <ClientAcquisitionFragment /> },
-            { label: "Activity Log", content: <ActivityFeedFragment /> }
-          ]} 
-        />
-        <SwapCardWrapper 
-          views={[
-            { label: "Standard Docs", content: <PublicDocsFragment /> },
-            { label: "Top Contributors", content: <TopContributorsFragment /> }
-          ]} 
-        />
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -303,11 +303,18 @@ Style & Formatting: Highly professional, warm, concise. Use bullet points and cl
     const prompt = `${systemPrompt}\n\n--- Chat History ---\n${historyString}`;
     
     // Model fallback chain: try gemini-2.0-flash first, fallback to gemini-1.5-flash on quota errors
-    const modelNames = ["gemini-2.0-flash", "gemini-1.5-flash"];
+    const modelNames = ["gemini-1.5-flash", "gemini-2.0-flash"]; // Prioritize 1.5 for stability if 2.0 is failing
     
     for (const modelName of modelNames) {
       try {
-        const model = genAI.getGenerativeModel({ model: modelName });
+        const model = genAI.getGenerativeModel({ 
+          model: modelName,
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.8,
+            topK: 40,
+          }
+        });
         
         // Add a strict 20-second timeout so it never hangs indefinitely
         const timeoutPromise = new Promise<never>((_, reject) => {

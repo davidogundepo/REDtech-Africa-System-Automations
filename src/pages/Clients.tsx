@@ -1,25 +1,24 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { MotionPage } from "@/components/shared/MotionPage";
-import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Filter, MoreVertical, Edit, Edit2, Trash2, Mail, Phone, ExternalLink, Calendar, MapPin, Building2, TrendingUp, Users, Target, Activity, CheckCircle2, XCircle, Clock, AlertCircle, MessageSquare, ChevronRight, BarChart3, Database, Briefcase, ChevronDown, Rocket, ShieldAlert, Award } from "lucide-react";
+import { Plus, Search, Filter, Edit2, Trash2, Clock, Edit, Download } from "lucide-react";
 import { toast } from "sonner";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { format } from "date-fns";
@@ -39,6 +38,7 @@ interface Client {
   assigned_to: string | null;
   last_contact_date: string | null;
   created_at: string;
+  total_invoiced?: number;
 }
 
 interface Profile {
@@ -47,7 +47,20 @@ interface Profile {
 }
 
 const emptyClient = {
-  name: "", company: "", email: "", phone: "", address: "", industry: "", source: "direct", notes: "", deal_status: "lead", assigned_to: "",
+  name: "", company: "", email: "", phone: "", address: "", industry: "", source: "direct", notes: "", deal_status: "lead", assigned_to: "", deal_value: "", currency: "NGN",
+};
+
+const currencies = [
+  { code: "NGN", symbol: "₦", label: "Nigerian Naira" },
+  { code: "USD", symbol: "$", label: "US Dollar" },
+  { code: "GBP", symbol: "£", label: "British Pound" },
+  { code: "EUR", symbol: "€", label: "Euro" },
+];
+
+const formatDealValue = (val: number | undefined, curr: string = "NGN") => {
+  if (!val) return "—";
+  const sym = currencies.find(c => c.code === curr)?.symbol || "₦";
+  return `${sym}${val.toLocaleString()}`;
 };
 
 const industries = ["Technology", "Finance", "Healthcare", "Education", "Real Estate", "Energy", "Retail", "Manufacturing", "Consulting", "Media", "Other"];
@@ -82,9 +95,51 @@ const Clients = () => {
   const [showMyClients, setShowMyClients] = useState(false);
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
   const [pipelineTab, setPipelineTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("pipeline");
+
+  // Live exchange rates (cached weekly)
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ NGN: 1, USD: 1550, GBP: 2050, EUR: 1750 });
+  const [ratesLastUpdated, setRatesLastUpdated] = useState<string>("");
+
+  useEffect(() => {
+    const fetchRates = async () => {
+      const cacheKey = "rac_exchange_rates";
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          const ageMs = Date.now() - (parsed.timestamp || 0);
+          if (ageMs < 7 * 24 * 60 * 60 * 1000) { // 7 days cache
+            setExchangeRates(parsed.rates);
+            setRatesLastUpdated(new Date(parsed.timestamp).toLocaleDateString("en-GB", { day: "numeric", month: "short" }));
+            return;
+          }
+        } catch { /* stale cache, refetch */ }
+      }
+      try {
+        const res = await fetch("https://open.er-api.com/v6/latest/NGN");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.rates) {
+            // Convert: how many NGN = 1 unit of foreign currency
+            const rates: Record<string, number> = { NGN: 1 };
+            if (data.rates.USD) rates.USD = Math.round(1 / data.rates.USD);
+            if (data.rates.GBP) rates.GBP = Math.round(1 / data.rates.GBP);
+            if (data.rates.EUR) rates.EUR = Math.round(1 / data.rates.EUR);
+            setExchangeRates(rates);
+            setRatesLastUpdated(new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" }));
+            localStorage.setItem(cacheKey, JSON.stringify({ rates, timestamp: Date.now() }));
+          }
+        }
+      } catch {
+        // Use fallback rates silently
+      }
+    };
+    fetchRates();
+  }, []);
 
   const fetchClients = async () => {
-    const { data, error } = await (supabase as any).from("clients").select("*").order("created_at", { ascending: false });
+    const { data, error } = await (supabase as any).from("clients").select("*").order("created_at", { ascending: false }).limit(500);
     if (error) { toast.error("Failed to load clients"); setLoading(false); return; }
     
     setClients(data || []);
@@ -227,434 +282,320 @@ const Clients = () => {
     try { return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return d; }
   };
 
+  const handleExportClients = () => {
+    const headers = ["Name", "Company", "Email", "Deal Status", "Industry", "Total Invoiced"];
+    const csvContent = [
+      headers.join(","),
+      ...clients.map(c => [
+        `"${c.name}"`, `"${c.company || ''}"`, `"${c.email || ''}"`, `"${c.deal_status}"`, `"${c.industry || ''}"`, c.total_invoiced || 0
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `RAC_Client_Directory_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Client report generated! 📥");
+  };
+
+  const handleMetricClick = (status: string) => {
+    setPipelineTab(status);
+    setActiveTab("directory");
+  };
+
   return (
-    <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background p-6 md:p-8 overflow-y-auto">
-      {/* ═══════ HEADER ═══════ */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Deal Book CRM</h1>
-          <p className="text-muted-foreground mt-1.5 text-sm">Manage client relationships and visualize your sales pipeline</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {canEdit && (
-            <>
-              <Button 
-                variant={showMyClients ? "default" : "outline"} 
-                size="sm" 
-                onClick={() => setShowMyClients(!showMyClients)}
-                className={showMyClients 
-                  ? "bg-[#bc7e57] hover:bg-[#a56d49] text-white" 
-                  : "border-border/50 text-muted-foreground"
-                }
-              >
-                <Filter className="h-3.5 w-3.5 mr-1.5" /> My Deals
-              </Button>
-              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setFormData(emptyClient); setEditingId(null); } }}>
-                <DialogTrigger asChild>
-                  <Button className="bg-[#bc7e57] hover:bg-[#a56d49] text-white h-9 gap-1.5">
-                    <Plus className="h-4 w-4" /> New Lead
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl px-6 py-5">
-                  <DialogHeader className="mb-4">
-                    <DialogTitle className="text-xl">{editingId ? 'Edit Deal Record' : 'Add New Lead'}</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
-                    <div className="space-y-4">
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest border-b border-border/50 pb-2">Client Details</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Contact Name *</Label>
-                          <Input required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Full name" className="h-11" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Company</Label>
-                          <Input value={formData.company} onChange={(e) => setFormData({...formData, company: e.target.value})} placeholder="Company name" className="h-11" />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Email</Label>
-                          <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="email@example.com" className="h-11" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Phone</Label>
-                          <Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="+234..." className="h-11" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest border-b border-border/50 pb-2">Pipeline Settings</h4>
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Stage</Label>
-                          <Select value={formData.deal_status} onValueChange={(v) => setFormData({...formData, deal_status: v})}>
-                            <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                            <SelectContent>{dealStatuses.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Owner</Label>
-                          <Select value={formData.assigned_to} onValueChange={(v) => setFormData({...formData, assigned_to: v})}>
-                            <SelectTrigger className="h-11"><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                            <SelectContent>{profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}</SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Industry</Label>
-                          <Select value={formData.industry} onValueChange={(v) => setFormData({...formData, industry: v})}>
-                            <SelectTrigger className="h-11"><SelectValue placeholder="-" /></SelectTrigger>
-                            <SelectContent>{industries.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Source</Label>
-                          <Select value={formData.source} onValueChange={(v) => setFormData({...formData, source: v})}>
-                            <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                            <SelectContent>{sources.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest border-b border-border/50 pb-2">Background & Notes</h4>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Key Information</Label>
-                        <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Context, pain points, budget expectations..." rows={3} className="resize-none" />
-                      </div>
-                    </div>
-
-                    <Button type="submit" className="w-full h-11 bg-[#bc7e57] hover:bg-[#a56d49] text-white font-medium text-base">
-                      {editingId ? "Save Changes" : "Save Lead to Deal Book"}
+    <MotionPage className="flex-1 w-full flex flex-col h-full bg-background overflow-y-auto">
+      <div className="p-4 md:p-6 lg:p-8 space-y-6 h-full flex flex-col">
+        {/* ═══════ HEADER ═══════ */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-foreground">Deal Book CRM</h1>
+            <p className="text-muted-foreground mt-1 text-sm font-medium">Manage client relationships and visualize your sales pipeline</p>
+            {ratesLastUpdated && (
+              <div className="flex items-center gap-3 mt-2 flex-wrap">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">FX Rates</span>
+                {currencies.filter(c => c.code !== "NGN").map(c => (
+                  <span key={c.code} className="inline-flex items-center gap-1 text-[10px] font-bold bg-muted/50 px-2 py-0.5 rounded-full border border-border/30">
+                    <span className="text-[#bc7e57]">{c.symbol}1</span>
+                    <span className="text-muted-foreground">=</span>
+                    <span className="font-black text-foreground">₦{exchangeRates[c.code]?.toLocaleString()}</span>
+                  </span>
+                ))}
+                <span className="text-[9px] text-muted-foreground/50 font-medium">Updated {ratesLastUpdated}</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportClients} className="border-border/50 text-muted-foreground font-bold">
+              <Download className="h-3.5 w-3.5 mr-1.5" /> Export Report
+            </Button>
+            {canEdit && (
+              <>
+                <Button 
+                  variant={showMyClients ? "default" : "outline"} 
+                  size="sm" 
+                  onClick={() => setShowMyClients(!showMyClients)}
+                  className={showMyClients 
+                    ? "bg-[#bc7e57] hover:bg-[#a56d49] text-white font-bold" 
+                    : "border-border/50 text-muted-foreground font-bold"
+                  }
+                >
+                  <Filter className="h-3.5 w-3.5 mr-1.5" /> My Deals
+                </Button>
+                
+                <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if(!open) { setFormData(emptyClient); setEditingId(null); } }}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-[#bc7e57] hover:bg-[#a56d49] text-white font-bold shadow-lg shadow-[#bc7e57]/20">
+                      <Plus className="h-4 w-4 mr-2" /> New Client
                     </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-black">{editingId ? "Edit Client Details" : "Add New Client to CRM"}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-4 py-4">
+                      <div className="col-span-2 space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider">Contact Name *</Label>
+                        <Input placeholder="e.g. John Doe" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider">Company</Label>
+                        <Input placeholder="e.g. Acme Corp" value={formData.company || ""} onChange={e => setFormData({...formData, company: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider">Email</Label>
+                        <Input type="email" placeholder="john@example.com" value={formData.email || ""} onChange={e => setFormData({...formData, email: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider">Deal Status</Label>
+                        <Select value={formData.deal_status} onValueChange={v => setFormData({...formData, deal_status: v})}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {dealStatuses.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider">Assigned To</Label>
+                        <Select value={formData.assigned_to || ""} onValueChange={v => setFormData({...formData, assigned_to: v})}>
+                          <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
+                          <SelectContent>
+                            {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-1 space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider">Currency</Label>
+                        <Select value={formData.currency || "NGN"} onValueChange={v => setFormData({...formData, currency: v})}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {currencies.map(c => <SelectItem key={c.code} value={c.code}>{c.symbol} {c.code}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2 space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider">Deal Value</Label>
+                        <Input type="number" placeholder="e.g. 5000000" value={formData.deal_value || ""} onChange={e => setFormData({...formData, deal_value: e.target.value})} />
+                      </div>
+                    </div>
+                    <Button onClick={handleSubmit} className="w-full bg-[#bc7e57] font-bold py-6 text-lg">{editingId ? "Save Changes" : "Create Deal"}</Button>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* ═══════ EXECUTIVE DASHBOARD (STAT CARDS & CHARTS) ═══════ */}
-      <SwapCardWrapper views={[
-        {
-          label: "CRM Dashboard",
-          content: (
-            <div className="p-0">
-              <ClientDashboard clients={clients} profiles={profiles} />
-            </div>
-          ),
-        },
-        {
-          label: "Pipeline Value",
-          content: (() => {
-            const statusCounts = dealStatuses.map(s => ({
-              ...s,
-              count: clients.filter(c => c.deal_status === s.id).length,
-              value: clients.filter(c => c.deal_status === s.id).reduce((sum, c) => sum + (((c as any).deal_value as number) || 0), 0),
-            }));
-            const totalValue = statusCounts.reduce((s, c) => s + c.value, 0);
-            return (
-              <div className="p-6 space-y-4">
-                <h3 className="text-lg font-bold text-foreground">Deal Pipeline Summary</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {statusCounts.map(s => (
-                    <div key={s.id} className="rounded-xl border border-border/50 bg-card p-4 text-center">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{s.label}</p>
-                      <p className="text-2xl font-black mt-1 text-foreground">{s.count}</p>
-                      <p className="text-xs text-muted-foreground mt-1">₦{(s.value / 1_000_000).toFixed(1)}M</p>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50 p-1 rounded-xl shrink-0">
+            <TabsTrigger value="pipeline" className="rounded-lg font-bold py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">Sales Pipeline</TabsTrigger>
+            <TabsTrigger value="directory" className="rounded-lg font-bold py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">Client Directory</TabsTrigger>
+          </TabsList>
+
+          <div className="flex-1 min-h-0">
+            <ScrollArea className="h-full pr-4 -mr-4">
+              <TabsContent value="pipeline" className="mt-0 space-y-6 pb-6">
+                <ClientDashboard clients={clients} profiles={profiles} onMetricClick={handleMetricClick} />
+                
+                {/* Kanban View — horizontally scrollable, drag-and-drop enabled */}
+                <div className="overflow-x-auto pb-4 -mx-2 px-2">
+                  <div className="flex gap-4" style={{ minWidth: `${columns.length * 240}px` }}>
+                  {columns.map(column => (
+                    <div 
+                      key={column.id} 
+                      className="flex flex-col h-full min-h-[400px] shrink-0 w-[260px]"
+                      onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-[#bc7e57]/40', 'rounded-2xl'); }}
+                      onDragLeave={(e) => { e.currentTarget.classList.remove('ring-2', 'ring-[#bc7e57]/40', 'rounded-2xl'); }}
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove('ring-2', 'ring-[#bc7e57]/40', 'rounded-2xl');
+                        const clientId = e.dataTransfer.getData('text/plain');
+                        if (!clientId) return;
+                        const { error } = await supabase.from('clients').update({ deal_status: column.id }).eq('id', clientId);
+                        if (error) { toast.error('Failed to move deal'); return; }
+                        setClients(prev => prev.map(c => c.id === clientId ? { ...c, deal_status: column.id } : c));
+                        toast.success(`Moved to ${column.label}`);
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-3 px-1">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${column.id === 'won' ? 'bg-emerald-500' : column.id === 'lost' ? 'bg-red-500' : 'bg-[#bc7e57]'}`} />
+                          <h3 className="text-xs font-black uppercase tracking-widest text-foreground">{column.label}</h3>
+                        </div>
+                        <Badge variant="secondary" className="text-[10px] font-black bg-muted/50">{column.items.length}</Badge>
+                      </div>
+                      
+                      <div className="flex-1 space-y-3 bg-muted/20 p-3 rounded-2xl border border-border/10">
+                        {column.items.map(client => (
+                          <Card 
+                            key={client.id} 
+                            className="border-border/40 shadow-sm hover:shadow-md transition-all group cursor-grab active:cursor-grabbing active:shadow-lg active:scale-[0.98]" 
+                            draggable
+                            onDragStart={(e) => { e.dataTransfer.setData('text/plain', client.id); e.dataTransfer.effectAllowed = 'move'; }}
+                            onClick={() => handleEdit(client)}
+                          >
+                            <CardContent className="p-4 space-y-3">
+                              <div>
+                                <p className="text-sm font-black text-foreground group-hover:text-[#bc7e57] transition-colors">{client.name}</p>
+                                <p className="text-[10px] text-muted-foreground font-bold truncate mt-1">{client.company || "Individual Contact"}</p>
+                                {client.total_invoiced ? <p className="text-xs font-black text-[#bc7e57] mt-1">{formatDealValue(client.total_invoiced)}</p> : null}
+                              </div>
+                              
+                              <div className="flex items-center justify-between pt-2 border-t border-border/10">
+                                <div className="flex -space-x-2">
+                                  <div className="h-6 w-6 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-[#bc7e57] text-[10px] font-black border border-background">
+                                    {getInitials(client.name)}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
+                                  <Clock className="h-3 w-3" />
+                                  {formatDate(client.created_at)}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                        {column.items.length === 0 && (
+                          <div className="h-full flex items-center justify-center border-2 border-dashed border-border/20 rounded-xl">
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Drop here</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-foreground">Total Pipeline</span>
-                    <span className="text-lg font-black" style={{ color: '#bc7e57' }}>₦{(totalValue / 1_000_000).toFixed(1)}M</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>Won: <strong className="text-emerald-600 dark:text-emerald-400">{pipelineValue.won}</strong></span>
-                    <span>Active: <strong className="text-blue-600 dark:text-blue-400">{pipelineValue.active}</strong></span>
-                    <span>Win Rate: <strong style={{ color: '#bc7e57' }}>{pipelineValue.winRate}%</strong></span>
                   </div>
                 </div>
-              </div>
-            );
-          })(),
-        },
-      ]} />
+              </TabsContent>
 
-      {/* ═══════ VIEW CONTROLS & SEARCH ═══════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-          <Input 
-            placeholder="Search deals, companies, reps..." 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
-            className="pl-9 h-10 bg-muted/20 border-border/40 w-full"
-          />
-        </div>
-        <div className="flex items-center bg-muted/50 p-1 rounded-xl shrink-0">
-          <button
-            onClick={() => setViewMode("kanban")}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${viewMode === 'kanban' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            Pipeline Board
-          </button>
-          <button
-            onClick={() => setViewMode("table")}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${viewMode === 'table' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            Directory List
-          </button>
-        </div>
-      </div>
+              <TabsContent value="directory" className="mt-0 space-y-6 pb-6">
+                {/* Search & Filters */}
+                <Card className="border-border/40 bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden shadow-sm">
+                  <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4">
+                    <div className="relative flex-1 w-full">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        placeholder="Search by name, company, email or industry..." 
+                        className="pl-10 bg-background/50 border-border/40 font-medium h-11 rounded-xl"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                      <Select value={pipelineTab} onValueChange={setPipelineTab}>
+                        <SelectTrigger className="w-full md:w-[180px] h-11 bg-background/50 border-border/40 font-bold text-xs uppercase tracking-widest">
+                          <SelectValue placeholder="All Statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">ALL STAGES</SelectItem>
+                          {dealStatuses.map(s => <SelectItem key={s.id} value={s.id}>{s.label.toUpperCase()}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
 
-      {/* ═══════ EMPTY STATE ═══════ */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#bc7e57] border-t-transparent" />
-          <span className="text-sm font-medium">Loading Deal Book...</span>
-        </div>
-      ) : clients.length === 0 ? (
-        <div className="py-12">
-          <EmptyState
-            illustration="clients"
-            heading="Your deal book is empty"
-            subtext={isSuperAdmin ? "Add your first client or use the 'Inject Mock Pipeline' button above to generate a realistic Fortune-500 sandbox dataset instantly." : "Add your first client or lead to start tracking the pipeline."}
-            ctaText="Add First Lead"
-            onCta={() => setDialogOpen(true)}
-          />
-        </div>
-      ) : (
-        <>
-          {/* ═══════ KANBAN PIPELINE VIEW ═══════ */}
-          {viewMode === "kanban" && (
-            <div className="flex gap-4 overflow-x-auto pb-6 -mx-1 px-1">
-              {columns.map(column => (
-                <div key={column.id} className="flex-shrink-0 w-80 flex flex-col h-[calc(100vh-340px)] min-h-[500px]">
-                  {/* Column Header */}
-                  <div className={`mb-3 py-2.5 px-3.5 rounded-xl border ${column.border} ${column.color} flex items-center justify-between`}>
-                    <h3 className="font-semibold text-sm tracking-tight">{column.label}</h3>
-                    <Badge variant="secondary" className="bg-background/50 border-0 text-[10px] px-2">{column.items.length}</Badge>
-                  </div>
-                  
-                  {/* Column Cards */}
-                  <div className="flex-1 bg-muted/20 border border-border/40 rounded-xl p-2.5 overflow-y-auto space-y-2.5 custom-scrollbar">
-                    {column.items.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-muted-foreground/50 text-xs font-medium border-2 border-dashed border-border/50 rounded-lg">
-                        Drop zone
-                      </div>
-                    ) : (
-                      column.items.map(client => {
-                        const assignee = profiles.find(p => p.id === client.assigned_to);
-                        return (
-                          <div key={client.id} className="group relative bg-card rounded-lg border border-border/60 p-3.5 shadow-sm hover:shadow-md hover:border-[#bc7e57]/50 transition-all">
-                            <div className="flex items-start justify-between mb-2">
-                              {client.company ? (
-                                <div className="min-w-0 pr-2">
-                                  <h4 className="font-bold text-sm text-foreground truncate">{client.company}</h4>
-                                  <p className="text-xs text-muted-foreground truncate">{client.name}</p>
-                                </div>
-                              ) : (
-                                <h4 className="font-bold text-sm text-foreground truncate pr-2">{client.name}</h4>
-                              )}
-                            </div>
-
-                            {client.industry && (
-                              <Badge variant="secondary" className="text-[9px] uppercase tracking-wider px-1.5 py-0 mb-3 bg-muted/60">{client.industry}</Badge>
-                            )}
-                            
-                            {client.notes && (
-                              <p className="text-[11px] text-muted-foreground/80 line-clamp-2 mb-3 leading-relaxed">
-                                {client.notes}
-                              </p>
-                            )}
-                            
-                            <div className="flex items-center justify-between mt-auto pt-3 border-t border-border/40">
-                              {client.last_contact_date ? (
-                                <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1" title="Last contact">
-                                  <Calendar className="h-2.5 w-2.5" /> {formatDate(client.last_contact_date)}
-                                </p>
-                              ) : (
-                                <p className="text-[10px] text-muted-foreground/50 font-medium italic">No contact yet</p>
-                              )}
-                              
-                              <div className="flex items-center gap-2">
-                                {canEdit && (
-                                  <button onClick={() => handleEdit(client)} className="text-muted-foreground/70 hover:text-[#bc7e57] transition-colors p-1" title="Edit Deal">
-                                    <Edit className="h-3.5 w-3.5" />
-                                  </button>
-                                )}
-                                {assignee && (
-                                  <div className="h-5 w-5 rounded-full bg-[#bc7e57]/15 flex items-center justify-center text-[8px] font-bold text-[#bc7e57]" title={assignee.full_name}>
-                                    {getInitials(assignee.full_name)}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Status mover buttons */}
-                            {canEdit && (
-                              <div className="absolute -right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background border border-border/80 shadow-md rounded-[4px] p-0.5 z-10">
-                                {dealStatuses.map((s, i) => {
-                                  if (s.id === client.deal_status) return null;
-                                  return (
-                                    <button 
-                                      key={s.id} 
-                                      onClick={() => handleStatusChange(client.id, s.id)}
-                                      className={`h-4 w-4 rounded-[2px] flex items-center justify-center hover:bg-muted ${s.color}`}
-                                      title={`Move to ${s.label}`}
-                                    >
-                                      {i > dealStatuses.findIndex(ds => ds.id === client.deal_status) ? <ChevronRight className="h-3 w-3" /> : <ChevronRight className="h-3 w-3 rotate-180" />}
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ═══════ DIRECTORY TABLE VIEW ═══════ */}
-          {viewMode === "table" && (
-            <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-              <Table>
-                <TableHeader className="bg-muted/30">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-xs font-semibold uppercase tracking-widest text-muted-foreground py-4">Client / Company</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Contact details</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Deal Stage</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Owner</TableHead>
-                    <TableHead className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Recent Activity</TableHead>
-                    <TableHead className="text-right text-xs font-semibold uppercase tracking-widest text-muted-foreground">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="py-12 text-center text-muted-foreground">No accounts match your current filters.</TableCell></TableRow>
-                  ) : (
-                    filtered.map((client) => {
-                      const assignee = profiles.find(p => p.id === client.assigned_to);
-                      const currentStatus = dealStatuses.find(s => s.id === client.deal_status);
-                      
-                      return (
-                        <TableRow key={client.id} className="group hover:bg-muted/10">
-                          <TableCell className="py-4">
+                <Card className="border-border/40 shadow-sm overflow-hidden rounded-2xl">
+                  <Table>
+                    <TableHeader className="bg-muted/30">
+                      <TableRow>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6">Client / Contact</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Status</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Industry</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Assigned Rep</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider text-right pr-6">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtered.map(client => (
+                        <TableRow key={client.id} className="hover:bg-muted/10 transition-colors">
+                          <TableCell className="pl-6 py-4">
                             <div className="flex items-center gap-3">
-                              {/* Avatar */}
-                              <div className="h-10 w-10 shrink-0 rounded-xl bg-muted/60 flex items-center justify-center font-bold text-muted-foreground text-sm border border-border/40">
-                                {client.company ? getInitials(client.company) : getInitials(client.name)}
+                              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#bc7e57]/20 to-transparent border border-[#bc7e57]/10 flex items-center justify-center text-[#bc7e57] font-black text-xs shadow-sm">
+                                {getInitials(client.name)}
                               </div>
-                              <div className="min-w-0">
-                                <p className="font-semibold text-sm text-foreground truncate">{client.company || client.name}</p>
-                                {client.company && <p className="text-xs text-muted-foreground truncate">{client.name}</p>}
-                                {client.industry && <span className="inline-block text-[10px] text-muted-foreground mt-0.5">— {client.industry}</span>}
+                              <div>
+                                <p className="text-sm font-black text-foreground">{client.name}</p>
+                                <p className="text-[10px] text-muted-foreground font-bold">{client.company || "Individual"}</p>
                               </div>
                             </div>
                           </TableCell>
-                          
                           <TableCell>
-                            <div className="space-y-1.5 text-xs text-muted-foreground max-w-[200px] truncate">
-                              {client.email ? (
-                                <a href={`mailto:${client.email}`} className="flex items-center gap-2 hover:text-[#bc7e57] hover:underline truncate">
-                                  <Mail className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{client.email}</span>
-                                </a>
-                              ) : <span className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 opacity-30"/> —</span>}
-                              {client.phone ? (
-                                <a href={`tel:${client.phone}`} className="flex items-center gap-2 hover:text-[#bc7e57] hover:underline truncate">
-                                  <Phone className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{client.phone}</span>
-                                </a>
-                              ) : <span className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 opacity-30"/> —</span>}
-                            </div>
+                            <Badge className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                              dealStatuses.find(s => s.id === client.deal_status)?.color || ""
+                            }`}>
+                              {dealStatuses.find(s => s.id === client.deal_status)?.label}
+                            </Badge>
                           </TableCell>
-                          
                           <TableCell>
-                            {/* Visual Status Pill instead of bulky dropdown */}
-                            <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${currentStatus?.color || ''}`}>
-                              {currentStatus?.label}
-                            </div>
+                            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">{client.industry || "General"}</span>
                           </TableCell>
-                          
                           <TableCell>
-                            {assignee ? (
-                              <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded-full bg-[#bc7e57]/15 flex items-center justify-center text-[9px] font-bold text-[#bc7e57]">
-                                  {getInitials(assignee.full_name)}
-                                </div>
-                                <span className="text-xs font-medium text-foreground truncate">{assignee.full_name.split(' ')[0]}</span>
+                            <div className="flex items-center gap-2">
+                              <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[8px] font-black">
+                                {getInitials(profiles.find(p => p.id === client.assigned_to)?.full_name || "??")}
                               </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground italic">Unassigned</span>
-                            )}
-                          </TableCell>
-                          
-                          <TableCell>
-                            <div className="flex flex-col gap-1 items-start">
-                              {client.last_contact_date ? (
-                                <span className="text-xs font-medium bg-muted/50 px-2 py-0.5 rounded-md border border-border/40 text-foreground">
-                                  {formatDate(client.last_contact_date)}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">No history</span>
-                              )}
-                              
-                              {/* Quick log button */}
-                              {canEdit && (
-                                <button 
-                                  onClick={() => updateLastContact(client.id)}
-                                  className="text-[10px] text-[#bc7e57] font-semibold opacity-0 group-hover:opacity-100 transition-opacity hover:underline flex flex-items-center gap-1"
-                                >
-                                  <Calendar className="h-2.5 w-2.5 inline" /> Just reached out
-                                </button>
-                              )}
+                              <span className="text-xs font-medium">{profiles.find(p => p.id === client.assigned_to)?.full_name || "Unassigned"}</span>
                             </div>
                           </TableCell>
-                          
-                          <TableCell className="text-right">
-                            {canEdit && (
-                              <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => handleEdit(client)} title="Edit">
-                                  <Edit className="h-3.5 w-3.5" />
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500" title="Delete record">
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Deal Record?</AlertDialogTitle>
-                                      <AlertDialogDescription>This will permanently erase "{client.company || client.name}" and all historical notes from the CRM.</AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDelete(client.id)} className="bg-red-600 hover:bg-red-700 text-white">Permanently Delete</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            )}
+                          <TableCell className="text-right pr-6">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-[#bc7e57]/10" onClick={() => handleEdit(client)}>
+                                <Edit2 className="h-3.5 w-3.5 text-[#bc7e57]" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-red-500/10">
+                                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>This will permanently delete {client.name} from the Deal Book.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => handleDelete(client.id)}>Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
                           </TableCell>
                         </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </>
-      )}
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              </TabsContent>
+            </ScrollArea>
+          </div>
+        </Tabs>
+      </div>
     </MotionPage>
   );
 };

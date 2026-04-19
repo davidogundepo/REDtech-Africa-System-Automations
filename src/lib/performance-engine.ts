@@ -16,6 +16,7 @@ interface Profile {
   last_score_check: string | null;
   score_history: { date: string; score: number }[] | null;
   work_mode: string;
+  clock_in_required: boolean;
 }
 
 function getWorkDayDates(
@@ -49,7 +50,7 @@ export async function runPerformanceEngine(superAdminId: string): Promise<{
   // Fetch all active profiles
   const { data: profiles, error: profErr } = await (supabase as any)
     .from("profiles")
-    .select("id, full_name, email, performance_score, work_days, last_score_check, score_history, work_mode")
+    .select("id, full_name, email, performance_score, work_days, last_score_check, score_history, work_mode, clock_in_required")
     .eq("is_active", true);
 
   if (profErr || !profiles) return { processed: 0, deductions: [], topPerformers: [] };
@@ -80,6 +81,13 @@ export async function runPerformanceEngine(superAdminId: string): Promise<{
   const topPerformers: { name: string; streak: number }[] = [];
 
   for (const profile of profiles as Profile[]) {
+    // 🛡️ SKIP CLOCK-IN CHECK IF NOT REQUIRED
+    if (profile.clock_in_required === false) {
+       // Just update last check to prevent backlog processing if they are later switched to 'required'
+       await (supabase as any).from("profiles").update({ last_score_check: todayStr }).eq("id", profile.id);
+       continue;
+    }
+
     const defaultWorkDays = { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false };
     const workDays = profile.work_days || defaultWorkDays;
 

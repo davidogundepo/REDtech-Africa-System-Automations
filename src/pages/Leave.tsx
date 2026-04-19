@@ -127,7 +127,7 @@ const Leave = () => {
   };
 
   const fetchRequests = async () => {
-    const { data, error } = await (supabase as any).from("leave_requests").select("*").order("created_at", { ascending: false });
+    const { data, error } = await (supabase as any).from("leave_requests").select("*").order("created_at", { ascending: false }).limit(500);
     if (error) { toast.error("Failed to load leave requests"); return; }
     setRequests(data || []);
     setLoading(false);
@@ -459,14 +459,20 @@ const Leave = () => {
         </div>
         <div className="flex items-center gap-2">
           {(isAdmin || isSuperAdmin) && (
-            <Button 
-              variant={showMyLeave ? "default" : "outline"} 
-              size="sm" 
-              onClick={() => setShowMyLeave(!showMyLeave)}
-              className={`h-11 px-4 rounded-xl font-bold transition-all ${showMyLeave ? "bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-md shadow-[#bc7e57]/20" : "border-border/50 text-muted-foreground shadow-sm"}`}
-            >
-              <Filter className="h-4 w-4 mr-2" /> {showMyLeave ? "My Leave" : "All Leave"}
-            </Button>
+            <div className="flex border border-border/50 rounded-xl overflow-hidden shadow-sm">
+              <button 
+                onClick={() => setShowMyLeave(true)}
+                className={`h-11 px-5 text-xs font-bold uppercase tracking-widest transition-all ${showMyLeave ? 'bg-[#bc7e57] text-white shadow-inner' : 'text-muted-foreground hover:bg-muted/60'}`}
+              >
+                My Leave
+              </button>
+              <button 
+                onClick={() => setShowMyLeave(false)}
+                className={`h-11 px-5 text-xs font-bold uppercase tracking-widest transition-all ${!showMyLeave ? 'bg-[#bc7e57] text-white shadow-inner' : 'text-muted-foreground hover:bg-muted/60'}`}
+              >
+                All Leave
+              </button>
+            </div>
           )}
 
           {isSuperAdmin && (

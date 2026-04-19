@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { ModuleToggleProvider } from "@/lib/module-toggles";
 import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
 import Waybill from "./pages/Waybill";
@@ -23,6 +24,7 @@ import StaffUtilisation from "./pages/StaffUtilisation";
 import Attendance from "./pages/Attendance";
 import UserProfile from "./pages/UserProfile";
 import TeamDirectory from "./pages/TeamDirectory";
+import PartnershipGenerator from "./pages/PartnershipGenerator";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -64,6 +66,7 @@ const AppRoutes = () => (
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/profile" element={<UserProfile />} />
             <Route path="/team" element={<TeamDirectory />} />
+            <Route path="/partnerships" element={<PartnershipGenerator />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
@@ -80,7 +83,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <AppRoutes />
+            <ModuleToggleProvider>
+              <AppRoutes />
+            </ModuleToggleProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

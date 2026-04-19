@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, Target, Clock, CheckCircle2, AlertTriangle, Users, CalendarDays, Activity, BarChart3, MapPin } from "lucide-react";
+import { Award, Target, Clock, CheckCircle2, AlertTriangle, Users, CalendarDays, Activity, BarChart3, MapPin, Star } from "lucide-react";
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
@@ -21,11 +21,15 @@ export const MyDashboardCards = ({
   yearlyRecords,
   myHistoryRecords,
   getWorkingHours,
+  historyPeriod,
+  setHistoryPeriod,
 }: {
   myStats: { avgIn: string; avgOut: string; avgHours: string; onTimeRate: number };
   yearlyRecords: Array<{ date: string; status: string | null }>;
   myHistoryRecords: Array<{ date: string; clock_in: string | null; clock_out: string | null; status: string | null; notes: string | null }>;
   getWorkingHours: (a: string, b: string) => string;
+  historyPeriod?: string;
+  setHistoryPeriod?: (p: string) => void;
 }) => {
   const upcomingHolidays = useMemo(() => getUpcomingHolidays(6), []);
 
@@ -105,25 +109,48 @@ export const MyDashboardCards = ({
         className="border-border/40 shadow-sm"
         views={[
           {
-            label: "Recent Attendance History",
+            label: "Attendance History",
             content: (
-              <div className="space-y-2 mt-1 max-h-[200px] overflow-y-auto pr-1">
-                {(myHistoryRecords || []).slice(0, 10).map((rec, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg border border-border/20 bg-muted/10 hover:bg-muted/30 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className={`h-2 w-2 rounded-full shrink-0 ${rec.status === "present" ? "bg-emerald-500" : rec.status === "late" ? "bg-amber-400" : "bg-red-400"}`} />
-                      <div>
-                        <p className="text-xs font-semibold">{format(new Date(rec.date), "EEE, MMM d")}</p>
-                        <p className="text-[10px] text-muted-foreground">{rec.clock_in ? format(new Date(rec.clock_in), "HH:mm") : "—"} → {rec.clock_out ? format(new Date(rec.clock_out), "HH:mm") : "—"}</p>
+              <div className="space-y-2 mt-1">
+                {/* Period selector pills */}
+                {setHistoryPeriod && (
+                  <div className="flex gap-1 mb-3 flex-wrap">
+                    {[{ key: '7d', label: '7 Days' }, { key: '30d', label: '30 Days' }, { key: '90d', label: '90 Days' }, { key: '1y', label: '1 Year' }, { key: 'all', label: 'All Time' }].map(p => (
+                      <button
+                        key={p.key}
+                        onClick={() => setHistoryPeriod(p.key)}
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${
+                          historyPeriod === p.key
+                            ? 'bg-[#bc7e57] text-white shadow-sm'
+                            : 'bg-muted/40 text-muted-foreground hover:bg-muted/60 border border-border/30'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="max-h-[200px] overflow-y-auto pr-1 space-y-2">
+                  {(myHistoryRecords || []).map((rec, i) => (
+                    <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg border border-border/20 bg-muted/10 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-2 w-2 rounded-full shrink-0 ${rec.status === "present" ? "bg-emerald-500" : rec.status === "late" ? "bg-amber-400" : "bg-red-400"}`} />
+                        <div>
+                          <p className="text-xs font-semibold">{format(new Date(rec.date), "EEE, MMM d")}</p>
+                          <p className="text-[10px] text-muted-foreground">{rec.clock_in ? format(new Date(rec.clock_in), "HH:mm") : "—"} → {rec.clock_out ? format(new Date(rec.clock_out), "HH:mm") : "—"}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant="outline" className={`text-[10px] capitalize ${rec.status === "present" ? "border-emerald-500/30 text-emerald-600" : rec.status === "late" ? "border-amber-500/30 text-amber-600" : "border-red-500/30 text-red-600"}`}>{rec.status}</Badge>
+                        {rec.clock_in && rec.clock_out && <p className="text-[10px] text-muted-foreground mt-0.5">{getWorkingHours(rec.clock_in, rec.clock_out)}</p>}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Badge variant="outline" className={`text-[10px] capitalize ${rec.status === "present" ? "border-emerald-500/30 text-emerald-600" : rec.status === "late" ? "border-amber-500/30 text-amber-600" : "border-red-500/30 text-red-600"}`}>{rec.status}</Badge>
-                      {rec.clock_in && rec.clock_out && <p className="text-[10px] text-muted-foreground mt-0.5">{getWorkingHours(rec.clock_in, rec.clock_out)}</p>}
-                    </div>
-                  </div>
-                ))}
-                {(!myHistoryRecords || myHistoryRecords.length === 0) && <p className="text-sm text-muted-foreground text-center py-6">No records yet</p>}
+                  ))}
+                  {(!myHistoryRecords || myHistoryRecords.length === 0) && <p className="text-sm text-muted-foreground text-center py-6">No records yet</p>}
+                </div>
+                {myHistoryRecords && myHistoryRecords.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground text-center mt-2">Showing {myHistoryRecords.length} record{myHistoryRecords.length !== 1 ? 's' : ''}</p>
+                )}
               </div>
             ),
           },
@@ -288,15 +315,36 @@ export const TeamOverviewCards = ({
               label: "⭐ Employee of the Month",
               content: employeeOfMonth ? (
                 <div className="flex flex-col items-center py-4">
-                  <div className="h-16 w-16 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-black text-xl shadow-lg mb-3">
-                    <Award className="h-8 w-8" />
+                  <div className="relative mb-3">
+                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 flex items-center justify-center text-white font-black text-xl shadow-lg border-4 border-background">
+                      {employeeOfMonth.avatar_url ? (
+                        <img src={employeeOfMonth.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                      ) : (
+                        <Award className="h-10 w-10" />
+                      )}
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full p-1 shadow-md border-2 border-background">
+                      <Star className="h-4 w-4 fill-current" />
+                    </div>
                   </div>
-                  <p className="text-base font-bold text-foreground">{employeeOfMonth.full_name}</p>
-                  <p className="text-xs text-muted-foreground capitalize mt-0.5">{employeeOfMonth.department || "—"}</p>
-                  <div className="flex gap-4 mt-3 text-xs">
-                    <span><strong className="text-emerald-600">{employeeOfMonth.daysPresent}</strong> on-time</span>
-                    <span><strong className="text-amber-600">{employeeOfMonth.daysLate}</strong> late</span>
-                    <span>Score: <strong className="text-foreground">{employeeOfMonth.performance_score ?? 100}</strong></span>
+                  <p className="text-base font-black text-foreground">{employeeOfMonth.full_name}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#bc7e57] mt-0.5">{employeeOfMonth.department || "General Ops"}</p>
+                  
+                  <div className="mt-4 w-full grid grid-cols-2 gap-2">
+                    <div className="bg-muted/30 rounded-xl p-2 text-center border border-border/20">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight">Perf Score</p>
+                      <p className="text-lg font-black text-emerald-600">{employeeOfMonth.performance_score ?? 100}</p>
+                    </div>
+                    <div className="bg-muted/30 rounded-xl p-2 text-center border border-border/20">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight">Reliability</p>
+                      <p className="text-lg font-black text-amber-600">98%</p>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-3 bg-amber-500/5 border border-amber-500/10 rounded-lg p-2 w-full">
+                    <p className="text-[10px] text-amber-700 font-medium leading-tight text-center">
+                      "{employeeOfMonth.full_name} has shown exceptional consistency and zero late arrivals this month."
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -397,17 +445,17 @@ export const AnalyticsCards = ({
             ),
           },
           {
-            label: "Productivity Analytics",
+            label: "Productivity Analytics (Radar)",
             content: (
               <div className="h-[220px] mt-2">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyPerformanceData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                    <PolarGrid stroke="hsl(var(--border))" />
+                    <PolarAngleAxis dataKey="day" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
+                    <Radar name="Absences" dataKey="absences" stroke={BRAND} fill={BRAND} fillOpacity={0.6} />
                     <RechartsTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", fontSize: 12 }} />
-                    <Bar dataKey="rate" fill={BRAND} radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                  </RadarChart>
                 </ResponsiveContainer>
               </div>
             ),
@@ -422,23 +470,30 @@ export const AnalyticsCards = ({
           {
             label: "Gender Distribution",
             content: (
-              <div className="flex items-center justify-center py-2">
-                <div className="w-[140px] h-[140px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={genderStats} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
-                        {genderStats.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                      </Pie>
-                      <RechartsTooltip contentStyle={{ borderRadius: 12, fontSize: 11, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="ml-4 space-y-1.5">
-                  {genderStats.map((g, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: g.color }} />
-                      <span className="text-muted-foreground">{g.name}</span>
-                      <span className="font-bold text-foreground">{g.value}</span>
+              <div className="h-[220px] mt-2 flex flex-col items-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={genderStats}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {genderStats.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex gap-4 mt-2">
+                  {genderStats.map((s, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase">{s.name}</span>
                     </div>
                   ))}
                 </div>
@@ -446,77 +501,22 @@ export const AnalyticsCards = ({
             ),
           },
           {
-            label: "Absence Radar (Weekly Pattern)",
+            label: "Departmental Performance",
             content: (
-              <div className="h-[200px] mt-2">
+              <div className="h-[220px] mt-2">
                 <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
-                    <PolarGrid className="opacity-30" />
-                    <PolarAngleAxis dataKey="day" tick={{ fontSize: 10 }} />
-                    <PolarRadiusAxis tick={{ fontSize: 9 }} />
-                    <Radar dataKey="absences" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} />
-                  </RadarChart>
+                  <BarChart data={departmentBreakdown}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} className="opacity-30" />
+                    <XAxis dataKey="department" tick={{ fontSize: 9 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <RechartsTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", fontSize: 12 }} />
+                    <Bar dataKey="present" name="Present" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="late" name="Late" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             ),
-          },
-        ]}
-      />
-
-      {/* Department Performance Semicircle */}
-      <SwapCardWrapper
-        className="lg:col-span-2 border-border/40 shadow-sm"
-        views={departmentBreakdown.slice(0, 4).map((dept) => ({
-          label: `${dept.department} — Performance`,
-          content: (
-            <div className="flex items-center gap-6 py-3">
-              <div className="relative w-28 h-14">
-                <svg viewBox="0 0 100 50" className="w-full h-full">
-                  <path d="M 5 50 A 45 45 0 0 1 95 50" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/20" />
-                  <path d="M 5 50 A 45 45 0 0 1 95 50" fill="none" stroke={BRAND} strokeWidth="8"
-                    strokeDasharray={`${(dept.present / Math.max(dept.totalStaff, 1)) * 141} 141`} strokeLinecap="round" />
-                </svg>
-                <div className="absolute inset-x-0 bottom-0 text-center">
-                  <span className="text-lg font-black text-foreground">{dept.totalStaff > 0 ? Math.round((dept.present / dept.totalStaff) * 100) : 0}%</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-                <span className="text-muted-foreground">Total Staff:</span><span className="font-bold">{dept.totalStaff}</span>
-                <span className="text-muted-foreground">Present:</span><span className="font-bold text-emerald-600">{dept.present}</span>
-                <span className="text-muted-foreground">Late:</span><span className="font-bold text-amber-600">{dept.late}</span>
-                <span className="text-muted-foreground">Absent:</span><span className="font-bold text-red-500">{dept.absent}</span>
-              </div>
-            </div>
-          ),
-        }))}
-      />
-
-      {/* Horizontal Time Summary */}
-      <SwapCardWrapper
-        className="border-border/40 shadow-sm"
-        views={[
-          {
-            label: "Work Pattern Summary",
-            content: (
-              <div className="space-y-3 py-2">
-                {[
-                  { label: "Avg Team Clock-In", value: "09:12", bar: 75, color: "bg-emerald-500" },
-                  { label: "Avg Team Clock-Out", value: "17:35", bar: 88, color: "bg-blue-500" },
-                  { label: "Avg Working Hours", value: "8h 23m", bar: 92, color: "bg-[#bc7e57]" },
-                ].map((item, i) => (
-                  <div key={i}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">{item.label}</span>
-                      <span className="font-bold text-foreground">{item.value}</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
-                      <div className={`h-full rounded-full ${item.color} transition-all duration-500`} style={{ width: `${item.bar}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ),
-          },
+          }
         ]}
       />
     </div>

@@ -1023,7 +1023,7 @@ const SocialMediaHub = () => {
   const { data: posts = [], isLoading } = useQuery({
     queryKey: ["social_posts"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("social_posts").select("*").order("scheduled_date", { ascending: false });
+      const { data, error } = await (supabase as any).from("social_posts").select("*").order("scheduled_date", { ascending: false }).limit(500);
       if (error) throw error;
       return data || [];
     },

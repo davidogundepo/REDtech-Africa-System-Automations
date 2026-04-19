@@ -83,23 +83,25 @@ const StaffUtilisation = () => {
   };
 
   // Fetch all profiles
-  const { data: profiles } = useQuery({
+  const { data: profiles, isLoading: profilesLoading } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("profiles").select("*");
       if (error) throw error;
       return (data as any[]) || [];
     },
+    staleTime: 5 * 60 * 1000, // 5 min cache to avoid constant refetching
   });
 
   // Fetch all tasks for utilisation metrics
-  const { data: tasks } = useQuery({
+  const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ["all-tasks"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("tasks").select("*");
+      const { data, error } = await (supabase as any).from("tasks").select("*").limit(1000);
       if (error) throw error;
       return (data as any[]) || [];
     },
+    staleTime: 5 * 60 * 1000, // 5 min cache
   });
 
   // WAIT for auth to finish loading before checking roles
@@ -227,7 +229,7 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
        }
     };
 
-    const timeout = setTimeout(generateAIInsight, 1500);
+    const timeout = setTimeout(generateAIInsight, 3000); // delayed to not block initial render
     return () => clearTimeout(timeout);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userMetrics.length]);

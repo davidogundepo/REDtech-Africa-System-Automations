@@ -62,6 +62,50 @@ const UserManagement = () => {
   const [shiftStart, setShiftStart] = useState("09:00");
   const [shiftEnd, setShiftEnd] = useState("17:00");
 
+  const [newUser, setNewUser] = useState({ full_name: "", email: "", role: "team_member" as UserRole, department: "Operations", password: "" });
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  // Simple Nigerian-aware gender inference from first name
+  const inferGender = (fullName: string): "male" | "female" | "other" => {
+    const first = fullName.trim().split(" ")[0]?.toLowerCase() || "";
+    const femaleNames = ["chioma","ngozi","amara","adaeze","chiamaka","nkechi","nneka","funke","folake","bisi","shade","yemi","titi","sade","aisha","fatima","halima","hadiza","maryam","blessing","faith","grace","joy","mercy","patience","naomi","esther","ruth","deborah","sarah","mary","rebecca","rachael","hannah","abigail","miriam","queen","princess","victoria","elizabeth","janet","jennifer","juliet","gladys","helen","irene","kate","linda","martha","nancy","olivia","priscilla","sandra","susan","theresa","vivian","winifred","zainab","binta","hafsat","lami","amina","khadijah"];
+    const maleNames = ["chukwu","emeka","obinna","chidi","ifeanyi","uchenna","nnamdi","obi","ikenna","collins","tunde","segun","femi","kunle","bayo","yinka","adewale","olumide","ayo","wale","bola","musa","ibrahim","usman","abdullahi","mohammed","aliyu","suleiman","abubakar","ismail","david","daniel","samuel","joseph","joshua","moses","peter","paul","john","james","andrew","philip","matthew","mark","luke","simon","timothy","stephen","benjamin","emmanuel","michael","gabriel","sunday","monday","friday","godwin","austin","bright","clement","francis","henry","isaac","kevin","leonard","nelson","oscar","raymond","thomas","victor","william"];
+    if (femaleNames.includes(first)) return "female";
+    if (maleNames.includes(first)) return "male";
+    // Last-resort heuristic: names ending in 'a' are often female in many Nigerian cultures
+    if (first.endsWith("a") && first.length > 3) return "female";
+    return "other";
+  };
+
+  const createUserMutation = useMutation({
+    mutationFn: async () => {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newUser.email,
+        password: newUser.password || "RACStaff2026!", // Default password
+        options: { data: { full_name: newUser.full_name } }
+      });
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Failed to create auth user");
+
+      // Auto-detect gender from name
+      const detectedGender = inferGender(newUser.full_name);
+
+      // Profile is created by trigger, but we need to update role, dept, and gender
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ role: newUser.role, department: newUser.department, is_active: true, gender: detectedGender } as any)
+        .eq("id", authData.user.id);
+      if (profileError) throw profileError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      setIsCreateDialogOpen(false);
+      setNewUser({ full_name: "", email: "", role: "team_member", department: "Operations", password: "" });
+      toast.success("Staff profile created and invited! 📧 Gender auto-detected.");
+    },
+    onError: (err: any) => toast.error("Creation failed: " + err.message)
+  });
+
   const { data: users, isLoading } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
@@ -152,10 +196,11 @@ const UserManagement = () => {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: async ({ id, role, department, is_active, work_days, work_mode }: { id: string; role: UserRole; department: string; is_active: boolean; work_days?: Record<string, boolean>; work_mode?: string }) => {
+    mutationFn: async ({ id, role, department, is_active, work_days, work_mode, clock_in_required }: { id: string; role: UserRole; department: string; is_active: boolean; work_days?: Record<string, boolean>; work_mode?: string, clock_in_required?: boolean }) => {
       const updates: Record<string, any> = { role, department, is_active };
       if (work_days !== undefined) updates.work_days = work_days;
       if (work_mode !== undefined) updates.work_mode = work_mode;
+      if (clock_in_required !== undefined) updates.clock_in_required = clock_in_required;
       const { error } = await supabase
         .from("profiles")
         .update(updates)
@@ -174,12 +219,15 @@ const UserManagement = () => {
   const [editWorkDays, setEditWorkDays] = useState<Record<string, boolean>>(DEFAULT_WORK_DAYS);
   const [editWorkMode, setEditWorkMode] = useState("office");
 
+  const [editClockInRequired, setEditClockInRequired] = useState(true);
+
   const handleEdit = (user: any) => {
     setEditingUser(user);
     setEditRole(user.role);
     setEditDepartment(user.department || "");
     setEditWorkDays(user.work_days || DEFAULT_WORK_DAYS);
     setEditWorkMode(user.work_mode || "office");
+    setEditClockInRequired(user.clock_in_required !== false);
     setEditDialogOpen(true);
   };
 
@@ -192,6 +240,7 @@ const UserManagement = () => {
       is_active: editingUser.is_active,
       work_days: editWorkDays,
       work_mode: editWorkMode,
+      clock_in_required: editClockInRequired,
     });
   };
 
@@ -488,6 +537,57 @@ const UserManagement = () => {
           </Dialog>
 
           <div className="flex items-center gap-2">
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white font-bold h-10 px-5 rounded-2xl shadow-lg shadow-[#bc7e57]/20">
+                  <UserPlus className="h-4 w-4 mr-2" /> Create Staff Profile
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black">Register New Staff</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Full Name</Label>
+                    <Input placeholder="John Doe" value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Work Email</Label>
+                    <Input type="email" placeholder="john@redtech.africa" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Role</Label>
+                      <Select value={newUser.role} onValueChange={(v: any) => setNewUser({...newUser, role: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(roleLabels).map(([val, label]) => <SelectItem key={val} value={val}>{label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Department</Label>
+                      <Select value={newUser.department} onValueChange={v => setNewUser({...newUser, department: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider">Temporary Password</Label>
+                    <Input type="password" placeholder="RACStaff2026!" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                    <p className="text-[10px] text-muted-foreground italic">Defaults to RACStaff2026! if left blank.</p>
+                  </div>
+                  <Button className="w-full bg-[#bc7e57] font-bold py-6 text-lg mt-4" onClick={() => createUserMutation.mutate()} disabled={createUserMutation.isPending}>
+                    {createUserMutation.isPending ? "Generating Account..." : "Create & Send Invitation"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="All Roles" />
@@ -777,13 +877,26 @@ const UserManagement = () => {
                 ))}
               </div>
             </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/50">
+               <div className="space-y-0.5">
+                  <Label className="text-sm font-bold">Clock-in Required</Label>
+                  <p className="text-[10px] text-muted-foreground">Is this staff required to log daily attendance?</p>
+               </div>
+               <button 
+                  type="button"
+                  onClick={() => setEditClockInRequired(!editClockInRequired)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${editClockInRequired ? 'bg-[#bc7e57]' : 'bg-muted-foreground/30'}`}
+               >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editClockInRequired ? 'translate-x-6' : 'translate-x-1'}`} />
+               </button>
+            </div>
             <Button
               onClick={handleSaveEdit}
-              className="w-full"
-              style={{ backgroundColor: '#bc7e57' }}
+              className="w-full h-12 font-bold text-lg"
+              style={{ backgroundColor: '#bc7e57', color: 'white' }}
               disabled={updateUserMutation.isPending}
             >
-              {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
+              {updateUserMutation.isPending ? "Syncing Changes..." : "Save User Profile"}
             </Button>
           </div>
         </DialogContent>

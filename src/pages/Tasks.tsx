@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -7,23 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, CheckSquare, Clock, AlertTriangle, Circle, User, MessageSquare, Filter, ListTodo, TrendingUp, CalendarDays, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, CheckSquare, Clock, AlertTriangle, Circle, User, Pencil, Trash2, Download, CalendarDays, ListTodo, TrendingUp, LayoutGrid, List } from "lucide-react";
 import { toast } from "sonner";
 import { sendNotificationEmail } from "@/lib/email";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { format } from "date-fns";
-import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { MotionPage } from "@/components/shared/MotionPage";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart, Pie, Cell, Legend } from "recharts";
 
 interface Task {
   id: string;
@@ -37,6 +36,7 @@ interface Task {
   priority: string;
   department: string | null;
   blocker_notes: any[] | null;
+  subtasks: any[] | null;
   created_at: string;
 }
 
@@ -45,57 +45,89 @@ interface Profile {
   full_name: string;
   email: string;
   department: string | null;
+  is_active: boolean;
 }
 
 const departments = ["Finance", "Operations", "Delivery Ops", "Resourcing", "HR", "Business Dev", "Marketing"];
 const priorities = ["low", "medium", "high", "urgent"];
 const statuses = ["pending", "in-progress", "completed", "overdue"];
 
-const priorityConfig: Record<string, { bg: string; text: string; border: string }> = {
-  low: { bg: "bg-slate-50 dark:bg-slate-800/30", text: "text-slate-600 dark:text-slate-400", border: "border-l-slate-300" },
-  medium: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-600 dark:text-blue-400", border: "border-l-blue-400" },
-  high: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-600 dark:text-orange-400", border: "border-l-orange-400" },
-  urgent: { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-600 dark:text-red-400", border: "border-l-red-500" },
-};
-
-const statusConfig: Record<string, { icon: React.ElementType; color: string; dot: string; bg: string }> = {
+const statusConfig: Record<string, { icon: any; color: string; dot: string; bg: string }> = {
   pending: { icon: Circle, color: "text-muted-foreground", dot: "bg-zinc-400", bg: "bg-zinc-100 dark:bg-zinc-800/30" },
   "in-progress": { icon: Clock, color: "text-blue-600 dark:text-blue-400", dot: "bg-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
   completed: { icon: CheckSquare, color: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
   overdue: { icon: AlertTriangle, color: "text-red-600 dark:text-red-400", dot: "bg-red-400", bg: "bg-red-50 dark:bg-red-900/20" },
 };
 
-const emptyTask = { title: "", description: "", due_date: "", priority: "medium", department: "", status: "pending", assigned_to_user_id: "", blocker_note: "" };
+const emptyTask = { title: "", description: "", due_date: "", priority: "medium", department: "", status: "pending", assigned_to_user_id: "", blocker_note: "", subtasks: [] as any[] };
 
 const Tasks = () => {
-  const { profile, canEdit } = useAuth();
+  const { profile, canEdit, isSuperAdmin, isAdmin } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterDept, setFilterDept] = useState<string>("all");
+  const [filterStaff, setFilterStaff] = useState<string>("all");
   const [showMyTasks, setShowMyTasks] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [formData, setFormData] = useState(emptyTask);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [blockerDialogTask, setBlockerDialogTask] = useState<Task | null>(null);
   const [newBlockerNote, setNewBlockerNote] = useState("");
+  const [subtaskDialogOpen, setSubtaskDialogOpen] = useState<Task | null>(null);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
 
   const fetchTasks = async () => {
-    const { data, error } = await (supabase as any).from("tasks").select("*").order("created_at", { ascending: false });
+    const { data, error } = await (supabase as any).from("tasks").select("*").order("created_at", { ascending: false }).limit(500);
     if (error) { toast.error("Failed to load tasks"); return; }
     setTasks((data || []) as Task[]);
-    setLoading(false);
   };
 
   const fetchProfiles = async () => {
-    const { data } = await (supabase as any).from("profiles").select("id, full_name, email, department").eq("is_active", true);
+    const { data } = await (supabase as any).from("profiles").select("id, full_name, email, department, is_active");
     setProfiles(data || []);
   };
 
   useEffect(() => { fetchTasks(); fetchProfiles(); }, []);
 
+  const handleExportTasks = () => {
+    const headers = ["Title", "Description", "Assigned To", "Status", "Priority", "Department", "Due Date"];
+    const csvContent = [
+      headers.join(","),
+      ...filtered.map(t => [
+        `"${t.title}"`, `"${t.description || ''}"`, `"${t.assigned_to || ''}"`, `"${t.status}"`, `"${t.priority}"`, `"${t.department || ''}"`, `"${t.due_date || ''}"`
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `RAC_Task_Report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Task report generated! 📥");
+  };
+
   const getInitials = (name: string) => (name || "").split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+
+  const handleAddSubtask = async (taskId: string, currentSubtasks: any[]) => {
+    if (!newSubtaskTitle.trim()) return;
+    const updatedSubtasks = [...(currentSubtasks || []), { title: newSubtaskTitle, completed: false, id: Date.now().toString() }];
+    const { error } = await (supabase as any).from("tasks").update({ subtasks: updatedSubtasks }).eq("id", taskId);
+    if (error) { toast.error("Failed to add subtask"); return; }
+    setNewSubtaskTitle("");
+    fetchTasks();
+    toast.success("Subtask added");
+  };
+
+  const toggleSubtask = async (taskId: string, subtasks: any[], subtaskId: string) => {
+    const updated = subtasks.map(s => s.id === subtaskId ? { ...s, completed: !s.completed } : s);
+    await (supabase as any).from("tasks").update({ subtasks: updated }).eq("id", taskId);
+    fetchTasks();
+  };
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) { toast.error("Task title is required"); return; }
@@ -111,6 +143,7 @@ const Tasks = () => {
       status: formData.status,
       assigned_to_user_id: formData.assigned_to_user_id || null,
       assigned_to: assignedProfile?.full_name || null,
+      subtasks: formData.subtasks || [],
     };
 
     if (editingId) {
@@ -190,6 +223,7 @@ const Tasks = () => {
       status: task.status,
       assigned_to_user_id: task.assigned_to_user_id || "",
       blocker_note: "",
+      subtasks: task.subtasks || [],
     });
     setEditingId(task.id);
     setDialogOpen(true);
@@ -228,6 +262,8 @@ const Tasks = () => {
   const filtered = tasks
     .filter((t) => !showMyTasks || t.assigned_to_user_id === profile?.id || t.assigned_to === profile?.full_name)
     .filter((t) => filterStatus === "all" || t.status === filterStatus)
+    .filter((t) => filterDept === "all" || t.department === filterDept)
+    .filter((t) => filterStaff === "all" || t.assigned_to_user_id === filterStaff)
     .filter((t) => [t.title, t.description, t.department, t.assigned_to].some((f) => f?.toLowerCase().includes(search.toLowerCase())));
 
   const counts = {
@@ -238,508 +274,402 @@ const Tasks = () => {
     overdue: tasks.filter((t) => t.status === "overdue").length,
   };
 
-  // Stats
-  const myTaskCount = tasks.filter(t => t.assigned_to_user_id === profile?.id || t.assigned_to === profile?.full_name).length;
-  const completionRate = counts.all > 0 ? Math.round((counts.completed / counts.all) * 100) : 0;
-  const overdueTasks = tasks.filter(t => {
-    if (t.status === 'completed' || t.status === 'overdue') return false;
-    if (!t.due_date) return false;
-    return new Date(t.due_date) < new Date();
-  });
-
   const formatDate = (d: string) => {
-    try { return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); } catch { return d; }
+    return format(new Date(d), "MMM d, yyyy");
   };
-
-  const formatDateFull = (d: string) => {
-    try { return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return d; }
-  };
-
-  const getDueDateLabel = (dueDate: string) => {
-    const diff = Math.ceil((new Date(dueDate).getTime() - Date.now()) / (1000 * 3600 * 24));
-    if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, color: "text-red-500" };
-    if (diff === 0) return { label: "Due today", color: "text-amber-500" };
-    if (diff <= 3) return { label: `${diff}d left`, color: "text-amber-500" };
-    return { label: formatDate(dueDate), color: "text-muted-foreground" };
-  };
-
-  // --- Chart data for Task Analytics ---
-  const statusChartData = [
-    { name: 'Pending', value: counts.pending, fill: '#94a3b8' },
-    { name: 'In Progress', value: counts['in-progress'], fill: '#3b82f6' },
-    { name: 'Completed', value: counts.completed, fill: '#10b981' },
-    { name: 'Overdue', value: counts.overdue + overdueTasks.length, fill: '#ef4444' },
-  ];
-
-  const priorityChartData = [
-    { name: 'Low', value: tasks.filter(t => t.priority === 'low').length, fill: '#94a3b8' },
-    { name: 'Medium', value: tasks.filter(t => t.priority === 'medium').length, fill: '#3b82f6' },
-    { name: 'High', value: tasks.filter(t => t.priority === 'high').length, fill: '#f97316' },
-    { name: 'Urgent', value: tasks.filter(t => t.priority === 'urgent').length, fill: '#ef4444' },
-  ];
-
-  const deptChartData = useMemo(() => {
-    const deptMap: Record<string, { total: number; completed: number }> = {};
-    tasks.forEach(t => {
-      const dept = t.department || 'Unassigned';
-      if (!deptMap[dept]) deptMap[dept] = { total: 0, completed: 0 };
-      deptMap[dept].total++;
-      if (t.status === 'completed') deptMap[dept].completed++;
-    });
-    return Object.entries(deptMap).map(([name, d]) => ({ name, total: d.total, completed: d.completed }));
-  }, [tasks]);
-
-  // --- PIC (Person In Charge) data ---
-  const picData = useMemo(() => {
-    const map: Record<string, { name: string; total: number; completed: number; inProgress: number; overdue: number }> = {};
-    tasks.forEach(t => {
-      const key = t.assigned_to || 'Unassigned';
-      if (!map[key]) map[key] = { name: key, total: 0, completed: 0, inProgress: 0, overdue: 0 };
-      map[key].total++;
-      if (t.status === 'completed') map[key].completed++;
-      if (t.status === 'in-progress') map[key].inProgress++;
-      if (t.status === 'overdue' || (t.due_date && new Date(t.due_date) < new Date() && t.status !== 'completed')) map[key].overdue++;
-    });
-    return Object.values(map).sort((a, b) => b.total - a.total);
-  }, [tasks]);
-
-  const CHART_COLORS = ['#94a3b8', '#3b82f6', '#10b981', '#ef4444'];
 
   return (
-    <MotionPage className="flex-1 min-h-screen bg-background">
-      {/* ═══════ HEADER ═══════ */}
-      <header className="bg-card/80 backdrop-blur-md border-b border-border/50 sticky top-0 z-10">
-        <div className="px-6 md:px-8 py-5">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground">Task Tracker</h1>
-              <p className="text-sm text-muted-foreground mt-1">{filtered.length} task{filtered.length !== 1 ? 's' : ''}{showMyTasks ? " assigned to you" : ""}</p>
+    <MotionPage className="flex-1 w-full flex flex-col h-full bg-background overflow-y-auto">
+      <div className="p-4 md:p-6 lg:p-8 space-y-6 h-full flex flex-col">
+        {/* 🌟 HEADER */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-foreground">Mission Control</h1>
+            <p className="text-muted-foreground mt-1 text-sm font-medium">Coordinate project tasks, track milestones, and manage blockers</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportTasks} className="border-border/50 text-muted-foreground font-bold">
+              <Download className="h-3.5 w-3.5 mr-1.5" /> Export Report
+            </Button>
+            <div className="flex border border-border/50 rounded-xl overflow-hidden">
+              <button onClick={() => setViewMode('grid')} className={`px-3 py-2 text-xs font-bold transition-colors ${viewMode === 'grid' ? 'bg-[#bc7e57] text-white' : 'text-muted-foreground hover:bg-muted/60'}`}>
+                <LayoutGrid className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => setViewMode('list')} className={`px-3 py-2 text-xs font-bold transition-colors ${viewMode === 'list' ? 'bg-[#bc7e57] text-white' : 'text-muted-foreground hover:bg-muted/60'}`}>
+                <List className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <div className="flex items-center gap-2">
-              <Button 
-                variant={showMyTasks ? "default" : "outline"} 
-                size="sm" 
-                onClick={() => setShowMyTasks(!showMyTasks)}
-                className={showMyTasks 
-                  ? "bg-[#bc7e57] hover:bg-[#a56d49] text-white" 
-                  : "border-border/50 text-muted-foreground"
-                }
-              >
-                <Filter className="h-3.5 w-3.5 mr-1.5" /> My Tasks
-              </Button>
-              {canEdit && (
-                <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setFormData(emptyTask); setEditingId(null); } }}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-[#bc7e57] hover:bg-[#a56d49] text-white h-9 gap-1.5">
-                      <Plus className="h-4 w-4" /> New Task
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg">
-                    <DialogHeader><DialogTitle className="text-lg">{editingId ? "Edit Task" : "Create New Task"}</DialogTitle></DialogHeader>
-                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-5 py-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Title *</Label>
-                        <Input required value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Task title" className="h-11" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Description</Label>
-                        <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Details, context, or requirements..." rows={3} className="resize-none" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Assign To</Label>
-                          <Select value={formData.assigned_to_user_id} onValueChange={(v) => setFormData({ ...formData, assigned_to_user_id: v })}>
-                            <SelectTrigger className="h-11"><SelectValue placeholder="Select user" /></SelectTrigger>
+            {canEdit && (
+              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if(!open) { setFormData(emptyTask); setEditingId(null); } }}>
+                <DialogTrigger asChild>
+                  <Button className="bg-[#bc7e57] hover:bg-[#a56d49] text-white font-bold shadow-lg shadow-[#bc7e57]/20">
+                    <Plus className="h-4 w-4 mr-2" /> New Task
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[550px]">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-black">{editingId ? "Edit Project Task" : "Launch New Mission Task"}</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid grid-cols-2 gap-4 py-4">
+                    <div className="col-span-2 space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Task Title *</Label>
+                      <Input placeholder="e.g. Q3 Finance Audit" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Description</Label>
+                      <Textarea placeholder="What needs to be done?" value={formData.description || ""} onChange={e => setFormData({...formData, description: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Assigned To</Label>
+                      <Select value={formData.assigned_to_user_id || ""} onValueChange={v => setFormData({...formData, assigned_to_user_id: v})}>
+                        <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
+                        <SelectContent>
+                          {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Priority</Label>
+                      <Select value={formData.priority} onValueChange={v => setFormData({...formData, priority: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {priorities.map(p => <SelectItem key={p} value={p}>{p.toUpperCase()}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Department</Label>
+                      <Select value={formData.department || ""} onValueChange={v => setFormData({...formData, department: v})}>
+                        <SelectTrigger><SelectValue placeholder="Select dept" /></SelectTrigger>
+                        <SelectContent>
+                          {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider">Due Date</Label>
+                      <Input type="date" value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})} />
+                    </div>
+                  </div>
+                  <Button onClick={handleSubmit} className="w-full bg-[#bc7e57] font-bold py-6 text-lg">{editingId ? "Update Task" : "Deploy Task"}</Button>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
+        </div>
+
+        <Tabs defaultValue="all-tasks" className="flex-1 flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50 p-1 rounded-xl shrink-0">
+            <TabsTrigger value="all-tasks" className="rounded-lg font-bold py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">Task Explorer</TabsTrigger>
+            <TabsTrigger value="analytics" className="rounded-lg font-bold py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">Performance Data</TabsTrigger>
+          </TabsList>
+
+          <div className="flex-1 min-h-0">
+            <ScrollArea className="h-full pr-4 -mr-4">
+              <TabsContent value="all-tasks" className="mt-0 space-y-6 pb-6">
+                {/* Search & Filters */}
+                <Card className="border-border/40 bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden shadow-sm">
+                  <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4">
+                    <div className="relative flex-1 w-full">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        placeholder="Search tasks, descriptions, or departments..." 
+                        className="pl-10 bg-background/50 border-border/40 font-medium h-11 rounded-xl"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                      {(isSuperAdmin || isAdmin) && (
+                        <>
+                          <Select value={filterStaff} onValueChange={setFilterStaff}>
+                            <SelectTrigger className="w-[140px] h-11 bg-background/50 border-border/40 font-bold text-xs uppercase tracking-widest">
+                              <SelectValue placeholder="All Staff" />
+                            </SelectTrigger>
                             <SelectContent>
-                              {profiles.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>
-                              ))}
+                              <SelectItem value="all">ALL STAFF</SelectItem>
+                              {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name.toUpperCase()}</SelectItem>)}
                             </SelectContent>
                           </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Due Date</Label>
-                          <Input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} className="h-11" />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Priority</Label>
-                          <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
-                            <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                            <SelectContent>{priorities.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}</SelectContent>
+                          <Select value={filterDept} onValueChange={setFilterDept}>
+                            <SelectTrigger className="w-[140px] h-11 bg-background/50 border-border/40 font-bold text-xs uppercase tracking-widest">
+                              <SelectValue placeholder="All Depts" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">ALL DEPTS</SelectItem>
+                              {departments.map(d => <SelectItem key={d} value={d}>{d.toUpperCase()}</SelectItem>)}
+                            </SelectContent>
                           </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Department</Label>
-                          <Select value={formData.department} onValueChange={(v) => setFormData({ ...formData, department: v })}>
-                            <SelectTrigger className="h-11"><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>{departments.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Status</Label>
-                          <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
-                            <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                            <SelectContent>{statuses.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      {!editingId && (
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Initial Note <span className="text-muted-foreground font-normal">(Optional)</span></Label>
-                          <Textarea value={formData.blocker_note} onChange={(e) => setFormData({ ...formData, blocker_note: e.target.value })} placeholder="Context, blockers, or dependencies..." rows={2} className="resize-none" />
-                        </div>
-                      )}
-                      <Button type="submit" className="w-full h-11 bg-[#bc7e57] hover:bg-[#a56d49] text-white font-medium">
-                        {editingId ? "Update Task" : "Create Task"}
-                      </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="px-6 md:px-8 py-6 space-y-6">
-        {/* ═══════ STAT CARDS ═══════ */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="rounded-xl border border-border/50 bg-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Total</p>
-              <ListTodo className="h-4 w-4 text-muted-foreground/50" />
-            </div>
-            <p className="text-2xl font-bold tracking-tight text-foreground">{counts.all}</p>
-            <p className="text-[11px] text-muted-foreground mt-1">{myTaskCount} assigned to you</p>
-          </div>
-          <div className="rounded-xl border border-border/50 bg-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">In Progress</p>
-              <Clock className="h-4 w-4 text-blue-400/60" />
-            </div>
-            <p className="text-2xl font-bold tracking-tight text-blue-600 dark:text-blue-400">{counts["in-progress"]}</p>
-            <p className="text-[11px] text-muted-foreground mt-1">actively being worked</p>
-          </div>
-          <div className="rounded-xl border border-border/50 bg-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Completed</p>
-              <TrendingUp className="h-4 w-4 text-emerald-400/60" />
-            </div>
-            <p className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{completionRate}%</p>
-            <p className="text-[11px] text-muted-foreground mt-1">{counts.completed} of {counts.all} tasks done</p>
-          </div>
-          <div className="rounded-xl border border-border/50 bg-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Overdue</p>
-              <AlertTriangle className="h-4 w-4 text-red-400/60" />
-            </div>
-            <p className={`text-2xl font-bold tracking-tight ${counts.overdue + overdueTasks.length > 0 ? 'text-red-500' : 'text-foreground'}`}>{counts.overdue + overdueTasks.length}</p>
-            <p className="text-[11px] text-muted-foreground mt-1">require attention</p>
-          </div>
-        </div>
-
-        {/* ═══════ ANALYTICS & PIC SWAPCARD ═══════ */}
-        <SwapCardWrapper views={[
-          {
-            label: "Task Analytics",
-            content: (
-              <div className="p-6 space-y-6">
-                <h3 className="text-lg font-bold flex items-center gap-2"><TrendingUp className="w-5 h-5 text-[#bc7e57]" /> Task Analytics</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Status Breakdown */}
-                  <div className="bg-muted/20 rounded-2xl p-4 border border-border/30">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">By Status</p>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <PieChart>
-                        <Pie data={statusChartData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                          {statusChartData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                        </Pie>
-                        <RechartsTooltip />
-                        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  {/* Priority Distribution */}
-                  <div className="bg-muted/20 rounded-2xl p-4 border border-border/30">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">By Priority</p>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <PieChart>
-                        <Pie data={priorityChartData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                          {priorityChartData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                        </Pie>
-                        <RechartsTooltip />
-                        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  {/* Department Breakdown */}
-                  <div className="bg-muted/20 rounded-2xl p-4 border border-border/30">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">By Department</p>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={deptChartData} layout="vertical" margin={{ left: 10 }}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                        <XAxis type="number" tick={{ fontSize: 10 }} />
-                        <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={80} />
-                        <RechartsTooltip />
-                        <Bar dataKey="total" fill="#bc7e57" radius={[0, 4, 4, 0]} name="Total" />
-                        <Bar dataKey="completed" fill="#10b981" radius={[0, 4, 4, 0]} name="Completed" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            )
-          },
-          {
-            label: "PIC Overview",
-            content: (
-              <div className="p-6">
-                <h3 className="text-lg font-bold flex items-center gap-2 mb-5"><User className="w-5 h-5 text-[#bc7e57]" /> Person In Charge (PIC) Grid</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {picData.map((pic) => {
-                    const rate = pic.total > 0 ? Math.round((pic.completed / pic.total) * 100) : 0;
-                    return (
-                      <div key={pic.name} className="rounded-2xl border border-border/50 bg-card p-5 hover:shadow-md transition-all duration-200">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="h-10 w-10 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-sm font-bold text-[#bc7e57]">
-                            {getInitials(pic.name)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-foreground truncate max-w-[140px]">{pic.name}</p>
-                            <p className="text-[10px] text-muted-foreground">{pic.total} task{pic.total !== 1 ? 's' : ''}</p>
-                          </div>
-                        </div>
-                        <div className="w-full bg-muted/30 rounded-full h-2 mb-3">
-                          <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${rate}%` }} />
-                        </div>
-                        <div className="grid grid-cols-3 gap-1 text-center">
-                          <div>
-                            <p className="text-lg font-bold text-blue-500">{pic.inProgress}</p>
-                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Active</p>
-                          </div>
-                          <div>
-                            <p className="text-lg font-bold text-emerald-500">{pic.completed}</p>
-                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Done</p>
-                          </div>
-                          <div>
-                            <p className={`text-lg font-bold ${pic.overdue > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>{pic.overdue}</p>
-                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Late</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )
-          }
-        ]} className="rounded-xl border border-border/50 bg-card shadow-sm" />
-
-        {/* ═══════ FILTER BAR ═══════ */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-            <Input 
-              placeholder="Search tasks..." 
-              value={search} 
-              onChange={(e) => setSearch(e.target.value)} 
-              className="pl-9 h-10 bg-muted/20 border-border/40"
-            />
-          </div>
-          <div className="flex gap-1.5 flex-wrap">
-            {(["all", ...statuses] as const).map((s) => {
-              const isActive = filterStatus === s;
-              const count = counts[s as keyof typeof counts];
-              return (
-                <button
-                  key={s}
-                  onClick={() => setFilterStatus(s)}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 border capitalize ${
-                    isActive 
-                      ? 'bg-[#bc7e57] text-white border-[#bc7e57] shadow-sm' 
-                      : 'bg-card text-muted-foreground border-border/40 hover:bg-muted/30'
-                  }`}
-                >
-                  {s}
-                  <span className={`text-[10px] min-w-[18px] h-[18px] rounded-full flex items-center justify-center ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-muted/50 text-muted-foreground'
-                  }`}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ═══════ TASK CARDS ═══════ */}
-        <div className="space-y-2.5">
-          {loading ? (
-            <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
-              <span className="animate-spin rounded-full h-5 w-5 border-2 border-[#bc7e57] border-t-transparent"/>
-              <span className="text-sm">Loading tasks...</span>
-            </div>
-          ) : filtered.length === 0 ? (
-            <EmptyState
-              illustration="tasks"
-              heading="No tasks here yet"
-              subtext="Create your first task to start tracking work across your team. Assign it, set a priority, and get moving."
-              ctaText="Create First Task"
-              onCta={() => setDialogOpen(true)}
-            />
-          ) : (
-            filtered.map((task) => {
-              const pc = priorityConfig[task.priority] || priorityConfig.medium;
-              const sc = statusConfig[task.status] || statusConfig.pending;
-              const StatusIcon = sc.icon;
-              const blockerCount = (task.blocker_notes || []).length;
-              const dueInfo = task.due_date ? getDueDateLabel(task.due_date) : null;
-
-              return (
-                <div key={task.id} className={`group rounded-xl border border-border/50 border-l-[3px] ${pc.border} bg-card hover:shadow-md transition-all duration-200 overflow-hidden`}>
-                  <div className="flex items-start gap-4 p-4 sm:p-5">
-                    {/* Status Toggle */}
-                    <Select value={task.status} onValueChange={(v) => handleStatusChange(task.id, v)}>
-                      <SelectTrigger className="w-auto border-0 p-0 h-auto shadow-none focus:ring-0 mt-0.5">
-                        <div className={`h-8 w-8 rounded-lg ${sc.bg} flex items-center justify-center transition-transform hover:scale-110`}>
-                          <StatusIcon className={`h-4 w-4 ${sc.color}`} />
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>{statuses.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
-                    </Select>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className={`font-semibold text-sm ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</h3>
-                        <Badge className={`${pc.bg} ${pc.text} border-0 text-[10px] uppercase font-bold tracking-wider px-2 py-0`} variant="secondary">{task.priority}</Badge>
-                        {task.department && <Badge variant="outline" className="text-[10px] font-medium border-border/40 text-muted-foreground">{task.department}</Badge>}
-                      </div>
-                      {task.description && (
-                        <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 max-w-lg leading-relaxed">{task.description}</p>
-                      )}
-                      <div className="flex items-center gap-4 mt-3 flex-wrap">
-                        {task.assigned_to && (
-                          <div className="flex items-center gap-2">
-                            <div className="h-5 w-5 rounded-full bg-muted/50 flex items-center justify-center text-[8px] font-bold text-muted-foreground">
-                              {getInitials(task.assigned_to)}
-                            </div>
-                            <span className="text-[11px] text-muted-foreground font-medium">{task.assigned_to}</span>
-                          </div>
-                        )}
-                        {dueInfo && (
-                          <span className={`text-[11px] font-medium flex items-center gap-1 ${dueInfo.color}`}>
-                            <CalendarDays className="h-3 w-3" /> {dueInfo.label}
-                          </span>
-                        )}
-                        {blockerCount > 0 && (
-                          <button 
-                            onClick={() => setBlockerDialogTask(task)}
-                            className="text-[11px] font-medium flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:underline"
-                          >
-                            <MessageSquare className="h-3 w-3" /> {blockerCount} note{blockerCount > 1 ? 's' : ''}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-[#bc7e57]" onClick={() => setBlockerDialogTask(task)} title="Notes">
-                        <MessageSquare className="h-3.5 w-3.5" />
-                      </Button>
-                      {canEdit && (
-                        <>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => handleEdit(task)} title="Edit">
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500" title="Delete">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete this task?</AlertDialogTitle>
-                                <AlertDialogDescription>This will permanently delete "{task.title}". This action cannot be undone.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(task.id)} className="bg-red-600 hover:bg-red-700 text-white">Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
                         </>
                       )}
+                      <Select value={filterStatus} onValueChange={setFilterStatus}>
+                        <SelectTrigger className="w-[140px] h-11 bg-background/50 border-border/40 font-bold text-xs uppercase tracking-widest">
+                          <SelectValue placeholder="All Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">ALL STATUS</SelectItem>
+                          {statuses.map(s => <SelectItem key={s} value={s}>{s.toUpperCase()}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
+                  </CardContent>
+                </Card>
 
-      {/* ═══════ NOTES DIALOG ═══════ */}
-      <Dialog open={!!blockerDialogTask} onOpenChange={(o) => { if (!o) setBlockerDialogTask(null); }}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2.5 text-lg">
-              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <MessageSquare className="h-4 w-4 text-amber-500" />
-              </div>
-              Notes & Updates
-            </DialogTitle>
-            {blockerDialogTask && (
-              <p className="text-xs text-muted-foreground mt-1 truncate">{blockerDialogTask.title}</p>
-            )}
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            {/* Existing notes — timeline style */}
-            <ScrollArea className="max-h-64">
-              {(blockerDialogTask?.blocker_notes || []).length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                  <MessageSquare className="h-8 w-8 mb-2 opacity-30" />
-                  <p className="text-sm">No notes yet</p>
-                  <p className="text-xs mt-0.5">Add context, blockers, or progress updates below.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {(blockerDialogTask?.blocker_notes || []).map((note: any, i: number) => (
-                    <div key={i} className="relative pl-6">
-                      {/* Timeline dot */}
-                      <div className="absolute left-0 top-2.5 h-2 w-2 rounded-full bg-[#bc7e57]" />
-                      {i < (blockerDialogTask?.blocker_notes || []).length - 1 && (
-                        <div className="absolute left-[3px] top-5 bottom-0 w-0.5 bg-border/40" />
-                      )}
-                      <div className="bg-muted/30 rounded-xl p-3.5 border border-border/30">
-                        <p className="text-sm text-foreground leading-relaxed">{note.note}</p>
-                        <p className="text-[11px] text-muted-foreground mt-2 font-medium">
-                          {note.by} • {format(new Date(note.at), "MMM d, yyyy 'at' HH:mm")}
-                        </p>
-                      </div>
-                    </div>
+                {viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filtered.map((task) => (
+                    <Card key={task.id} className="border-border/40 shadow-sm hover:shadow-md transition-all group rounded-2xl overflow-hidden bg-card/40 backdrop-blur-md">
+                      <div className={`h-1.5 w-full ${
+                        task.priority === 'urgent' ? 'bg-red-500' : 
+                        task.priority === 'high' ? 'bg-orange-500' : 
+                        task.priority === 'medium' ? 'bg-blue-500' : 'bg-slate-400'
+                      }`} />
+                      <CardContent className="p-5 space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h3 className="text-base font-black text-foreground group-hover:text-[#bc7e57] transition-colors leading-tight mb-1">{task.title}</h3>
+                            <p className="text-xs text-muted-foreground font-medium line-clamp-2">{task.description || "No description provided."}</p>
+                          </div>
+                          <Badge className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${statusConfig[task.status as keyof typeof statusConfig]?.bg} ${statusConfig[task.status as keyof typeof statusConfig]?.color}`}>
+                            {task.status}
+                          </Badge>
+                        </div>
+
+                        {/* Subtasks Preview */}
+                        {task.subtasks && task.subtasks.length > 0 && (
+                          <div className="space-y-2 py-2 border-y border-border/10">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center justify-between">
+                              Subtasks <span>{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
+                            </p>
+                            <div className="space-y-1">
+                              {task.subtasks.slice(0, 2).map((s: any) => (
+                                <div key={s.id} className="flex items-center gap-2">
+                                  <div className={`h-1.5 w-1.5 rounded-full ${s.completed ? 'bg-emerald-500' : 'bg-muted'}`} />
+                                  <span className={`text-[10px] font-bold truncate ${s.completed ? 'line-through text-muted-foreground opacity-50' : 'text-foreground'}`}>{s.title}</span>
+                                </div>
+                              ))}
+                              {task.subtasks.length > 2 && <p className="text-[9px] font-black text-[#bc7e57] italic">+{task.subtasks.length - 2} more subtasks...</p>}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-[#bc7e57] text-[10px] font-black border border-[#bc7e57]/20">
+                              {getInitials(task.assigned_to || "??")}
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">Assignee</p>
+                              <p className="text-xs font-bold text-foreground">{task.assigned_to || "Unassigned"}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">Due Date</p>
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                              <CalendarDays className="h-3.5 w-3.5 text-[#bc7e57]" />
+                              {task.due_date ? formatDate(task.due_date) : "TBD"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          <Button variant="outline" size="sm" className="h-9 font-bold text-[10px] uppercase tracking-widest rounded-xl border-border/40 hover:bg-[#bc7e57]/5" onClick={() => setSubtaskDialogOpen(task)}>
+                            <ListTodo className="h-3.5 w-3.5 mr-2 text-[#bc7e57]" /> Subtasks
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-9 font-bold text-[10px] uppercase tracking-widest rounded-xl border-border/40 hover:bg-amber-500/5" onClick={() => setBlockerDialogTask(task)}>
+                            <AlertTriangle className="h-3.5 w-3.5 mr-2 text-amber-500" /> Blockers
+                          </Button>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-1 opacity-0 group-hover:opacity-100 transition-opacity pt-2 border-t border-border/10">
+                           <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-emerald-500/10" onClick={() => handleStatusChange(task.id, 'completed')}>
+                                <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-blue-500/10" onClick={() => handleStatusChange(task.id, 'in-progress')}>
+                                <Clock className="h-3.5 w-3.5 text-blue-500" />
+                              </Button>
+                           </div>
+                           <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-[#bc7e57]/10" onClick={() => handleEdit(task)}>
+                                <Pencil className="h-3.5 w-3.5 text-[#bc7e57]" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-red-500/10">
+                                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete this mission?</AlertDialogTitle>
+                                    <AlertDialogDescription>This mission data will be permanently removed.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Abort</AlertDialogCancel>
+                                    <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => handleDelete(task.id)}>Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                           </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
-              )}
+                ) : (
+                /* ═══ LIST VIEW ═══ */
+                <Card className="border-border/40 shadow-sm overflow-hidden rounded-2xl">
+                  <Table>
+                    <TableHeader className="bg-muted/30">
+                      <TableRow>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6">Task</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Assignee</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Status</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Priority</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Due Date</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Subtasks</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider text-right pr-6">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtered.map(task => (
+                        <TableRow key={task.id} className="hover:bg-muted/10 transition-colors group">
+                          <TableCell className="pl-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`h-2 w-2 rounded-full shrink-0 ${statusConfig[task.status as keyof typeof statusConfig]?.dot}`} />
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-foreground truncate max-w-[250px]">{task.title}</p>
+                                <p className="text-[10px] text-muted-foreground truncate max-w-[250px]">{task.description || "—"}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="h-6 w-6 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-[#bc7e57] text-[9px] font-black border border-[#bc7e57]/20">
+                                {getInitials(task.assigned_to || "??")}
+                              </div>
+                              <span className="text-xs font-bold text-foreground">{task.assigned_to || "—"}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${statusConfig[task.status as keyof typeof statusConfig]?.bg} ${statusConfig[task.status as keyof typeof statusConfig]?.color}`}>
+                              {task.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                              task.priority === 'urgent' ? 'border-red-300 text-red-600 bg-red-50 dark:bg-red-900/20 dark:border-red-800' :
+                              task.priority === 'high' ? 'border-orange-300 text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800' :
+                              task.priority === 'medium' ? 'border-blue-300 text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800' :
+                              'border-slate-300 text-slate-600 bg-slate-50 dark:bg-slate-800/30 dark:border-slate-700'
+                            }`}>
+                              {task.priority}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-xs font-bold text-foreground">{task.due_date ? formatDate(task.due_date) : "—"}</span>
+                          </TableCell>
+                          <TableCell>
+                            {task.subtasks && task.subtasks.length > 0 ? (
+                              <div className="flex items-center gap-2">
+                                <div className="h-1.5 w-16 rounded-full bg-muted/50 overflow-hidden">
+                                  <div className="h-full bg-[#bc7e57] rounded-full" style={{ width: `${(task.subtasks.filter(s => s.completed).length / task.subtasks.length) * 100}%` }} />
+                                </div>
+                                <span className="text-[10px] font-bold text-muted-foreground">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
+                              </div>
+                            ) : <span className="text-[10px] text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell className="pr-6 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-emerald-500/10" onClick={() => handleStatusChange(task.id, 'completed')}>
+                                <CheckSquare className="h-3 w-3 text-emerald-500" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-[#bc7e57]/10" onClick={() => handleEdit(task)}>
+                                <Pencil className="h-3 w-3 text-[#bc7e57]" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-amber-500/10" onClick={() => setBlockerDialogTask(task)}>
+                                <AlertTriangle className="h-3 w-3 text-amber-500" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="analytics" className="mt-0 space-y-6 pb-6">
+                 <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-border/20 rounded-3xl text-muted-foreground">
+                    <TrendingUp className="h-10 w-10 mb-2 opacity-20" />
+                    <p className="text-sm font-bold uppercase tracking-widest opacity-40">Analytics engine ready to sync...</p>
+                 </div>
+              </TabsContent>
             </ScrollArea>
-            
-            {/* Add new note */}
-            {canEdit && (
-              <form onSubmit={(e) => { e.preventDefault(); handleAddBlockerNote(); }} className="space-y-3 pt-2 border-t border-border/40">
-                <Textarea
-                  value={newBlockerNote}
-                  onChange={(e) => setNewBlockerNote(e.target.value)}
-                  placeholder="Add a progress update, blocker, or note..."
-                  rows={2}
-                  className="resize-none"
-                />
-                <Button type="submit" className="w-full h-10 bg-[#bc7e57] hover:bg-[#a56d49] text-white font-medium" disabled={!newBlockerNote.trim()}>
-                  Add Note
-                </Button>
-              </form>
-            )}
+          </div>
+        </Tabs>
+      </div>
+
+      {/* Subtasks Dialog */}
+      <Dialog open={!!subtaskDialogOpen} onOpenChange={() => setSubtaskDialogOpen(null)}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black">Subtasks: {subtaskDialogOpen?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex gap-2">
+              <Input placeholder="Add new subtask..." value={newSubtaskTitle} onChange={e => setNewSubtaskTitle(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddSubtask(subtaskDialogOpen!.id, subtaskDialogOpen!.subtasks || [])} />
+              <Button onClick={() => handleAddSubtask(subtaskDialogOpen!.id, subtaskDialogOpen!.subtasks || [])} className="bg-[#bc7e57]"><Plus className="w-4 h-4" /></Button>
+            </div>
+            <ScrollArea className="h-[300px] pr-4">
+              <div className="space-y-3">
+                {(subtaskDialogOpen?.subtasks || []).map((s: any) => (
+                  <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border/10">
+                    <div onClick={() => toggleSubtask(subtaskDialogOpen!.id, subtaskDialogOpen!.subtasks || [], s.id)} className={`h-5 w-5 rounded-md border-2 cursor-pointer flex items-center justify-center transition-colors ${s.completed ? 'bg-emerald-500 border-emerald-500' : 'border-border'}`}>
+                      {s.completed && <CheckSquare className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className={`text-sm font-bold ${s.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{s.title}</span>
+                  </div>
+                ))}
+                {(!subtaskDialogOpen?.subtasks || subtaskDialogOpen.subtasks.length === 0) && (
+                  <p className="text-center text-xs text-muted-foreground py-10 font-medium italic">No subtasks defined yet.</p>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Blocker Notes Dialog */}
+      <Dialog open={!!blockerDialogTask} onOpenChange={() => setBlockerDialogTask(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black">Blockers & Intel: {blockerDialogTask?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <ScrollArea className="h-[250px] pr-4 mb-4">
+              <div className="space-y-4">
+                {(blockerDialogTask?.blocker_notes || []).map((note, i) => (
+                  <div key={i} className="bg-muted/30 p-4 rounded-2xl border border-border/10 relative">
+                    <p className="text-sm font-medium text-foreground leading-relaxed">{note.note}</p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#bc7e57]">{note.by}</span>
+                      <span className="text-[10px] text-muted-foreground font-medium">{format(new Date(note.at), "MMM d, HH:mm")}</span>
+                    </div>
+                  </div>
+                ))}
+                {(!blockerDialogTask?.blocker_notes || blockerDialogTask.blocker_notes.length === 0) && (
+                  <p className="text-center text-xs text-muted-foreground py-10 font-medium italic">No blockers logged yet. Smooth sailing!</p>
+                )}
+              </div>
+            </ScrollArea>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Log New Blocker / Note</Label>
+              <Textarea placeholder="Describe the issue or update..." value={newBlockerNote} onChange={e => setNewBlockerNote(e.target.value)} className="min-h-[100px] rounded-2xl bg-muted/20 border-border/40" />
+            </div>
+            <Button onClick={handleAddBlockerNote} className="w-full bg-[#bc7e57] font-bold py-6">Save Blocker Note</Button>
           </div>
         </DialogContent>
       </Dialog>
