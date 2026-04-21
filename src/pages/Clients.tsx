@@ -515,45 +515,54 @@ const Clients = () => {
                     >
                       <div className="flex items-center justify-between mb-3 px-1">
                         <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${column.id === 'won' ? 'bg-emerald-500' : column.id === 'lost' ? 'bg-red-500' : 'bg-[#bc7e57]'}`} />
-                          <h3 className="text-xs font-black uppercase tracking-widest text-foreground">{column.label}</h3>
+                          <div className={`h-2 w-2 rounded-full ${column.id === 'won' ? 'bg-success' : column.id === 'lost' ? 'bg-destructive' : 'bg-primary'}`} />
+                          <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-foreground">{column.label}</h3>
                         </div>
-                        <Badge variant="secondary" className="text-[10px] font-black bg-muted/50">{column.items.length}</Badge>
+                        <Badge variant="secondary" className="text-[10px] font-bold bg-muted/60 text-muted-foreground">{column.items.length}</Badge>
                       </div>
-                      
-                      <div className="flex-1 space-y-3 bg-muted/20 p-3 rounded-2xl border border-border/10">
-                        {column.items.map(client => (
-                          <Card 
-                            key={client.id} 
-                            className="border-border/40 shadow-sm hover:shadow-md transition-all group cursor-grab active:cursor-grabbing active:shadow-lg active:scale-[0.98]" 
+
+                      <div className="flex-1 space-y-3 bg-muted/30 p-3 rounded-2xl border border-border/40">
+                        {column.items.map(client => {
+                          const stageColor = column.id === 'won' ? 'border-l-success' : column.id === 'lost' ? 'border-l-destructive' : column.id === 'negotiation' || column.id === 'proposal' ? 'border-l-[hsl(var(--accent-gold))]' : 'border-l-primary';
+                          return (
+                          <div
+                            key={client.id}
+                            className={`bg-card border border-border ${stageColor} border-l-[3px] rounded-[10px] p-3.5 shadow-sm hover:shadow-lvl-2 hover:-translate-y-0.5 transition-all group cursor-pointer active:cursor-grabbing active:rotate-[2deg] active:scale-[1.02]`}
                             draggable
                             onDragStart={(e) => { e.dataTransfer.setData('text/plain', client.id); e.dataTransfer.effectAllowed = 'move'; }}
-                            onClick={() => handleEdit(client)}
+                            onClick={() => setDrawerClient(client)}
                           >
-                            <CardContent className="p-4 space-y-3">
-                              <div>
-                                <p className="text-sm font-black text-foreground group-hover:text-[#bc7e57] transition-colors">{client.name}</p>
-                                <p className="text-[10px] text-muted-foreground font-bold truncate mt-1">{client.company || "Individual Contact"}</p>
-                                {client.total_invoiced ? <p className="text-xs font-black text-[#bc7e57] mt-1">{formatDealValue(client.total_invoiced)}</p> : null}
+                            <div className="flex items-start gap-3 mb-3">
+                              <div className="h-9 w-9 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[11px] font-bold border border-primary/20">
+                                {getInitials(client.name)}
                               </div>
-                              
-                              <div className="flex items-center justify-between pt-2 border-t border-border/10">
-                                <div className="flex -space-x-2">
-                                  <div className="h-6 w-6 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-[#bc7e57] text-[10px] font-black border border-background">
-                                    {getInitials(client.name)}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
-                                  <Clock className="h-3 w-3" />
-                                  {formatDate(client.created_at)}
-                                </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">{client.name}</p>
+                                <p className="text-[11px] text-muted-foreground font-medium truncate">{client.company || "Individual Contact"}</p>
                               </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                            </div>
+
+                            {client.total_invoiced ? (
+                              <p className="text-[13px] font-bold text-primary mb-2 tabular-nums">{formatDealValue(client.total_invoiced)}</p>
+                            ) : null}
+
+                            <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                              <div className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
+                                <Clock className="h-2.5 w-2.5" />
+                                {formatDate(client.created_at)}
+                              </div>
+                              {client.assigned_to && (
+                                <div className="h-5 w-5 rounded-full bg-secondary flex items-center justify-center text-[8px] font-bold text-foreground" title={profiles.find(p => p.id === client.assigned_to)?.full_name}>
+                                  {getInitials(profiles.find(p => p.id === client.assigned_to)?.full_name || "??")}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          );
+                        })}
                         {column.items.length === 0 && (
-                          <div className="h-full flex items-center justify-center border-2 border-dashed border-border/20 rounded-xl">
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Drop here</p>
+                          <div className="h-32 flex items-center justify-center border-2 border-dashed border-border/60 rounded-xl">
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.16em]">Drop here</p>
                           </div>
                         )}
                       </div>
@@ -603,45 +612,45 @@ const Clients = () => {
                     </TableHeader>
                     <TableBody>
                       {filtered.map(client => (
-                        <TableRow key={client.id} className="hover:bg-muted/10 transition-colors">
+                        <TableRow key={client.id} className="hover:bg-muted/40 transition-colors cursor-pointer" onClick={() => setDrawerClient(client)}>
                           <TableCell className="pl-6 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#bc7e57]/20 to-transparent border border-[#bc7e57]/10 flex items-center justify-center text-[#bc7e57] font-black text-xs shadow-sm">
+                              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary/20 to-transparent border border-primary/10 flex items-center justify-center text-primary font-bold text-xs shadow-sm">
                                 {getInitials(client.name)}
                               </div>
                               <div>
-                                <p className="text-sm font-black text-foreground">{client.name}</p>
-                                <p className="text-[10px] text-muted-foreground font-bold">{client.company || "Individual"}</p>
+                                <p className="text-sm font-semibold text-foreground">{client.name}</p>
+                                <p className="text-[11px] text-muted-foreground font-medium">{client.company || "Individual"}</p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                            <Badge className={`text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-md ${
                               dealStatuses.find(s => s.id === client.deal_status)?.color || ""
                             }`}>
                               {dealStatuses.find(s => s.id === client.deal_status)?.label}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">{client.industry || "General"}</span>
+                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-tight">{client.industry || "General"}</span>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[8px] font-black">
+                              <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[8px] font-bold">
                                 {getInitials(profiles.find(p => p.id === client.assigned_to)?.full_name || "??")}
                               </div>
                               <span className="text-xs font-medium">{profiles.find(p => p.id === client.assigned_to)?.full_name || "Unassigned"}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right pr-6">
+                          <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-[#bc7e57]/10" onClick={() => handleEdit(client)}>
-                                <Edit2 className="h-3.5 w-3.5 text-[#bc7e57]" />
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10" onClick={() => handleEdit(client)}>
+                                <Edit2 className="h-3.5 w-3.5 text-primary" />
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-red-500/10">
-                                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-destructive/10">
+                                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
@@ -651,7 +660,7 @@ const Clients = () => {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => handleDelete(client.id)}>Delete</AlertDialogAction>
+                                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleDelete(client.id)}>Delete</AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
                               </AlertDialog>
@@ -667,6 +676,140 @@ const Clients = () => {
           </div>
         </Tabs>
       </div>
+
+      {/* ═══════ DEAL DETAIL DRAWER ═══════ */}
+      <Sheet open={!!drawerClient} onOpenChange={(open) => !open && setDrawerClient(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-[520px] p-0 border-l border-border bg-card">
+          {drawerClient && (() => {
+            const stage = dealStatuses.find(s => s.id === drawerClient.deal_status);
+            const rep = profiles.find(p => p.id === drawerClient.assigned_to);
+            return (
+              <div className="flex flex-col h-full">
+                {/* Header — dark hero */}
+                <div className="premium-hero-gradient px-7 pt-7 pb-6 text-white relative overflow-hidden">
+                  <div className="absolute -bottom-10 -right-10 opacity-[0.06]">
+                    <Building2 className="w-56 h-56 text-primary" strokeWidth={1} />
+                  </div>
+                  <div className="relative z-10">
+                    <div className="flex items-start justify-between mb-5">
+                      <div className="h-20 w-20 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-2xl font-bold text-primary backdrop-blur">
+                        {getInitials(drawerClient.name)}
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => setDrawerClient(null)} className="h-9 w-9 rounded-full text-white/70 hover:text-white hover:bg-white/10">
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </div>
+                    <h2 className="text-2xl font-bold tracking-tight">{drawerClient.name}</h2>
+                    <p className="text-sm text-white/60 font-medium mt-0.5">{drawerClient.company || "Individual Contact"}</p>
+                    <div className="flex items-center gap-2 mt-4 flex-wrap">
+                      <Badge className={`${stage?.color} text-[10px] font-bold uppercase tracking-[0.12em] px-2.5 py-1 rounded-md`}>
+                        {stage?.label}
+                      </Badge>
+                      {drawerClient.industry && (
+                        <Badge variant="outline" className="border-white/20 text-white/80 bg-white/5 text-[10px] font-semibold uppercase tracking-[0.12em]">
+                          {drawerClient.industry}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <ScrollArea className="flex-1">
+                  <div className="p-7 space-y-6">
+
+                    {/* Contact info */}
+                    <div>
+                      <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-3 flex items-center gap-2">
+                        <FileText className="h-3 w-3" /> Contact Details
+                      </h3>
+                      <div className="space-y-2.5">
+                        {drawerClient.email && (
+                          <div className="flex items-center gap-3 text-sm">
+                            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center"><Mail className="h-3.5 w-3.5 text-muted-foreground" /></div>
+                            <a href={`mailto:${drawerClient.email}`} className="text-foreground font-medium hover:text-primary transition-colors">{drawerClient.email}</a>
+                          </div>
+                        )}
+                        {drawerClient.phone && (
+                          <div className="flex items-center gap-3 text-sm">
+                            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center"><Phone className="h-3.5 w-3.5 text-muted-foreground" /></div>
+                            <a href={`tel:${drawerClient.phone}`} className="text-foreground font-medium hover:text-primary transition-colors">{drawerClient.phone}</a>
+                          </div>
+                        )}
+                        {drawerClient.address && (
+                          <div className="flex items-center gap-3 text-sm">
+                            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /></div>
+                            <span className="text-foreground font-medium">{drawerClient.address}</span>
+                          </div>
+                        )}
+                        {!drawerClient.email && !drawerClient.phone && !drawerClient.address && (
+                          <p className="text-xs text-muted-foreground italic">No contact details on file.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Pipeline meta */}
+                    <div>
+                      <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-3 flex items-center gap-2">
+                        <Activity className="h-3 w-3" /> Deal Information
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="surface-bevel rounded-[10px] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Assigned Rep</p>
+                          <p className="text-sm font-semibold text-foreground mt-1 truncate">{rep?.full_name || "Unassigned"}</p>
+                        </div>
+                        <div className="surface-bevel rounded-[10px] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Source</p>
+                          <p className="text-sm font-semibold text-foreground mt-1 capitalize">{drawerClient.source || "Direct"}</p>
+                        </div>
+                        <div className="surface-bevel rounded-[10px] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Created</p>
+                          <p className="text-sm font-semibold text-foreground mt-1">{formatDate(drawerClient.created_at)}</p>
+                        </div>
+                        <div className="surface-bevel rounded-[10px] p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Last Contact</p>
+                          <p className="text-sm font-semibold text-foreground mt-1">{drawerClient.last_contact_date ? formatDate(drawerClient.last_contact_date) : "—"}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    {drawerClient.notes && (
+                      <div>
+                        <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-3">Notes</h3>
+                        <div className="bg-muted/40 border-l-2 border-primary p-4 rounded-r-md">
+                          <p className="text-sm text-foreground italic leading-relaxed">{drawerClient.notes}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Stage mover */}
+                    <div>
+                      <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-3">Move Pipeline Stage</h3>
+                      <Select value={drawerClient.deal_status} onValueChange={async (v) => { await handleStatusChange(drawerClient.id, v); setDrawerClient({ ...drawerClient, deal_status: v }); }}>
+                        <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {dealStatuses.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </ScrollArea>
+
+                {/* Footer actions */}
+                <div className="border-t border-border bg-card px-7 py-4 flex items-center gap-3">
+                  <Button variant="outline" className="flex-1 h-11 font-semibold" onClick={() => { updateLastContact(drawerClient.id); }}>
+                    <Activity className="h-4 w-4 mr-2" /> Log Activity
+                  </Button>
+                  <Button className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md shadow-primary/20" onClick={() => { handleEdit(drawerClient); setDrawerClient(null); }}>
+                    <Edit2 className="h-4 w-4 mr-2" /> Edit Deal
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </MotionPage>
   );
 };
