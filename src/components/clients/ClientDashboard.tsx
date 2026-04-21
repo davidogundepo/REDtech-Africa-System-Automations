@@ -156,27 +156,29 @@ export const ClientDashboard = ({
   return (
     <div className="space-y-6 mb-8">
       
-      {/* ═══════ TOP KPI CARDS (8 Metrics) ═══════ */}
+      {/* ═══════ TOP KPI CARDS (8 Metrics) — Bevel surface ═══════ */}
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
         {[
-          { label: "Total Network", value: totalLeads, icon: Users, color: "text-blue-500", status: "all" },
-          { label: "Active Pipeline", value: activeDeals.length, icon: Target, color: "text-amber-500", status: "qualified" },
-          { label: "Closed Won", value: wonDeals.length, icon: Award, color: "text-emerald-500", status: "won" },
-          { label: "Win Rate", value: `${winRate}%`, icon: TrendingUp, color: "text-[#bc7e57]", status: "all" },
-          { label: "Pipeline Value", value: formatMoney(totalPipelineValue), icon: Activity, color: "text-indigo-500", status: "all" },
-          { label: "Revenue Won", value: formatMoney(totalWonValue), icon: Zap, color: "text-purple-500", status: "won" },
-          { label: "Avg Deal Size", value: formatMoney(avgDealSize), icon: Building2, color: "text-pink-500", status: "all" },
-          { label: "Avg Close Time", value: "14 Days", icon: Clock, color: "text-slate-500", status: "all" },
+          { label: "Total Network", value: totalLeads, icon: Users, color: "text-info", status: "all" },
+          { label: "Active Pipeline", value: activeDeals.length, icon: Target, color: "text-warning", status: "qualified" },
+          { label: "Closed Won", value: wonDeals.length, icon: Award, color: "text-success", status: "won" },
+          { label: "Win Rate", value: `${winRate}%`, icon: TrendingUp, color: "text-primary", status: "all" },
+          { label: "Pipeline Value", value: formatMoney(totalPipelineValue), icon: Activity, color: "text-info", status: "all" },
+          { label: "Revenue Won", value: formatMoney(totalWonValue), icon: Zap, color: "text-primary", status: "won" },
+          { label: "Avg Deal Size", value: formatMoney(avgDealSize), icon: Building2, color: "text-[hsl(var(--accent-gold))]", status: "all" },
+          { label: "Avg Close Time", value: "14 Days", icon: Clock, color: "text-muted-foreground", status: "all" },
         ].map((stat, i) => (
-          <Card key={i} onClick={() => handleCardClick(stat.status)} className="border-border/40 shadow-sm hover:shadow-md transition-all group overflow-hidden relative cursor-pointer">
-            <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity ${stat.color}`}>
+          <div
+            key={i}
+            onClick={() => handleCardClick(stat.status)}
+            className="surface-bevel rounded-[14px] p-4 cursor-pointer transition-transform hover:-translate-y-0.5 group overflow-hidden relative"
+          >
+            <div className={`absolute top-0 right-0 p-3 opacity-15 group-hover:opacity-30 transition-opacity ${stat.color}`}>
               <stat.icon className="w-10 h-10 -mr-2 -mt-2" />
             </div>
-            <CardContent className="p-4">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 opacity-80">{stat.label}</p>
-              <p className="text-xl font-black text-foreground">{stat.value}</p>
-            </CardContent>
-          </Card>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.12em] mb-1.5">{stat.label}</p>
+            <p className="text-2xl font-extrabold text-foreground tabular-nums">{stat.value}</p>
+          </div>
         ))}
       </div>
 
