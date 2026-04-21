@@ -33,7 +33,7 @@ export function GlobalAttendancePopup() {
     queryKey: ["my-attendance", today],
     queryFn: async () => {
       if (!profile) return null;
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("attendance_records")
         .select("*")
         .eq("user_id", profile.id)
@@ -88,7 +88,7 @@ export function GlobalAttendancePopup() {
   const { data: shiftConfig } = useQuery({
     queryKey: ["shift-config"],
     queryFn: async () => {
-      const { data } = await supabase.from("leave_balances").select("*").eq("leave_type", "system_config_shift").limit(1).maybeSingle();
+      const { data } = await (supabase as any).from("leave_balances").select("*").eq("leave_type", "system_config_shift").limit(1).maybeSingle();
       return data;
     },
   });
@@ -98,14 +98,14 @@ export function GlobalAttendancePopup() {
       if (!profile) throw new Error("Not logged in");
       const now = new Date();
       const hour = now.getHours();
-      const startHour = shiftConfig?.total_days ?? 9;
+      const startHour = (shiftConfig as any)?.total_days ?? 9;
       const isLate = hour >= startHour;
       const status = isLate ? "late" : "present";
       const modeObj = WORK_MODES.find(m => m.id === workMode);
       const tag = modeObj ? `[📍 ${modeObj.label}] ` : '';
       const finalNotes = notes.trim() ? `${tag}- ${notes}` : tag.trim();
 
-      const { error: attError } = await supabase.from("attendance_records").insert([{
+      const { error: attError } = await (supabase as any).from("attendance_records").insert([{
         user_id: profile.id,
         clock_in: now.toISOString(),
         date: today,
@@ -115,14 +115,14 @@ export function GlobalAttendancePopup() {
       if (attError) throw attError;
 
       if (isLate) {
-        const { data: currentProfile } = await supabase
+        const { data: currentProfile } = await (supabase as any)
           .from("profiles")
           .select("performance_score")
           .eq("id", profile.id)
           .single();
           
-        const currentScore = currentProfile?.performance_score ?? 100;
-        await supabase.from("profiles").update({ 
+        const currentScore = (currentProfile as any)?.performance_score ?? 100;
+        await (supabase as any).from("profiles").update({ 
           performance_score: currentScore - 2 
         }).eq("id", profile.id);
       }
