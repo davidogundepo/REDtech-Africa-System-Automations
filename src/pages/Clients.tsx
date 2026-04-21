@@ -99,6 +99,7 @@ const Clients = () => {
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
   const [pipelineTab, setPipelineTab] = useState("all");
   const [activeTab, setActiveTab] = useState("pipeline");
+  const [drawerClient, setDrawerClient] = useState<Client | null>(null);
 
   // Live exchange rates (cached weekly)
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ NGN: 1, USD: 1550, GBP: 2050, EUR: 1750 });
@@ -339,76 +340,141 @@ const Clients = () => {
             </Button>
             {canEdit && (
               <>
-                <Button 
-                  variant={showMyClients ? "default" : "outline"} 
-                  size="sm" 
+                <Button
+                  variant={showMyClients ? "default" : "outline"}
+                  size="sm"
                   onClick={() => setShowMyClients(!showMyClients)}
-                  className={showMyClients 
-                    ? "bg-[#bc7e57] hover:bg-[#a56d49] text-white font-bold" 
+                  className={showMyClients
+                    ? "bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
                     : "border-border/50 text-muted-foreground font-bold"
                   }
                 >
                   <Filter className="h-3.5 w-3.5 mr-1.5" /> My Deals
                 </Button>
-                
+
                 <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if(!open) { setFormData(emptyClient); setEditingId(null); } }}>
                   <DialogTrigger asChild>
-                    <Button className="bg-[#bc7e57] hover:bg-[#a56d49] text-white font-bold shadow-lg shadow-[#bc7e57]/20">
+                    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20">
                       <Plus className="h-4 w-4 mr-2" /> New Client
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl font-black">{editingId ? "Edit Client Details" : "Add New Client to CRM"}</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid grid-cols-2 gap-4 py-4">
-                      <div className="col-span-2 space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider">Contact Name *</Label>
-                        <Input placeholder="e.g. John Doe" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+
+                  {/* ═══════ PREMIUM SPLIT MODAL ═══════ */}
+                  <DialogContent className="p-0 overflow-hidden border-0 sm:max-w-[760px] sm:rounded-[20px] shadow-lvl-3">
+                    <div className="flex flex-col md:flex-row max-h-[90vh]">
+
+                      {/* LEFT — dark brand panel (40%) */}
+                      <div className="md:w-[40%] premium-hero-gradient p-8 md:p-10 flex flex-col justify-between text-white relative overflow-hidden">
+                        <div className="absolute -bottom-12 -right-12 opacity-[0.07]">
+                          <Handshake className="w-64 h-64 text-primary" strokeWidth={1} />
+                        </div>
+                        <div className="relative z-10">
+                          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/20 border border-primary/30 mb-5">
+                            <Handshake className="w-6 h-6 text-primary" />
+                          </div>
+                          <h2 className="text-2xl font-bold leading-tight tracking-tight mb-2">
+                            {editingId ? "Edit Deal" : "Add New Client"}
+                          </h2>
+                          <p className="text-sm text-white/60 font-medium leading-relaxed">
+                            {editingId
+                              ? "Update contact details and pipeline stage to keep your Deal Book accurate."
+                              : "Capture every prospect that crosses your radar. Strong CRM hygiene compounds revenue."}
+                          </p>
+                        </div>
+                        <div className="relative z-10 hidden md:block pt-8">
+                          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">
+                            <Sparkles className="w-3 h-3" /> RAC Tip
+                          </div>
+                          <p className="text-xs text-white/70 italic mt-2 leading-relaxed">
+                            "A deal aged in pipeline loses 7% probability per week. Move it forward or close it lost."
+                          </p>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider">Company</Label>
-                        <Input placeholder="e.g. Acme Corp" value={formData.company || ""} onChange={e => setFormData({...formData, company: e.target.value})} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider">Email</Label>
-                        <Input type="email" placeholder="john@example.com" value={formData.email || ""} onChange={e => setFormData({...formData, email: e.target.value})} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider">Deal Status</Label>
-                        <Select value={formData.deal_status} onValueChange={v => setFormData({...formData, deal_status: v})}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {dealStatuses.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider">Assigned To</Label>
-                        <Select value={formData.assigned_to || ""} onValueChange={v => setFormData({...formData, assigned_to: v})}>
-                          <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
-                          <SelectContent>
-                            {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+
+                      {/* RIGHT — form panel (60%) */}
+                      <div className="md:w-[60%] bg-card p-7 md:p-9 overflow-y-auto">
+                        <div className="space-y-5">
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Contact Name *</Label>
+                            <Input placeholder="e.g. John Doe" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Company</Label>
+                              <Input placeholder="Acme Corp" value={formData.company || ""} onChange={e => setFormData({...formData, company: e.target.value})} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Email</Label>
+                              <Input type="email" placeholder="john@acme.com" value={formData.email || ""} onChange={e => setFormData({...formData, email: e.target.value})} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Phone</Label>
+                              <Input placeholder="+234 ..." value={formData.phone || ""} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Industry</Label>
+                              <Select value={formData.industry || ""} onValueChange={v => setFormData({...formData, industry: v})}>
+                                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent>
+                                  {industries.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Deal Stage</Label>
+                              <Select value={formData.deal_status} onValueChange={v => setFormData({...formData, deal_status: v})}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {dealStatuses.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Source</Label>
+                              <Select value={formData.source} onValueChange={v => setFormData({...formData, source: v})}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {sources.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Assigned To</Label>
+                            <Select value={formData.assigned_to || ""} onValueChange={v => setFormData({...formData, assigned_to: v})}>
+                              <SelectTrigger><SelectValue placeholder="Select team member" /></SelectTrigger>
+                              <SelectContent>
+                                {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="col-span-1 space-y-2">
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Currency</Label>
+                              <Select value={formData.currency || "NGN"} onValueChange={v => setFormData({...formData, currency: v})}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {currencies.map(c => <SelectItem key={c.code} value={c.code}>{c.symbol} {c.code}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="col-span-2 space-y-2">
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Deal Value</Label>
+                              <Input type="number" placeholder="e.g. 5000000" value={formData.deal_value || ""} onChange={e => setFormData({...formData, deal_value: e.target.value})} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-7 mt-6 border-t border-border">
+                          <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1 h-11 font-semibold">
+                            Cancel
+                          </Button>
+                          <Button onClick={handleSubmit} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md shadow-primary/20">
+                            {editingId ? "Save Changes" : "Create Deal"}
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="col-span-1 space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider">Currency</Label>
-                        <Select value={formData.currency || "NGN"} onValueChange={v => setFormData({...formData, currency: v})}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {currencies.map(c => <SelectItem key={c.code} value={c.code}>{c.symbol} {c.code}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2 space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider">Deal Value</Label>
-                        <Input type="number" placeholder="e.g. 5000000" value={formData.deal_value || ""} onChange={e => setFormData({...formData, deal_value: e.target.value})} />
-                      </div>
-                    </div>
-                    <Button onClick={handleSubmit} className="w-full bg-[#bc7e57] font-bold py-6 text-lg">{editingId ? "Save Changes" : "Create Deal"}</Button>
                   </DialogContent>
                 </Dialog>
               </>
