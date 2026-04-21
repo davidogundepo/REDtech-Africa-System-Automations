@@ -284,21 +284,21 @@ export function AppSidebar() {
   const renderNavGroup = (items: typeof coreModules, label: string) => {
     return (
       <SidebarGroup>
-        <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] font-semibold text-muted-foreground/60 px-3">{label}</SidebarGroupLabel>
+        <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.15em] font-semibold text-sidebar-foreground/50 px-3 mt-2">{label}</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu className="space-y-0.5 px-2">
             {items.map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
+                  <SidebarMenuButton
+                    asChild
                     isActive={isActive}
                     tooltip={item.title}
                     className={
                       isActive
-                        ? "relative h-10 bg-[#bc7e57]/15 text-[#bc7e57] font-semibold rounded-xl shadow-[0_1px_3px_rgba(188,126,87,0.15)] border border-[#bc7e57]/20 before:absolute before:left-0 before:top-[20%] before:bottom-[20%] before:w-[3px] before:rounded-full before:bg-[#bc7e57] before:shadow-[0_0_8px_rgba(188,126,87,0.5)] transition-all duration-200"
-                        : "h-9 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl transition-all duration-200 hover:translate-x-0.5"
+                        ? "relative h-10 bg-primary/15 text-primary font-semibold rounded-lg shadow-[0_1px_3px_hsl(var(--primary)/0.15)] before:absolute before:left-0 before:top-[20%] before:bottom-[20%] before:w-[3px] before:rounded-full before:bg-primary before:shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-all duration-200"
+                        : "h-9 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-all duration-200 hover:translate-x-0.5"
                     }
                   >
                     <NavLink to={item.path} className="flex items-center gap-2.5">
@@ -319,23 +319,25 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border p-4 group-data-[collapsible=icon]:p-2">
         <div className="flex items-center gap-3 overflow-hidden group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2">
-          <img src={companyLogo} alt="REDtech Africa" className="h-8 w-auto shrink-0 group-data-[collapsible=icon]:h-7" />
-          <div className="flex-1 group-data-[collapsible=icon]:hidden">
-            <h2 className="font-bold text-sm" style={{ color: '#bc7e57' }}>REDtech Africa</h2>
-            <p className="text-xs text-muted-foreground">RAC Automations Dashboard</p>
+          <div className="h-9 w-9 shrink-0 rounded-lg bg-primary/15 flex items-center justify-center group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8">
+            <img src={companyLogo} alt="REDtech Africa" className="h-7 w-auto" />
+          </div>
+          <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+            <h2 className="font-bold text-sm leading-tight text-white">REDtech Africa</h2>
+            <p className="text-[11px] text-sidebar-foreground/50 leading-tight font-medium tracking-wide">RAC Automations</p>
           </div>
           <button
             onClick={toggleSidebar}
-            className="group-data-[collapsible=icon]:hidden h-7 w-7 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200 relative"
+            className="group-data-[collapsible=icon]:hidden h-7 w-7 shrink-0 rounded-md flex items-center justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200 relative"
             title="Collapse sidebar"
           >
             <PanelLeftClose className="h-4 w-4" />
-            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#bc7e57] animate-ping opacity-75 pointer-events-none sidebar-discovery" />
-            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#bc7e57] pointer-events-none sidebar-discovery" />
+            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary animate-ping opacity-75 pointer-events-none sidebar-discovery" />
+            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary pointer-events-none sidebar-discovery" />
           </button>
           <button
             onClick={toggleSidebar}
-            className="hidden group-data-[collapsible=icon]:flex h-6 w-6 shrink-0 rounded-md items-center justify-center text-muted-foreground hover:text-[#bc7e57] hover:bg-[#bc7e57]/10 transition-all duration-200"
+            className="hidden group-data-[collapsible=icon]:flex h-6 w-6 shrink-0 rounded-md items-center justify-center text-sidebar-foreground/60 hover:text-primary hover:bg-primary/10 transition-all duration-200"
             title="Expand sidebar"
           >
             <PanelLeft className="h-3.5 w-3.5" />
@@ -352,12 +354,12 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center">
         {/* Current User Info */}
         {profile && (
-          <div 
-            className="flex items-center gap-2 px-1 cursor-pointer rounded-lg hover:bg-muted/50 transition-colors p-2 -m-1 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:m-0"
+          <div
+            className="flex items-center gap-2 px-1 cursor-pointer rounded-lg hover:bg-sidebar-accent transition-colors p-2 -m-1 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:m-0"
             onClick={() => navigate("/profile")}
             title="View your profile"
           >
-            <div className="h-8 w-8 shrink-0 rounded-full bg-[#bc7e57]/20 flex items-center justify-center text-xs font-bold overflow-hidden" style={{ color: '#bc7e57' }}>
+            <div className="h-9 w-9 shrink-0 rounded-full bg-primary/20 ring-2 ring-primary/30 flex items-center justify-center text-xs font-bold text-primary overflow-hidden">
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
               ) : (
@@ -365,18 +367,18 @@ export function AppSidebar() {
               )}
             </div>
             <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-              <p className="text-sm font-medium truncate">{profile.full_name}</p>
-              <p className="text-xs text-muted-foreground">{roleLabels[profile.role]}</p>
+              <p className="text-sm font-semibold truncate text-white">{profile.full_name}</p>
+              <p className="text-[11px] text-sidebar-foreground/55 font-medium">{roleLabels[profile.role]}</p>
             </div>
           </div>
         )}
         {/* Storage Management Box */}
         <StorageBox isCollapsed={isCollapsed} />
 
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="w-full justify-start text-muted-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-0" 
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start bg-transparent border-sidebar-border text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground hover:border-sidebar-border group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-0"
           onClick={() => setTheme(theme === "light" ? "dark" : "light")}
         >
           {theme === "light" ? <Moon className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} /> : <Sun className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} />}
@@ -541,10 +543,10 @@ export function AppSidebar() {
             </DialogContent>
           </Dialog>
         )}
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="w-full justify-start text-muted-foreground hover:text-red-500 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-0" 
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-sidebar-foreground/65 hover:text-destructive hover:bg-destructive/10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-0"
           onClick={handleLogout}
         >
           <LogOut className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} />
@@ -552,14 +554,14 @@ export function AppSidebar() {
         </Button>
         {!isCollapsed && (
           <>
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-[11px] text-sidebar-foreground/45 text-center">
               Made with ❤️ by{" "}
               <a href="https://www.linkedin.com/in/davidogundepo/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">David</a>
               {" "}&{" "}
               <a href="https://www.linkedin.com/in/olu-sowunmi/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Dolamu</a>
             </p>
-            <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/50 mt-1">
-              <kbd className="px-1.5 py-0.5 rounded border border-border/50 bg-muted/40 text-[10px]">
+            <div className="flex items-center justify-center gap-1.5 text-[10px] text-sidebar-foreground/40 mt-1">
+              <kbd className="px-1.5 py-0.5 rounded border border-sidebar-border bg-sidebar-accent text-[10px] text-sidebar-foreground/70">
                 {typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘K' : 'Ctrl+K'}
               </kbd>
               <span>to search</span>

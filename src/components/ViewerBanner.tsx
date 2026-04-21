@@ -35,13 +35,15 @@ export function ViewerBanner() {
         await sendNotificationEmail({
           to: "ayomide@redtechafrica.com",
           subject: `Role Upgrade Request — ${profile?.full_name || "Viewer"}`,
-          html: brandedEmailTemplate(`
-            <h2>Role Upgrade Request</h2>
-            <p><strong>${profile?.full_name}</strong> (${profile?.email}) is requesting a role upgrade.</p>
-            <div style="background: #f8f4f0; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #bc7e57;">
-              <p style="margin: 0;">"${message}"</p>
-            </div>
-          `),
+          html: brandedEmailTemplate({
+            heading: "Role Upgrade Request",
+            body: `
+              <p><strong>${profile?.full_name}</strong> (${profile?.email}) is requesting a role upgrade.</p>
+              <div style="background: #f8f4f0; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #C4622D;">
+                <p style="margin: 0;">"${message}"</p>
+              </div>
+            `,
+          }),
         });
       } catch (_) {}
       toast.success("Upgrade request sent to Ayomide! 🚀");
