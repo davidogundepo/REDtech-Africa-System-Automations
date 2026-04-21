@@ -240,6 +240,8 @@ const Clients = () => {
       notes: client.notes || "",
       deal_status: client.deal_status || "lead",
       assigned_to: client.assigned_to || "",
+      deal_value: "",
+      currency: "NGN",
     });
     setEditingId(client.id);
     setDialogOpen(true);
@@ -288,12 +290,11 @@ const Clients = () => {
       "Name": c.name,
       "Company": c.company || "",
       "Email": c.email || "",
+      "Phone": c.phone || "",
       "Deal Status": c.deal_status,
       "Industry": c.industry || "",
-      "City": c.city || "",
+      "Source": c.source || "",
       "Total Invoiced (NGN)": c.total_invoiced || 0,
-      "Total Deliveries": c.total_deliveries || 0,
-      "Status": c.status || "",
       "Last Contact": c.last_contact_date || "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
