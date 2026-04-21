@@ -223,10 +223,10 @@ export function GlobalAttendancePopup() {
               {dismissCount === 0 ? "Remind me later" : "I'll clock in later — dismiss permanently"}
             </button>
 
-            {new Date().getHours() >= (shiftConfig?.total_days ?? 9) && (
+            {new Date().getHours() >= ((shiftConfig as any)?.total_days ?? 9) && (
               <div className="flex items-center justify-center gap-2 text-rose-500 text-xs font-medium bg-rose-500/10 py-2.5 px-3 rounded-lg border border-rose-500/20">
                 <AlertTriangle className="h-3.5 w-3.5" />
-                <span>Late Arrival: {(shiftConfig?.total_days ?? 9).toString().padStart(2, '0')}:00 Time Limit Exceeded (-2 pts)</span>
+                <span>Late Arrival: {((shiftConfig as any)?.total_days ?? 9).toString().padStart(2, '0')}:00 Time Limit Exceeded (-2 pts)</span>
               </div>
             )}
           </div>
