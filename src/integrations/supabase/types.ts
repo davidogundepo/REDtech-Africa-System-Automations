@@ -14,89 +14,15 @@ export type Database = {
   }
   public: {
     Tables: {
-      attendance_records: {
-        Row: {
-          id: string
-          user_id: string
-          clock_in: string | null
-          clock_out: string | null
-          date: string
-          status: string | null
-          notes: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          clock_in?: string | null
-          clock_out?: string | null
-          date?: string
-          status?: string | null
-          notes?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          clock_in?: string | null
-          clock_out?: string | null
-          date?: string
-          status?: string | null
-          notes?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "attendance_records_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      budgets: {
-        Row: {
-          actual_amount: number
-          budgeted_amount: number
-          category: string
-          created_at: string
-          id: string
-          quarter: number
-          year: number
-        }
-        Insert: {
-          actual_amount?: number
-          budgeted_amount?: number
-          category: string
-          created_at?: string
-          id?: string
-          quarter: number
-          year: number
-        }
-        Update: {
-          actual_amount?: number
-          budgeted_amount?: number
-          category?: string
-          created_at?: string
-          id?: string
-          quarter?: number
-          year?: number
-        }
-        Relationships: []
-      }
       clients: {
         Row: {
           address: string | null
-          assigned_to: string | null
           company: string | null
           created_at: string
           created_by: string | null
-          deal_status: string
           email: string | null
           id: string
           industry: string | null
-          last_contact_date: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -105,15 +31,12 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          assigned_to?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
-          deal_status?: string
           email?: string | null
           id?: string
           industry?: string | null
-          last_contact_date?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -122,15 +45,12 @@ export type Database = {
         }
         Update: {
           address?: string | null
-          assigned_to?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
-          deal_status?: string
           email?: string | null
           id?: string
           industry?: string | null
-          last_contact_date?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
@@ -144,7 +64,6 @@ export type Database = {
           approved_by: string | null
           created_at: string
           employee_id: string | null
-          user_id: string | null
           end_date: string
           id: string
           leave_type: string
@@ -157,7 +76,6 @@ export type Database = {
           approved_by?: string | null
           created_at?: string
           employee_id?: string | null
-          user_id?: string | null
           end_date: string
           id?: string
           leave_type?: string
@@ -170,7 +88,6 @@ export type Database = {
           approved_by?: string | null
           created_at?: string
           employee_id?: string | null
-          user_id?: string | null
           end_date?: string
           id?: string
           leave_type?: string
@@ -194,54 +111,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "leave_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      leave_balances: {
-        Row: {
-          id: string
-          user_id: string
-          leave_type: string
-          total_days: number
-          used_days: number
-          year: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          leave_type: string
-          total_days?: number
-          used_days?: number
-          year: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          leave_type?: string
-          total_days?: number
-          used_days?: number
-          year?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "leave_balances_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
         ]
       }
       profiles: {
@@ -253,7 +122,6 @@ export type Database = {
           full_name: string
           id: string
           role: string
-          performance_score: number
           updated_at: string
         }
         Insert: {
@@ -264,7 +132,6 @@ export type Database = {
           full_name?: string
           id: string
           role?: string
-          performance_score?: number
           updated_at?: string
         }
         Update: {
@@ -275,7 +142,6 @@ export type Database = {
           full_name?: string
           id?: string
           role?: string
-          performance_score?: number
           updated_at?: string
         }
         Relationships: []
@@ -283,8 +149,6 @@ export type Database = {
       tasks: {
         Row: {
           assigned_to: string | null
-          assigned_to_user_id: string | null
-          blocker_notes: Json | null
           client_id: string | null
           created_at: string
           created_by: string | null
@@ -292,17 +156,13 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
-          is_recurring: boolean | null
           priority: string
-          recurrence_pattern: string | null
           status: string
           title: string
           updated_at: string
         }
         Insert: {
           assigned_to?: string | null
-          assigned_to_user_id?: string | null
-          blocker_notes?: Json | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -310,17 +170,13 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
-          is_recurring?: boolean | null
           priority?: string
-          recurrence_pattern?: string | null
           status?: string
           title: string
           updated_at?: string
         }
         Update: {
           assigned_to?: string | null
-          assigned_to_user_id?: string | null
-          blocker_notes?: Json | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -328,9 +184,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
-          is_recurring?: boolean | null
           priority?: string
-          recurrence_pattern?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -344,13 +198,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tasks_assigned_to_user_id_fkey"
-            columns: ["assigned_to_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "tasks_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -358,286 +205,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      task_updates: {
-        Row: {
-          id: string
-          task_id: string | null
-          user_id: string | null
-          action: string
-          note: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          task_id?: string | null
-          user_id?: string | null
-          action: string
-          note?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          task_id?: string | null
-          user_id?: string | null
-          action?: string
-          note?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_updates_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_updates_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      transactions: {
-        Row: {
-          id: string
-          amount: number
-          type: string
-          category: string
-          date: string
-          description: string | null
-          created_by: string | null
-          created_at: string
-          deleted_at: string | null
-        }
-        Insert: {
-          id?: string
-          amount: number
-          type: string
-          category: string
-          date: string
-          description?: string | null
-          created_by?: string | null
-          created_at?: string
-          deleted_at?: string | null
-        }
-        Update: {
-          id?: string
-          amount?: number
-          type?: string
-          category?: string
-          date?: string
-          description?: string | null
-          created_by?: string | null
-          created_at?: string
-          deleted_at?: string | null
-        }
-        Relationships: []
-      }
-      documents: {
-        Row: {
-          id: string
-          name: string
-          type: string
-          size: string | null
-          url: string | null
-          folder_id: string | null
-          department: string | null
-          created_by: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          type: string
-          size?: string | null
-          url?: string | null
-          folder_id?: string | null
-          department?: string | null
-          created_by?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          type?: string
-          size?: string | null
-          url?: string | null
-          folder_id?: string | null
-          department?: string | null
-          created_by?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "documents_folder_id_fkey"
-            columns: ["folder_id"]
-            isOneToOne: false
-            referencedRelation: "documents"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      ops_metrics: {
-        Row: {
-          id: string
-          deliveries: number
-          issues: number
-          date: string
-          created_by: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          deliveries?: number
-          issues?: number
-          date: string
-          created_by?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          deliveries?: number
-          issues?: number
-          date?: string
-          created_by?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      payment_requests: {
-        Row: {
-          id: string
-          amount: number
-          category: string
-          description: string | null
-          requested_by: string | null
-          approved_by: string | null
-          status: string
-          created_at: string
-          resolved_at: string | null
-        }
-        Insert: {
-          id?: string
-          amount: number
-          category: string
-          description?: string | null
-          requested_by?: string | null
-          approved_by?: string | null
-          status?: string
-          created_at?: string
-          resolved_at?: string | null
-        }
-        Update: {
-          id?: string
-          amount?: number
-          category?: string
-          description?: string | null
-          requested_by?: string | null
-          approved_by?: string | null
-          status?: string
-          created_at?: string
-          resolved_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payment_requests_requested_by_fkey"
-            columns: ["requested_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payment_requests_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      notifications: {
-        Row: {
-          created_at: string
-          id: string
-          is_read: boolean
-          link: string | null
-          message: string
-          title: string
-          type: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_read?: boolean
-          link?: string | null
-          message: string
-          title: string
-          type?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_read?: boolean
-          link?: string | null
-          message?: string
-          title?: string
-          type?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      social_posts: {
-        Row: {
-          id: string
-          content: string
-          platform: string
-          status: string
-          scheduled_date: string | null
-          likes: number | null
-          shares: number | null
-          comments: number | null
-          created_by: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          content: string
-          platform: string
-          status: string
-          scheduled_date?: string | null
-          likes?: number | null
-          shares?: number | null
-          comments?: number | null
-          created_by?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          content?: string
-          platform?: string
-          status?: string
-          scheduled_date?: string | null
-          likes?: number | null
-          shares?: number | null
-          comments?: number | null
-          created_by?: string | null
-          created_at?: string
-        }
-        Relationships: []
       }
     }
     Views: {
