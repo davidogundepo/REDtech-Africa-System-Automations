@@ -173,14 +173,12 @@ const DocumentRepository = () => {
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderColor, setNewFolderColor] = useState("emerald");
   const FOLDER_COLORS = [
-    { key: "emerald", bg: "bg-emerald-500/10", border: "border-emerald-500/20", text: "text-emerald-500", dot: "bg-emerald-500" },
-    { key: "indigo", bg: "bg-indigo-500/10", border: "border-indigo-500/20", text: "text-indigo-500", dot: "bg-indigo-500" },
-    { key: "amber", bg: "bg-amber-500/10", border: "border-amber-500/20", text: "text-amber-500", dot: "bg-amber-500" },
-    { key: "purple", bg: "bg-purple-500/10", border: "border-purple-500/20", text: "text-purple-500", dot: "bg-purple-500" },
-    { key: "rose", bg: "bg-rose-500/10", border: "border-rose-500/20", text: "text-rose-500", dot: "bg-rose-500" },
-    { key: "sky", bg: "bg-sky-500/10", border: "border-sky-500/20", text: "text-sky-500", dot: "bg-sky-500" },
-    { key: "teal", bg: "bg-teal-500/10", border: "border-teal-500/20", text: "text-teal-500", dot: "bg-teal-500" },
-    { key: "orange", bg: "bg-orange-500/10", border: "border-orange-500/20", text: "text-orange-500", dot: "bg-orange-500" },
+    { key: "success", bg: "bg-success/10", border: "border-success/20", text: "text-success", dot: "bg-success" },
+    { key: "info", bg: "bg-info/10", border: "border-info/20", text: "text-info", dot: "bg-info" },
+    { key: "warning", bg: "bg-warning/10", border: "border-warning/20", text: "text-warning", dot: "bg-warning" },
+    { key: "primary", bg: "bg-primary/10", border: "border-primary/20", text: "text-primary", dot: "bg-primary" },
+    { key: "destructive", bg: "bg-destructive/10", border: "border-destructive/20", text: "text-destructive", dot: "bg-destructive" },
+    { key: "gold", bg: "bg-gold/10", border: "border-gold/20", text: "text-gold", dot: "bg-gold" },
   ];
   
   const queryClient = useQueryClient();
