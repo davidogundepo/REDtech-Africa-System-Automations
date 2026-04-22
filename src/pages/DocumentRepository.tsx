@@ -631,7 +631,7 @@ const DocumentRepository = () => {
                 <div className="space-y-1.5 border-t border-border/40 pt-3">
                   {folder.docs.map((doc, di) => (
                     <div key={di} className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-0.5">
-                      <FileText className="w-3 h-3 flex-shrink-0 text-[#bc7e57]" />
+                      <FileText className="w-3 h-3 flex-shrink-0 text-primary" />
                       <span className="truncate font-medium">{doc}</span>
                     </div>
                   ))}
