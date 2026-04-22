@@ -364,11 +364,11 @@ const DocumentRepository = () => {
       {/* Hero Header Region */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
         <div>
-          <div className="inline-flex items-center space-x-2 text-xs font-semibold text-[#bc7e57] uppercase tracking-wider mb-2">
-            <span className="w-2 h-2 rounded-full bg-[#bc7e57]" />
+          <div className="inline-flex items-center space-x-2 text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span>Secure Storage Access</span>
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight">Enterprise <span className="text-[#bc7e57]">Drive</span></h1>
+          <h1 className="text-display tracking-tight">Enterprise <span className="text-brand-gradient">Drive</span></h1>
           <p className="text-muted-foreground mt-2 max-w-xl leading-relaxed">
             Centralized document repository for REDtech Africa operations. Browse, preview, and securely manage files.
           </p>
@@ -395,7 +395,7 @@ const DocumentRepository = () => {
             <Input 
               type="search" 
               placeholder="Search by filename..." 
-              className="pl-10 h-11 bg-card border-border/50 shadow-sm focus-visible:ring-[#bc7e57]/50 rounded-full" 
+              className="pl-10 h-11 bg-card border-border/50 shadow-sm rounded-full" 
               value={searchQuery} 
               onChange={(e) => setSearchQuery(e.target.value)} 
             />
@@ -404,8 +404,8 @@ const DocumentRepository = () => {
           {profile && (
             <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white shadow-lg hover:shadow-xl transition-all h-11 px-6 rounded-full group w-full sm:w-auto">
-                  <Upload className="mr-2 h-4 w-4 transition-transform group-hover:-translate-y-1" /> Add to Drive
+                <Button className="bg-primary hover:bg-primary-dark text-primary-foreground shadow-lvl-2 hover:shadow-lvl-3 transition-all h-11 px-6 rounded-full group w-full sm:w-auto">
+                  <Upload className="mr-2 h-4 w-4 transition-transform group-hover:-translate-y-0.5" /> Add to Drive
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl p-0 overflow-hidden border-0 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 shadow-2xl">
