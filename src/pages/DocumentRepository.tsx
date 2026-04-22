@@ -35,26 +35,25 @@ const TypeIcon = ({ type, className }: { type: string, className?: string }) => 
 };
 
 const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
-  const { theme } = useTheme();
   const themeGradients: Record<string, string> = {
-    pdf: "from-red-500/20 to-rose-500/5",
-    excel: "from-emerald-500/20 to-teal-500/5",
-    csv: "from-emerald-500/20 to-teal-500/5",
-    word: "from-indigo-500/20 to-blue-500/5",
-    docx: "from-indigo-500/20 to-blue-500/5",
-    image: "from-purple-500/20 to-fuchsia-500/5",
-    link: "from-sky-500/20 to-cyan-500/5"
+    pdf: "from-destructive/20 to-destructive/5",
+    excel: "from-success/20 to-success/5",
+    csv: "from-success/20 to-success/5",
+    word: "from-info/20 to-info/5",
+    docx: "from-info/20 to-info/5",
+    image: "from-gold/20 to-gold/5",
+    link: "from-info/20 to-info/5"
   };
 
-  const gradient = themeGradients[file.type] || "from-[#bc7e57]/20 to-[#bc7e57]/5";
+  const gradient = themeGradients[file.type] || "from-primary/20 to-primary/5";
 
   return (
-    <Card className="group relative overflow-hidden border-border/50 hover:shadow-xl transition-all duration-300 bg-card/40 backdrop-blur-md cursor-pointer flex flex-col h-full" onClick={() => onPreview(file)}>
+    <Card className="surface-bevel group relative overflow-hidden border-border/60 hover:shadow-lvl-2 transition-all duration-300 cursor-pointer flex flex-col h-full" onClick={() => onPreview(file)}>
        <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl ${gradient} rounded-bl-full opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500`} />
        
        <CardContent className="p-6 flex-1 flex flex-col z-10">
          <div className="flex justify-between items-start mb-4">
-           <div className={`p-4 rounded-2xl bg-gradient-to-br ${gradient} border border-border/30 shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+           <div className={`p-4 rounded-2xl bg-gradient-to-br ${gradient} border border-border/40 shadow-sm group-hover:scale-110 transition-transform duration-300`}>
              <TypeIcon type={file.type} className="h-8 w-8" />
            </div>
            
@@ -82,7 +81,7 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
                  <ExternalLink className="h-4 w-4 mr-2" /> Open External
                </DropdownMenuItem>
                {canEdit && (
-                 <DropdownMenuItem className="text-red-500 focus:bg-red-500/10 focus:text-red-600" onClick={(e) => {
+                 <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={(e) => {
                    e.stopPropagation();
                    if (window.confirm("Are you sure you want to delete this document?")) {
                      onDelete(file.id);
@@ -96,7 +95,7 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
          </div>
 
          <div className="flex-1">
-           <h3 className="font-semibold text-base line-clamp-2 leading-tight group-hover:text-[#bc7e57] transition-colors">
+           <h3 className="font-semibold text-base line-clamp-2 leading-tight group-hover:text-primary transition-colors">
              {file.name}
            </h3>
            <div className="flex flex-wrap gap-2 mt-3">
@@ -104,17 +103,17 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
                {file.size}
              </span>
              {file.department && (
-               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#bc7e57]/10 text-[#bc7e57] border border-[#bc7e57]/20">
+               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                  <FolderOpen className="h-2.5 w-2.5 mr-1" /> {file.department}
                </span>
              )}
              {file.type === 'link' && (
-               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-info/10 text-info border border-info/20">
                  External
                </span>
              )}
               {(file.name?.startsWith('INV-') || file.department === 'Finance') && file.type === 'pdf' && (
-                <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
                   <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> Invoice
                 </span>
               )}
@@ -130,7 +129,7 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
             </div>
             <div className="flex items-center gap-2">
               <button
-                className="h-7 w-7 rounded-full flex items-center justify-center bg-muted/50 hover:bg-[#bc7e57]/20 text-muted-foreground hover:text-[#bc7e57] transition-all opacity-0 group-hover:opacity-100"
+                className="h-7 w-7 rounded-full flex items-center justify-center bg-muted/50 hover:bg-primary/15 text-muted-foreground hover:text-primary transition-all opacity-0 group-hover:opacity-100"
                 title="Download"
                 onClick={(e) => {
                   e.stopPropagation();
