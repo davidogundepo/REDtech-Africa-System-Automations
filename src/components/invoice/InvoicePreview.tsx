@@ -7,6 +7,16 @@ interface InvoicePreviewProps {
   invoiceData: InvoiceData;
 }
 
+// Lighten a hex color toward white by `amount` (0..1) — used for accent washes.
+const lighten = (hex: string, amount: number) => {
+  const h = hex.replace("#", "");
+  const num = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
+  const r = Math.min(255, Math.round(((num >> 16) & 255) + (255 - ((num >> 16) & 255)) * amount));
+  const g = Math.min(255, Math.round(((num >> 8) & 255) + (255 - ((num >> 8) & 255)) * amount));
+  const b = Math.min(255, Math.round((num & 255) + (255 - (num & 255)) * amount));
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
 const formatDate = (dateStr: string) => {
   if (!dateStr) return "";
   const date = new Date(dateStr);
@@ -28,11 +38,14 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
     const total = subtotal + vatAmount;
     const logoSrc = invoiceData.companyLogo || defaultLogo;
     const accent = invoiceData.accentColor || '#bc7e57';
+    const accentSoft = lighten(accent, 0.85);
+    const accentMid  = lighten(accent, 0.55);
+    const isDraft = (invoiceData.status || "draft") === "draft";
 
     return (
       <div 
         ref={ref} 
-        className="bg-white print-container"
+        className="bg-white print-container relative"
         style={{
           width: '210mm',
           minHeight: '297mm',
@@ -43,6 +56,49 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
           color: 'hsl(210 25% 20%)',
         }}
       >
+        {/* DRAFT watermark — diagonal, faded, only when status=draft */}
+        {isDraft && (
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
+              zIndex: 0,
+            }}
+          >
+            <span
+              style={{
+                transform: 'rotate(-28deg)',
+                fontSize: '140pt',
+                fontWeight: 800,
+                letterSpacing: '12px',
+                color: accent,
+                opacity: 0.06,
+                userSelect: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              DRAFT
+            </span>
+          </div>
+        )}
+
+        {/* Top accent band */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0,
+            height: '6mm',
+            background: `linear-gradient(90deg, ${accent} 0%, ${accentMid} 100%)`,
+          }}
+        />
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
           <div className="flex flex-col gap-2 items-start">
@@ -59,42 +115,63 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
             <p className="text-sm">{invoiceData.companyAddress}</p>
           </div>
           <div className="text-right">
-            <h2 className="text-3xl font-bold mb-4" style={{ color: accent }}>INVOICE</h2>
-            <div className="space-y-1 text-sm">
-              <p><span className="font-semibold">Invoice #:</span> {invoiceData.invoiceNumber}</p>
-              <p><span className="font-semibold">Date:</span> {formatDate(invoiceData.invoiceDate)}</p>
-              <p><span className="font-semibold">Due Date:</span> {formatDate(invoiceData.dueDate)}</p>
+            <h2
+              className="text-4xl font-extrabold mb-3 tracking-tight"
+              style={{ color: accent, letterSpacing: '-0.5px' }}
+            >
+              INVOICE
+            </h2>
+            <div
+              className="inline-block text-left rounded-lg px-4 py-3"
+              style={{ background: accentSoft, border: `1px solid ${accentMid}` }}
+            >
+              <div className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-xs">
+                <span className="font-semibold uppercase tracking-wider" style={{ color: accent }}>Invoice #</span>
+                <span className="font-mono font-semibold">{invoiceData.invoiceNumber}</span>
+                <span className="font-semibold uppercase tracking-wider" style={{ color: accent }}>Issue Date</span>
+                <span>{formatDate(invoiceData.invoiceDate)}</span>
+                <span className="font-semibold uppercase tracking-wider" style={{ color: accent }}>Due Date</span>
+                <span className="font-semibold">{formatDate(invoiceData.dueDate)}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="h-1 mb-8" style={{ backgroundColor: accent }}></div>
-
         {/* Bill To */}
-        <div className="mb-8">
-          <h3 className="font-bold mb-2" style={{ color: accent }}>BILL TO:</h3>
-          <p className="font-semibold">{invoiceData.clientName}</p>
-          {invoiceData.clientCompany && <p>{invoiceData.clientCompany}</p>}
-          <p>{invoiceData.clientAddress}</p>
-          {invoiceData.clientCity && <p>{invoiceData.clientCity}</p>}
-          {invoiceData.clientPostcode && <p>{invoiceData.clientPostcode}</p>}
-          {invoiceData.clientEmail && <p>Email: {invoiceData.clientEmail}</p>}
+        <div className="mb-8 grid grid-cols-2 gap-6">
+          <div className="rounded-lg p-4" style={{ background: '#FAFAF8', borderLeft: `3px solid ${accent}` }}>
+            <h3 className="text-[10pt] font-bold mb-2 uppercase tracking-wider" style={{ color: accent }}>Bill To</h3>
+            <p className="font-bold text-base">{invoiceData.clientName}</p>
+            {invoiceData.clientCompany && <p className="font-medium">{invoiceData.clientCompany}</p>}
+            <p className="text-sm" style={{ color: '#57534E' }}>{invoiceData.clientAddress}</p>
+            {invoiceData.clientCity && <p className="text-sm" style={{ color: '#57534E' }}>{invoiceData.clientCity}</p>}
+            {invoiceData.clientPostcode && <p className="text-sm" style={{ color: '#57534E' }}>{invoiceData.clientPostcode}</p>}
+            {invoiceData.clientEmail && <p className="text-sm mt-1" style={{ color: accent }}>{invoiceData.clientEmail}</p>}
+          </div>
+          <div className="rounded-lg p-4" style={{ background: '#FAFAF8', borderLeft: '3px solid #1C1917' }}>
+            <h3 className="text-[10pt] font-bold mb-2 uppercase tracking-wider" style={{ color: '#1C1917' }}>Amount Due</h3>
+            <p className="text-3xl font-extrabold tracking-tight" style={{ color: accent }}>
+              {formatCurrency(total, invoiceData.currency)}
+            </p>
+            <p className="text-xs mt-1" style={{ color: '#78716C' }}>
+              Payable by {formatDate(invoiceData.dueDate)}
+            </p>
+          </div>
         </div>
 
         {/* Line Items Table */}
         <div className="mb-8">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse" style={{ borderRadius: 8, overflow: 'hidden' }}>
             <thead>
               <tr style={{ backgroundColor: accent, color: '#fff' }}>
-                <th className="text-left p-3 font-semibold">DESCRIPTION</th>
-                <th className="text-center p-3 font-semibold w-20">QTY</th>
-                <th className="text-right p-3 font-semibold w-32">AMOUNT</th>
+                <th className="text-left p-3 font-semibold text-[10pt] uppercase tracking-wider">Description</th>
+                <th className="text-center p-3 font-semibold w-20 text-[10pt] uppercase tracking-wider">Qty</th>
+                <th className="text-right p-3 font-semibold w-32 text-[10pt] uppercase tracking-wider">Amount</th>
               </tr>
             </thead>
             <tbody>
               {invoiceData.lineItems.map((item, index) => (
-                <tr key={item.id} className={index % 2 === 0 ? '' : ''} style={index % 2 === 0 ? { backgroundColor: '#f9f9f9' } : {}}>
+                <tr key={item.id} style={{ backgroundColor: index % 2 === 0 ? '#FDFDFC' : '#FFFFFF' }}>
                   <td className="p-3" style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <p className="font-semibold">{item.description}</p>
                     {item.details && (
@@ -113,20 +190,23 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
 
         {/* Totals */}
         <div className="flex justify-end mb-8">
-          <div className="w-72">
-            <div className="flex justify-between py-2" style={{ borderBottom: '1px solid #e5e7eb' }}>
-              <span>Subtotal:</span>
-              <span>{formatCurrency(subtotal, invoiceData.currency)}</span>
+          <div className="w-80 rounded-lg overflow-hidden" style={{ border: `1px solid ${accentMid}`, background: '#FFFFFF' }}>
+            <div className="flex justify-between py-2 px-4" style={{ background: accentSoft }}>
+              <span className="text-sm">Subtotal</span>
+              <span className="text-sm font-medium">{formatCurrency(subtotal, invoiceData.currency)}</span>
             </div>
             {invoiceData.vatEnabled && (
-              <div className="flex justify-between py-2" style={{ borderBottom: '1px solid #e5e7eb' }}>
-                <span>VAT ({invoiceData.vatRate}%):</span>
-                <span>{formatCurrency(vatAmount, invoiceData.currency)}</span>
+              <div className="flex justify-between py-2 px-4" style={{ borderTop: `1px solid ${accentMid}` }}>
+                <span className="text-sm">VAT ({invoiceData.vatRate}%)</span>
+                <span className="text-sm font-medium">{formatCurrency(vatAmount, invoiceData.currency)}</span>
               </div>
             )}
-            <div className="flex justify-between py-3 font-bold text-lg" style={{ borderBottom: `3px solid ${accent}` }}>
-              <span>TOTAL DUE:</span>
-              <span>{formatCurrency(total, invoiceData.currency)}</span>
+            <div
+              className="flex justify-between py-3 px-4 items-baseline"
+              style={{ background: accent, color: '#FFFFFF' }}
+            >
+              <span className="font-bold uppercase tracking-wider text-sm">Total Due</span>
+              <span className="font-extrabold text-xl tracking-tight">{formatCurrency(total, invoiceData.currency)}</span>
             </div>
           </div>
         </div>
@@ -227,6 +307,7 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
           <p>
             Thank you for choosing {invoiceData.companyName}! | Questions? Email {invoiceData.companyEmail}
           </p>
+        </div>
         </div>
       </div>
     );

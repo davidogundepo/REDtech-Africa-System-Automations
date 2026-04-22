@@ -4,12 +4,13 @@ import { InvoiceData, defaultCompanyInfo } from "@/types/invoice";
 import { InvoiceForm } from "./InvoiceForm";
 import { InvoicePreview } from "./InvoicePreview";
 import { Button } from "@/components/ui/button";
-import { FileDown, Loader2, Eye, Edit, ListTree, FolderArchive, Layers, Plus } from "lucide-react";
+import { FileDown, Loader2, Eye, Edit, ListTree, FolderArchive, Layers, Plus, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvoiceDashboard } from "./InvoiceDashboard";
+import { SendInvoiceModal } from "./SendInvoiceModal";
 
 const getInitialInvoiceData = (): InvoiceData => {
   const today = new Date();
@@ -62,6 +63,7 @@ export const InvoiceGenerator = () => {
   const [invoiceData, setInvoiceData] = useState<InvoiceData>(getInitialInvoiceData);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const [sendOpen, setSendOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -226,14 +228,28 @@ export const InvoiceGenerator = () => {
                 {showPreview ? "Edit Options" : "Live Preview"}
               </Button>
               <Button
+                variant="outline"
+                onClick={() => {
+                  if (!invoiceData.clientEmail) {
+                    toast.error("Add a client email first");
+                    return;
+                  }
+                  setSendOpen(true);
+                }}
+                className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary font-semibold"
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Send Invoice
+              </Button>
+              <Button
                 onClick={handleGenerateInvoice}
                 disabled={isGenerating}
-                className="bg-invoice-accent hover:bg-invoice-accent/90 text-primary-foreground shadow-lg hover:shadow-invoice-accent/20 transition-all font-semibold"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lvl-2 hover:shadow-lvl-3 transition-all font-semibold"
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating Master PDF...
+                    Generating PDF...
                   </>
                 ) : (
                   <>
@@ -293,6 +309,13 @@ export const InvoiceGenerator = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <SendInvoiceModal
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        invoiceData={invoiceData}
+        onSent={() => setInvoiceData((p) => ({ ...p, status: "sent" }))}
+      />
     </div>
   );
 };
