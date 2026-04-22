@@ -460,14 +460,14 @@ const DocumentRepository = () => {
                       <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                         <div className="text-center py-8 px-6 border-2 border-dashed border-border rounded-2xl bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                           <div className="mx-auto w-16 h-16 bg-background rounded-full flex items-center justify-center mb-4 shadow-sm border border-border/50">
-                            <Upload className="h-8 w-8 text-[#bc7e57]" />
+                            <Upload className="h-8 w-8 text-primary" />
                           </div>
                           <h4 className="text-lg font-semibold mb-1">Click to browse files</h4>
                           <p className="text-sm text-muted-foreground w-64 mx-auto leading-relaxed">System will auto-detect file type and securely compress images.</p>
                           <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
                           
                           {uploadDocMutation.isPending && (
-                            <div className="mt-6 flex items-center justify-center gap-2 text-[#bc7e57] font-medium">
+                            <div className="mt-6 flex items-center justify-center gap-2 text-primary font-medium">
                               <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> Uploading block storage...
                             </div>
                           )}
