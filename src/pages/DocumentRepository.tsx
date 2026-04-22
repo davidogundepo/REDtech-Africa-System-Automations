@@ -22,15 +22,15 @@ import { DocumentsDashboard } from "@/components/documents/DocumentsDashboard";
 
 const TypeIcon = ({ type, className }: { type: string, className?: string }) => {
   switch (type.toLowerCase()) {
-    case "folder": return <FolderOpen className={`text-[#bc7e57] ${className}`} />;
-    case "pdf": return <FileText className={`text-red-500 ${className}`} />;
+    case "folder": return <FolderOpen className={`text-primary ${className}`} />;
+    case "pdf": return <FileText className={`text-destructive ${className}`} />;
     case "excel": 
-    case "csv": return <FileSpreadsheet className={`text-emerald-500 ${className}`} />;
+    case "csv": return <FileSpreadsheet className={`text-success ${className}`} />;
     case "word": 
-    case "docx": return <FileIcon className={`text-indigo-500 ${className}`} />;
-    case "image": return <FileImage className={`text-purple-500 ${className}`} />;
-    case "link": return <LinkIcon className={`text-sky-500 ${className}`} />;
-    default: return <FileIcon className={`text-slate-500 ${className}`} />;
+    case "docx": return <FileIcon className={`text-info ${className}`} />;
+    case "image": return <FileImage className={`text-gold ${className}`} />;
+    case "link": return <LinkIcon className={`text-info ${className}`} />;
+    default: return <FileIcon className={`text-muted-foreground ${className}`} />;
   }
 };
 
