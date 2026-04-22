@@ -728,7 +728,7 @@ const DocumentRepository = () => {
                         </td>
                         <td className="px-6 py-4">
                           {file.department ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#bc7e57]/10 text-[#bc7e57]">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
                               {file.department}
                             </span>
                           ) : (
