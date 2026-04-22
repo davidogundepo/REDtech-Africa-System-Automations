@@ -760,10 +760,10 @@ const DocumentRepository = () => {
                                 <DropdownMenuContent align="end">
                                   {profile?.role === 'super_admin' && (
                                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toast.success("Document flagged as Internal Only"); }}>
-                                       <AlertCircle className="h-4 w-4 mr-2 text-amber-500" /> Flag Visibility
+                                       <AlertCircle className="h-4 w-4 mr-2 text-warning" /> Flag Visibility
                                      </DropdownMenuItem>
                                   )}
-                                  <DropdownMenuItem className="text-red-500" onClick={(e) => { e.stopPropagation(); deleteDocMutation.mutate(file.id); }}>
+                                  <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); deleteDocMutation.mutate(file.id); }}>
                                     <Trash2 className="h-4 w-4 mr-2" /> Delete
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
