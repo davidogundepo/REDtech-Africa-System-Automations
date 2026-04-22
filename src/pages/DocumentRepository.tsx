@@ -517,7 +517,7 @@ const DocumentRepository = () => {
                             </SelectContent>
                           </Select>
                         </div>
-                        <Button type="submit" className="w-full h-12 bg-[#bc7e57] hover:bg-[#a66c4a] text-white text-base rounded-xl mt-4 shadow-md" disabled={addLinkMutation.isPending}>
+                        <Button type="submit" className="w-full h-12 bg-primary hover:bg-primary-dark text-primary-foreground text-base rounded-xl mt-4 shadow-lvl-2" disabled={addLinkMutation.isPending}>
                           {addLinkMutation.isPending ? "Mapping resource..." : "Publish External Link"}
                         </Button>
                       </form>
