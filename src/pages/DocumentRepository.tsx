@@ -646,10 +646,10 @@ const DocumentRepository = () => {
       <div className="flex flex-col sm:flex-row justify-between items-center bg-card border border-border/60 p-2 rounded-2xl shadow-sm mb-6">
         <Tabs value={docState} onValueChange={setDocState} className="w-full sm:w-auto">
           <TabsList className="bg-transparent h-10">
-             <TabsTrigger value="all" className="data-[state=active]:bg-[#bc7e57]/10 data-[state=active]:text-[#bc7e57] rounded-xl px-4 font-medium">All States</TabsTrigger>
-             <TabsTrigger value="approved" className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-500 rounded-xl px-4 font-medium"><CheckCircle2 className="w-3.5 h-3.5 mr-1.5"/> Approved</TabsTrigger>
-             <TabsTrigger value="waiting" className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-500 rounded-xl px-4 font-medium"><Clock3 className="w-3.5 h-3.5 mr-1.5"/> Waiting Auth</TabsTrigger>
-             <TabsTrigger value="draft" className="data-[state=active]:bg-slate-500/10 data-[state=active]:text-slate-500 rounded-xl px-4 font-medium"><Edit3 className="w-3.5 h-3.5 mr-1.5"/> Drafts</TabsTrigger>
+             <TabsTrigger value="all" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-xl px-4 font-medium">All States</TabsTrigger>
+             <TabsTrigger value="approved" className="data-[state=active]:bg-success/10 data-[state=active]:text-success rounded-xl px-4 font-medium"><CheckCircle2 className="w-3.5 h-3.5 mr-1.5"/> Approved</TabsTrigger>
+             <TabsTrigger value="waiting" className="data-[state=active]:bg-warning/10 data-[state=active]:text-warning rounded-xl px-4 font-medium"><Clock3 className="w-3.5 h-3.5 mr-1.5"/> Waiting Auth</TabsTrigger>
+             <TabsTrigger value="draft" className="data-[state=active]:bg-muted data-[state=active]:text-muted-foreground rounded-xl px-4 font-medium"><Edit3 className="w-3.5 h-3.5 mr-1.5"/> Drafts</TabsTrigger>
           </TabsList>
         </Tabs>
         
