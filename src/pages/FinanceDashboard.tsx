@@ -33,42 +33,39 @@ const formatCurrency = (amount: number) => {
 };
 
 const StatCard = ({ title, value, change, isPositive, icon: Icon, sparklineData, dataKey }: any) => {
+  const trendColor = isPositive ? "hsl(var(--success))" : "hsl(var(--destructive))";
   return (
-    <Card className="hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group border-border/40 bg-card/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 flex flex-col h-full">
-      <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#bc7e57] to-[#eab308] opacity-80 z-20" />
-      <div className="absolute -right-6 -top-6 w-24 h-24 bg-[#bc7e57]/10 rounded-full blur-2xl group-hover:bg-[#bc7e57]/20 transition-all duration-500" />
-      <CardContent className="p-6 flex flex-col h-full relative z-10">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-widest mb-1">{title}</p>
-            <div className="text-3xl xl:text-4xl font-black text-foreground tracking-tight">{value}</div>
-            <p className={`text-sm flex items-center font-medium mt-2 ${isPositive ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"}`}>
-              {isPositive ? <ArrowUpRight className="h-4 w-4 mr-1" /> : <ArrowDownRight className="h-4 w-4 mr-1" />}
-              {change}
-            </p>
-          </div>
-          <div className="h-12 w-12 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110 shadow-inner bg-gradient-to-br from-[#bc7e57]/20 to-transparent border border-[#bc7e57]/20 flex-shrink-0">
-            <Icon className="h-6 w-6 text-[#bc7e57]" />
-          </div>
+    <div className="surface-bevel rounded-[14px] p-6 flex flex-col h-full transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lvl-2 group relative overflow-hidden">
+      <div className="flex items-start justify-between mb-4">
+        <div className="min-w-0">
+          <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5">{title}</p>
+          <div className="text-3xl xl:text-4xl font-black text-foreground tracking-tight leading-none">{value}</div>
+          <p className="text-xs flex items-center font-semibold mt-2.5" style={{ color: trendColor }}>
+            {isPositive ? <ArrowUpRight className="h-3.5 w-3.5 mr-1" /> : <ArrowDownRight className="h-3.5 w-3.5 mr-1" />}
+            {change}
+          </p>
         </div>
-        
-        {sparklineData && dataKey && sparklineData.length > 0 && (
-          <div className="h-12 w-full mt-auto -mb-2 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sparklineData}>
-                <defs>
-                  <linearGradient id={`grad-${title.replace(/\s+/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={isPositive ? "#10b981" : "#e11d48"} stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor={isPositive ? "#10b981" : "#e11d48"} stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <Area type="monotone" dataKey={dataKey} stroke={isPositive ? "#10b981" : "#e11d48"} strokeWidth={2} fillOpacity={1} fill={`url(#grad-${title.replace(/\s+/g, '')})`} isAnimationActive={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-primary/10 ring-1 ring-primary/20 flex-shrink-0 group-hover:scale-105 transition-transform">
+          <Icon className="h-5 w-5 text-primary" />
+        </div>
+      </div>
+
+      {sparklineData && dataKey && sparklineData.length > 0 && (
+        <div className="h-12 w-full mt-auto -mb-1 opacity-80 group-hover:opacity-100 transition-opacity">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={sparklineData}>
+              <defs>
+                <linearGradient id={`grad-${title.replace(/\s+/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={trendColor} stopOpacity={0.35}/>
+                  <stop offset="95%" stopColor={trendColor} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <Area type="monotone" dataKey={dataKey} stroke={trendColor} strokeWidth={2} fillOpacity={1} fill={`url(#grad-${title.replace(/\s+/g, '')})`} isAnimationActive={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -426,8 +423,8 @@ const FinanceDashboard = () => {
     <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>Financial Performance</h1>
-          <p className="text-muted-foreground mt-2">Real-time revenue, expense tracking, and approvals</p>
+          <h1 className="text-3xl font-black tracking-tight text-foreground">Finance <span className="text-brand-gradient">Dashboard</span></h1>
+          <p className="text-sm text-muted-foreground mt-1.5">Real-time revenue, expense tracking, and approvals</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-2xl border border-border/40 backdrop-blur-sm shadow-sm">
@@ -598,15 +595,15 @@ const FinanceDashboard = () => {
         },
       ]} />
 
-      {/* AI Assistant Rapid Entry */}
-      <div className="mb-8 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/20 rounded-2xl p-1 shadow-inner relative overflow-hidden group">
-         <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50"></div>
-         <div className="flex flex-col sm:flex-row items-center gap-3 bg-card/80 backdrop-blur-md px-4 py-3 rounded-xl border border-background/50">
-            <div className="h-8 w-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0 hidden sm:flex">
-               <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />
+      {/* AI Rapid Entry — branded */}
+      <div className="mb-8 surface-bevel rounded-[14px] p-1 relative overflow-hidden">
+         <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-60" />
+         <div className="flex flex-col sm:flex-row items-center gap-3 px-4 py-3 rounded-[12px]">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center shrink-0">
+               <Sparkles className="h-4 w-4 text-primary animate-pulse" />
             </div>
-            <Input 
-              placeholder="AI Entry: e.g., 'Log ₦25,000 for Office Internet under Utilities today' or 'Add recurring ₦150k for AWS monthly'" 
+            <Input
+              placeholder="AI Entry: e.g. 'Log ₦25,000 for Office Internet under Utilities today' or 'Add recurring ₦150k AWS monthly'"
               className="border-0 bg-transparent flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 px-1 shadow-none text-foreground placeholder:text-muted-foreground/70 text-sm"
               onKeyDown={(e) => {
                 if(e.key === 'Enter') {
@@ -615,28 +612,28 @@ const FinanceDashboard = () => {
                 }
               }}
             />
-            <Button size="sm" className="bg-indigo-500 hover:bg-indigo-600 shrink-0 shadow-md w-full sm:w-auto" onClick={() => toast.success("AI is processing your financial entry...")}>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 shadow-lvl-2 w-full sm:w-auto rounded-lg font-bold" onClick={() => toast.success("AI is processing your financial entry...")}>
               Process Entry
             </Button>
          </div>
       </div>
 
       <Tabs defaultValue="transactions" className="w-full">
-        <TabsList className="mb-6 flex-wrap h-auto gap-2 border-b border-border bg-transparent w-full justify-start rounded-none">
-          <TabsTrigger value="invoices" className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3 flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5 text-emerald-500" /> Invoices
-            {invoices && invoices.length > 0 && <span className="ml-1 bg-emerald-500/20 text-emerald-600 text-[10px] font-black px-1.5 py-0.5 rounded-full">{invoices.length}</span>}
+        <TabsList className="mb-6 flex-wrap h-auto gap-1 border-b border-border bg-transparent w-full justify-start rounded-none p-0">
+          <TabsTrigger value="invoices" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3 flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5" /> Invoices
+            {invoices && invoices.length > 0 && <span className="ml-1 bg-primary/15 text-primary text-[10px] font-black px-1.5 py-0.5 rounded-full">{invoices.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="transactions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Ledger</TabsTrigger>
-          <TabsTrigger value="recurring" className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3 flex items-center">
-            <RefreshCw className="w-3.5 h-3.5 mr-2 text-indigo-500" /> Recurring
+          <TabsTrigger value="transactions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Ledger</TabsTrigger>
+          <TabsTrigger value="recurring" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3 flex items-center">
+            <RefreshCw className="w-3.5 h-3.5 mr-2" /> Recurring
           </TabsTrigger>
-          <TabsTrigger value="requests" className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">
+          <TabsTrigger value="requests" className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">
             Payment Approvals
-            {pendingRequestsTotal > 0 && <span className="absolute top-0 right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
+            {pendingRequestsTotal > 0 && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive animate-pulse" />}
           </TabsTrigger>
-          {(isAdmin || isSuperAdmin) && <TabsTrigger value="budgets" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Budgets Tracker</TabsTrigger>}
-          {(isAdmin || isSuperAdmin) && <TabsTrigger value="recycle" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Recycle Bin</TabsTrigger>}
+          {(isAdmin || isSuperAdmin) && <TabsTrigger value="budgets" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Budgets Tracker</TabsTrigger>}
+          {(isAdmin || isSuperAdmin) && <TabsTrigger value="recycle" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Recycle Bin</TabsTrigger>}
         </TabsList>
 
         {/* ── INVOICES TAB ──────────────────────────────────────────── */}
@@ -868,71 +865,64 @@ const FinanceDashboard = () => {
           })()}
         </TabsContent>
 
-        {/* Payment Requests Tab */}
+        {/* Payment Approvals — card queue per spec */}
         <TabsContent value="requests">
-          <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="flex justify-between items-center text-xl font-bold">
-                <span>Payment Approvals</span>
-                <span className="text-sm font-normal text-muted-foreground bg-background/50 px-3 py-1 rounded-full border border-border/50 backdrop-blur-sm">Pending Volume: <strong className="text-foreground">{formatCurrency(pendingRequestsTotal)}</strong></span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Requested By</TableHead>
-                    <TableHead>Category / Purpose</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paymentRequests?.map((req: any) => (
-                    <TableRow key={req.id}>
-                      <TableCell className="font-mono text-xs">{format(new Date(req.created_at), 'yyyy-MM-dd')}</TableCell>
-                      <TableCell className="font-medium">{req.profiles?.full_name || "Unknown"}</TableCell>
-                      <TableCell>
-                        <div>
-                          <Badge variant="outline" className="mb-1">{req.category}</Badge>
-                          <p className="text-xs text-muted-foreground truncate max-w-xs">{req.description}</p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-black text-foreground">Payment Approvals</h2>
+              <p className="text-xs text-muted-foreground mt-1">Review queued requests · pending volume <span className="font-bold text-foreground">{formatCurrency(pendingRequestsTotal)}</span></p>
+            </div>
+          </div>
+
+          {(!paymentRequests || paymentRequests.length === 0) ? (
+            <div className="surface-card p-0 overflow-hidden"><EmptyState illustration="payments" heading="No payment requests" subtext="Payment requests submitted by the team will appear here for your review and approval." /></div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {paymentRequests.map((req: any) => {
+                const isPending = req.status === 'pending';
+                const statusTone = req.status === 'approved' ? 'bg-success/10 text-success border-success/20'
+                  : req.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20'
+                  : 'bg-warning/10 text-warning border-warning/20';
+                const initials = (req.profiles?.full_name || '??').split(' ').map((p: string) => p[0]).join('').slice(0,2).toUpperCase();
+                return (
+                  <div key={req.id} className="surface-card p-5 group">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center text-primary text-xs font-bold shrink-0">{initials}</div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-foreground truncate">{req.profiles?.full_name || 'Unknown'}</p>
+                          <p className="text-[11px] text-muted-foreground">{format(new Date(req.created_at), 'MMM d, yyyy · HH:mm')}</p>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(req.amount)}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}
-                          className={req.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : ''}>
-                          {req.status}
-                        </Badge>
-                        {req.approver && <p className="text-[10px] text-muted-foreground mt-1">by {req.approver.full_name}</p>}
-                      </TableCell>
-                      <TableCell className="text-right flex items-center justify-end gap-1">
-                        {req.status === 'pending' && (isAdmin || isSuperAdmin) ? (
-                          <>
-                            <Button size="icon" variant="outline" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20" title="Approve & Post to Ledger"
-                              onClick={() => resolveRequestMutation.mutate({ id: req.id, status: 'approved', requestData: req })}>
-                              <CheckCircle2 className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="outline" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20" title="Reject"
-                              onClick={() => resolveRequestMutation.mutate({ id: req.id, status: 'rejected', requestData: req })}>
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <span className="text-xs text-muted-foreground px-2">—</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {(!paymentRequests || paymentRequests.length === 0) && (
-                    <TableRow><TableCell colSpan={6} className="p-0"><EmptyState illustration="payments" heading="No payment requests" subtext="Payment requests submitted by the team will appear here for your review and approval."/></TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                      </div>
+                      <Badge variant="outline" className={`text-[10px] uppercase tracking-wider font-bold ${statusTone}`}>{req.status}</Badge>
+                    </div>
+
+                    <div className="flex items-baseline justify-between gap-3 mb-3">
+                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider">{req.category}</Badge>
+                      <span className="text-2xl font-black text-primary tracking-tight">{formatCurrency(req.amount)}</span>
+                    </div>
+
+                    {req.description && (
+                      <p className="text-xs text-foreground/80 italic bg-muted/40 border-l-[3px] border-primary px-3 py-2 rounded-r-md mb-4">"{req.description}"</p>
+                    )}
+
+                    {isPending && (isAdmin || isSuperAdmin) ? (
+                      <div className="flex items-center gap-2 pt-3 border-t border-border/50">
+                        <Button size="sm" className="flex-1 bg-success hover:bg-success/90 text-white font-bold" onClick={() => resolveRequestMutation.mutate({ id: req.id, status: 'approved', requestData: req })}>
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Approve
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10 font-bold" onClick={() => resolveRequestMutation.mutate({ id: req.id, status: 'rejected', requestData: req })}>
+                          <XCircle className="h-3.5 w-3.5 mr-1.5" /> Deny
+                        </Button>
+                      </div>
+                    ) : req.approver ? (
+                      <p className="text-[11px] text-muted-foreground pt-3 border-t border-border/50">Resolved by <span className="font-semibold text-foreground">{req.approver.full_name}</span></p>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         {/* Recycle Bin Tab */}

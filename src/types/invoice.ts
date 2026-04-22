@@ -61,6 +61,9 @@ export interface InvoiceData {
   
   // Branding
   accentColor: string;
+
+  // Lifecycle status (controls watermark + dashboard chips)
+  status?: "draft" | "sent" | "paid" | "overdue";
 }
 
 export const defaultCompanyInfo = {

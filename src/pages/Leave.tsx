@@ -53,10 +53,10 @@ const leaveTypes = [
 ];
 
 const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
-  pending: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-300", dot: "bg-amber-400" },
-  approved: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-300", dot: "bg-emerald-400" },
-  rejected: { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-700 dark:text-red-300", dot: "bg-red-400" },
-  cancelled: { bg: "bg-zinc-50 dark:bg-zinc-800/30", text: "text-zinc-500 dark:text-zinc-400", dot: "bg-zinc-400" },
+  pending: { bg: "bg-warning/10", text: "text-warning", dot: "bg-warning" },
+  approved: { bg: "bg-success/10", text: "text-success", dot: "bg-success" },
+  rejected: { bg: "bg-destructive/10", text: "text-destructive", dot: "bg-destructive" },
+  cancelled: { bg: "bg-muted", text: "text-muted-foreground", dot: "bg-muted-foreground" },
 };
 
 const emptyForm = { leave_type: "annual", start_date: "", end_date: "", reason: "", custom_type: "" };
@@ -453,7 +453,7 @@ const Leave = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10 bg-card p-6 rounded-3xl border border-border/50 shadow-sm backdrop-blur-xl">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
-             <CalendarDays className="h-8 w-8 text-[#bc7e57]" /> Leave Management
+             <CalendarDays className="h-8 w-8 text-primary" /> Leave Management
           </h1>
           <p className="text-muted-foreground mt-2 text-sm font-medium">Request time off, view team availability, and manage balances</p>
         </div>
@@ -462,13 +462,13 @@ const Leave = () => {
             <div className="flex border border-border/50 rounded-xl overflow-hidden shadow-sm">
               <button 
                 onClick={() => setShowMyLeave(true)}
-                className={`h-11 px-5 text-xs font-bold uppercase tracking-widest transition-all ${showMyLeave ? 'bg-[#bc7e57] text-white shadow-inner' : 'text-muted-foreground hover:bg-muted/60'}`}
+                className={`h-11 px-5 text-xs font-bold uppercase tracking-widest transition-all ${showMyLeave ? 'bg-primary text-primary-foreground shadow-inner' : 'text-muted-foreground hover:bg-muted/60'}`}
               >
                 My Leave
               </button>
               <button 
                 onClick={() => setShowMyLeave(false)}
-                className={`h-11 px-5 text-xs font-bold uppercase tracking-widest transition-all ${!showMyLeave ? 'bg-[#bc7e57] text-white shadow-inner' : 'text-muted-foreground hover:bg-muted/60'}`}
+                className={`h-11 px-5 text-xs font-bold uppercase tracking-widest transition-all ${!showMyLeave ? 'bg-primary text-primary-foreground shadow-inner' : 'text-muted-foreground hover:bg-muted/60'}`}
               >
                 All Leave
               </button>
@@ -478,7 +478,7 @@ const Leave = () => {
           {isSuperAdmin && (
             <Dialog open={creditDaysDialog} onOpenChange={setCreditDaysDialog}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="h-11 px-4 rounded-xl font-bold border-[#bc7e57]/30 text-[#bc7e57] hover:bg-[#bc7e57]/10 transition-all shadow-sm">
+                <Button variant="outline" size="sm" className="h-11 px-4 rounded-xl font-bold border-primary/30 text-primary hover:bg-primary/10 transition-all shadow-sm">
                   <CalendarDays className="h-4 w-4 mr-2" /> Credit Days
                 </Button>
               </DialogTrigger>
@@ -488,7 +488,7 @@ const Leave = () => {
                   <div className="space-y-3">
                     <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Team Member</Label>
                     <Select onValueChange={(v) => setCreditTarget(teamProfiles.find((p: any) => p.id === v))}>
-                      <SelectTrigger className="h-12 bg-background border-border/50 focus:ring-[#bc7e57] rounded-xl font-medium"><SelectValue placeholder="Select team member" /></SelectTrigger>
+                      <SelectTrigger className="h-12 bg-background border-border/50 focus:ring-primary rounded-xl font-medium"><SelectValue placeholder="Select team member" /></SelectTrigger>
                       <SelectContent className="rounded-xl border-border/50">
                         {teamProfiles.map((p: any) => <SelectItem key={p.id} value={p.id} className="cursor-pointer font-medium">{p.full_name}</SelectItem>)}
                       </SelectContent>
@@ -499,7 +499,7 @@ const Leave = () => {
                     <Input type="number" min="1" max="30" value={creditDays} onChange={e => setCreditDays(e.target.value)} className="h-12 bg-background border-border/50 text-lg font-bold rounded-xl" />
                     <p className="text-xs font-semibold text-muted-foreground/70">Added on top of the standard {ANNUAL_LEAVE_DAYS}-day annual allowance.</p>
                   </div>
-                  <Button onClick={handleCreditDays} className="w-full h-12 rounded-xl text-base font-bold bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-lg shadow-[#bc7e57]/20">
+                  <Button onClick={handleCreditDays} className="w-full h-12 rounded-xl text-base font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lvl-2">
                     Confirm Credit
                   </Button>
                 </div>
@@ -509,12 +509,12 @@ const Leave = () => {
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#bc7e57] hover:bg-[#a56d49] text-white h-11 px-6 rounded-xl shadow-lg hover:shadow-[#bc7e57]/20 transition-all text-sm font-bold gap-2">
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground h-13 px-7 rounded-full shadow-lvl-2 hover:shadow-primary/20 transition-all text-sm font-bold gap-2">
                 <Plane className="h-4 w-4" /> Request Time Off
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-xl bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-[#bc7e57]" />
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-primary" />
               <DialogHeader className="px-2 pt-4">
                 <DialogTitle className="text-2xl font-black">Book Time Off</DialogTitle>
                 <p className="text-sm font-medium text-muted-foreground">Submit your leave request for manager approval.</p>
@@ -541,17 +541,17 @@ const Leave = () => {
                 </div>
 
                 {formDaysPreview > 0 && (
-                  <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-colors ${formExceedsBalance ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30' : 'bg-[#bc7e57]/5 border-[#bc7e57]/20'}`}>
-                    <span className={`text-base font-black ${formExceedsBalance ? 'text-red-600 dark:text-red-400' : 'text-[#bc7e57]'}`}>
+                  <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-colors ${formExceedsBalance ? 'bg-destructive/10 border-destructive/30' : 'bg-[hsl(var(--primary))]/5 border-[hsl(var(--primary))]/20'}`}>
+                    <span className={`text-base font-black ${formExceedsBalance ? 'text-destructive' : 'text-[hsl(var(--primary))]'}`}>
                       {formDaysPreview} day{formDaysPreview !== 1 ? 's' : ''} total
                     </span>
                     {formExceedsBalance ? (
-                      <span className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5 font-bold">
+                      <span className="text-sm text-destructive flex items-center gap-1.5 font-bold">
                         <AlertTriangle className="h-4 w-4" /> Exceeds balance ({daysRemaining} left)
                       </span>
                     ) : (
                       <span className="text-sm text-muted-foreground font-bold flex items-center gap-1.5">
-                         <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Sufficient Balance
+                         <CheckCircle2 className="h-4 w-4 text-success" /> Sufficient Balance
                       </span>
                     )}
                   </div>
@@ -564,12 +564,12 @@ const Leave = () => {
                        type="button"
                        variant="ghost"
                        size="sm"
-                       className="h-6 text-[10px] px-2 font-bold text-[#bc7e57] hover:bg-[#bc7e57]/10 hover:text-[#bc7e57]"
+                       className="h-6 text-[10px] px-2 font-bold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/10 hover:text-[hsl(var(--primary))]"
                        onClick={handleAIAssist}
                        disabled={aiGenerating}
                      >
                        {aiGenerating
-                         ? <><span className="w-2.5 h-2.5 border border-[#bc7e57] border-t-transparent rounded-full animate-spin mr-1" />Generating...</>
+                         ? <><span className="w-2.5 h-2.5 border border-[hsl(var(--primary))] border-t-transparent rounded-full animate-spin mr-1" />Generating...</>
                          : <><Sparkles className="w-3 h-3 mr-1" />Use AI Assistant</>}
                      </Button>
 
@@ -583,7 +583,7 @@ const Leave = () => {
                     className="resize-none bg-background rounded-xl px-4 py-3 placeholder:font-medium font-medium"
                   />
                 </div>
-                <Button type="submit" disabled={formExceedsBalance} className="w-full h-12 rounded-xl text-base font-bold bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-lg shadow-[#bc7e57]/20 disabled:opacity-50 disabled:shadow-none transition-all">
+                <Button type="submit" disabled={formExceedsBalance} className="w-full h-12 rounded-xl text-base font-bold bg-[hsl(var(--primary))] hover:bg-primary/90 text-white shadow-lg shadow-[hsl(var(--primary))]/20 disabled:opacity-50 disabled:shadow-none transition-all">
                   Submit Request
                 </Button>
               </form>
@@ -608,7 +608,7 @@ const Leave = () => {
                     <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="12" fill="transparent"
                       strokeDasharray={351.85}
                       strokeDashoffset={351.85 - (usagePercent / 100) * 351.85}
-                      className="text-[#bc7e57] transition-all duration-1000 ease-out drop-shadow-md" 
+                      className="text-[hsl(var(--primary))] transition-all duration-1000 ease-out drop-shadow-md" 
                       strokeLinecap="round"
                     />
                   </svg>
@@ -618,7 +618,7 @@ const Leave = () => {
                   </div>
                 </div>
                 <div className="w-full flex justify-between text-xs mt-6 font-bold text-muted-foreground px-2 bg-muted/40 py-2 rounded-xl">
-                   <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#bc7e57]"></div> Used: {totalDaysUsed}</span>
+                   <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[hsl(var(--primary))]"></div> Used: {totalDaysUsed}</span>
                    <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div> Total: {ANNUAL_LEAVE_DAYS}</span>
                 </div>
               </CardContent>
@@ -629,15 +629,15 @@ const Leave = () => {
               <Card className="border-border/60 shadow-sm bg-card rounded-3xl hover:shadow-md transition-shadow group">
                 <CardContent className="p-6 flex flex-col h-full justify-center relative overflow-hidden">
                   <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
-                     <Clock className="w-40 h-40 text-amber-500" />
+                     <Clock className="w-40 h-40 text-warning" />
                   </div>
-                  <div className="h-12 w-12 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6 shadow-inner ring-1 ring-amber-500/20">
-                    <Clock className="w-6 h-6 text-amber-500" />
+                  <div className="h-12 w-12 rounded-2xl bg-warning/10 flex items-center justify-center mb-6 shadow-inner ring-1 ring-warning/20">
+                    <Clock className="w-6 h-6 text-warning" />
                   </div>
                   <h3 className="text-xs font-bold text-muted-foreground tracking-widest uppercase mb-1">Awaiting Review</h3>
                   <div className="flex items-end gap-3">
                     <p className="text-5xl font-black">{myPendingCount}</p>
-                    <p className="text-sm font-bold text-amber-500 mb-2">Request{myPendingCount !== 1 ? 's' : ''}</p>
+                    <p className="text-sm font-bold text-warning mb-2">Request{myPendingCount !== 1 ? 's' : ''}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -645,15 +645,15 @@ const Leave = () => {
               <Card className="border-border/60 shadow-sm bg-card rounded-3xl hover:shadow-md transition-shadow group">
                 <CardContent className="p-6 flex flex-col h-full justify-center relative overflow-hidden">
                   <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
-                     <TrendingUp className="w-40 h-40 text-emerald-500" />
+                     <TrendingUp className="w-40 h-40 text-success" />
                   </div>
-                  <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6 shadow-inner ring-1 ring-emerald-500/20">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                  <div className="h-12 w-12 rounded-2xl bg-success/10 flex items-center justify-center mb-6 shadow-inner ring-1 ring-success/20">
+                    <CheckCircle2 className="w-6 h-6 text-success" />
                   </div>
                   <h3 className="text-xs font-bold text-muted-foreground tracking-widest uppercase mb-1">Total Leaves YTD</h3>
                   <div className="flex items-end gap-3">
                     <p className="text-5xl font-black">{myApprovedRequests.length}</p>
-                    <p className="text-sm font-bold text-emerald-500 mb-2">Approved</p>
+                    <p className="text-sm font-bold text-success mb-2">Approved</p>
                   </div>
                 </CardContent>
               </Card>
@@ -672,7 +672,7 @@ const Leave = () => {
                      <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
                        {filteredRequests.filter(r => r.status === 'approved' && r.start_date > today).sort((a,b) => a.start_date.localeCompare(b.start_date)).map((req, i) => (
                          <div key={req.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                             <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-background bg-emerald-500 text-white shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm z-10">
+                             <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-background bg-success text-success-foreground shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm z-10">
                                 <Plane className="w-4 h-4" />
                              </div>
                              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-card border border-border/50 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
@@ -733,15 +733,15 @@ const Leave = () => {
                        <AreaChart data={trendData}>
                          <defs>
                            <linearGradient id="colorLeaves" x1="0" y1="0" x2="0" y2="1">
-                             <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.3}/>
-                             <stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/>
+                             <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                             <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                            </linearGradient>
                          </defs>
                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: "hsl(var(--muted-foreground))"}} />
                          <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: "hsl(var(--muted-foreground))"}} />
                          <Tooltip contentStyle={{backgroundColor: "hsl(var(--card))", borderRadius: "12px", border: "1px solid hsl(var(--border))"}} />
-                         <Area type="monotone" dataKey="leaves" stroke="#bc7e57" strokeWidth={3} fillOpacity={1} fill="url(#colorLeaves)" />
+                         <Area type="monotone" dataKey="leaves" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorLeaves)" />
                        </AreaChart>
                      </ResponsiveContainer>
                    </div>
@@ -752,7 +752,7 @@ const Leave = () => {
                label: "Attendance Heatmap",
                content: (
                  <div className="p-6">
-                   <h3 className="text-lg font-black mb-6 flex items-center gap-2"><History className="w-5 h-5 text-emerald-500" /> Yearly Leave Heatmap</h3>
+                   <h3 className="text-lg font-black mb-6 flex items-center gap-2"><History className="w-5 h-5 text-success" /> Yearly Leave Heatmap</h3>
                    <div className="p-4 bg-background rounded-2xl border border-border/50">
                       <ActivityCalendar 
                          data={(() => {
@@ -810,7 +810,7 @@ const Leave = () => {
                     </div>
 
                     <div>
-                       <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-emerald-600 dark:text-emerald-400">🇳🇬 Nigerian Public Holidays 2026</h3>
+                       <h3 className="text-lg font-black mb-4 flex items-center gap-2 text-success">🇳🇬 Nigerian Public Holidays 2026</h3>
                        <p className="text-xs text-muted-foreground mb-4">These days are fully compensated and are automatically excluded from leave balance deductions.</p>
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {[
@@ -828,12 +828,12 @@ const Leave = () => {
                              { date: "Dec 25", name: "Christmas Day", type: "Religious" },
                              { date: "Dec 26", name: "Boxing Day", type: "National" },
                           ].map((h, i) => (
-                             <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${h.type === 'National' ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-900/30' : 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30'}`}>
+                             <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${h.type === 'National' ? 'bg-success/10 border-success/30' : 'bg-info/10 border-info/30'}`}>
                                 <div className="flex items-center gap-3">
-                                   <span className={`text-xs font-black px-2 py-1 rounded-lg ${h.type === 'National' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'}`}>{h.date}</span>
+                                   <span className={`text-xs font-black px-2 py-1 rounded-lg ${h.type === 'National' ? 'bg-success/10 text-success' : 'bg-info/15 text-info'}`}>{h.date}</span>
                                    <span className="text-sm font-semibold text-foreground">{h.name}</span>
                                 </div>
-                                <span className={`text-[9px] font-bold uppercase tracking-widest ${h.type === 'National' ? 'text-emerald-500' : 'text-blue-500'}`}>{h.type}</span>
+                                <span className={`text-[9px] font-bold uppercase tracking-widest ${h.type === 'National' ? 'text-success' : 'text-info'}`}>{h.type}</span>
                              </div>
                           ))}
                        </div>
@@ -845,7 +845,7 @@ const Leave = () => {
                label: "Calendar View",
                content: (
                  <div className="p-6">
-                    <h3 className="text-lg font-black mb-6 flex items-center gap-2"><CalendarDays className="w-5 h-5 text-[#bc7e57]" /> Leave Calendar</h3>
+                    <h3 className="text-lg font-black mb-6 flex items-center gap-2"><CalendarDays className="w-5 h-5 text-[hsl(var(--primary))]" /> Leave Calendar</h3>
                     <div className="grid grid-cols-7 gap-2 mb-2">
                        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=><div key={d} className="text-center text-xs font-bold uppercase tracking-widest text-muted-foreground">{d}</div>)}
                     </div>
@@ -853,9 +853,9 @@ const Leave = () => {
                        {Array.from({length: 31}).map((_, i) => {
                           const hasLeave = [5, 12, 13, 22].includes(i + 1);
                           return (
-                             <div key={i} className={`aspect-square rounded-xl border flex flex-col p-1.5 transition-colors ${hasLeave ? 'bg-[#bc7e57]/10 border-[#bc7e57]/30' : 'bg-background border-border/50 hover:bg-muted/50'}`}>
-                                <span className={`text-xs font-bold ${hasLeave ? 'text-[#bc7e57]' : 'text-muted-foreground'}`}>{i + 1}</span>
-                                {hasLeave && <div className="mt-auto w-full h-1 bg-[#bc7e57] rounded-full" />}
+                             <div key={i} className={`aspect-square rounded-xl border flex flex-col p-1.5 transition-colors ${hasLeave ? 'bg-[hsl(var(--primary))]/10 border-[hsl(var(--primary))]/30' : 'bg-background border-border/50 hover:bg-muted/50'}`}>
+                                <span className={`text-xs font-bold ${hasLeave ? 'text-[hsl(var(--primary))]' : 'text-muted-foreground'}`}>{i + 1}</span>
+                                {hasLeave && <div className="mt-auto w-full h-1 bg-[hsl(var(--primary))] rounded-full" />}
                              </div>
                           )
                        })}
@@ -869,9 +869,9 @@ const Leave = () => {
 
         {/* 📋 RIGHT COLUMN: Team Absence Board & Action Queue (4 cols) */}
         <div className="xl:col-span-4 space-y-8 flex flex-col">
-           <Card className="border-border/60 shadow-lg bg-[#bc7e57]/5 backdrop-blur-xl rounded-3xl overflow-hidden shrink-0">
-             <CardHeader className="bg-[#bc7e57]/10 pb-4 border-b border-[#bc7e57]/10">
-               <CardTitle className="text-lg font-bold flex items-center gap-2 text-[#bc7e57]">
+           <Card className="border-border/60 shadow-lg bg-[hsl(var(--primary))]/5 backdrop-blur-xl rounded-3xl overflow-hidden shrink-0">
+             <CardHeader className="bg-[hsl(var(--primary))]/10 pb-4 border-b border-[hsl(var(--primary))]/10">
+               <CardTitle className="text-lg font-bold flex items-center gap-2 text-[hsl(var(--primary))]">
                  <Users className="w-5 h-5" /> Team Absence Board
                </CardTitle>
              </CardHeader>
@@ -879,7 +879,7 @@ const Leave = () => {
                 {staffOnLeaveToday.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-border/50">
-                      <Sparkles className="w-6 h-6 text-emerald-500" />
+                      <Sparkles className="w-6 h-6 text-success" />
                     </div>
                     <p className="font-bold text-foreground">Everyone's Here</p>
                     <p className="text-xs text-muted-foreground font-medium">Full team availability today</p>
@@ -890,8 +890,8 @@ const Leave = () => {
                     <div className="space-y-3">
                       {staffOnLeaveToday.map((person, i) => (
                         <div key={i} className="flex items-center gap-3 bg-background/50 p-3 rounded-2xl border border-border/50 shadow-sm relative overflow-hidden group">
-                          <div className="absolute top-0 left-0 w-1 h-full bg-[#bc7e57]" />
-                          <div className="h-10 w-10 shrink-0 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-xs font-black text-[#bc7e57] ml-1">
+                          <div className="absolute top-0 left-0 w-1 h-full bg-[hsl(var(--primary))]" />
+                          <div className="h-10 w-10 shrink-0 rounded-full bg-[hsl(var(--primary))]/10 flex items-center justify-center text-xs font-black text-[hsl(var(--primary))] ml-1">
                             {getInitials(person.full_name)}
                           </div>
                           <div>
@@ -913,8 +913,8 @@ const Leave = () => {
               <Card className="border-border/60 shadow-lg bg-card rounded-3xl overflow-hidden flex-1 flex flex-col">
                 <CardHeader className="bg-muted/30 pb-4 border-b border-border/50">
                   <CardTitle className="text-lg font-bold flex items-center justify-between">
-                    <div className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-amber-500" /> Action Queue</div>
-                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-200 text-xs px-2 py-0">
+                    <div className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-warning" /> Action Queue</div>
+                    <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs px-2 py-0">
                       {requests.filter(r => r.status === 'pending').length}
                     </Badge>
                   </CardTitle>
@@ -935,8 +935,8 @@ const Leave = () => {
                            )}
 
                            <div className="flex gap-2">
-                             <Button size="sm" onClick={() => handleApproval(req.id, "approved")} className="flex-1 h-9 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shadow-md shadow-emerald-500/20">Approve</Button>
-                             <Button size="sm" onClick={() => openApprovalModal(req.id, "rejected", req.leave_type, req.employee_id)} variant="outline" className="flex-1 h-9 text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200 text-xs font-bold bg-background">Deny...</Button>
+                             <Button size="sm" onClick={() => handleApproval(req.id, "approved")} className="flex-1 h-9 bg-success hover:bg-success/90 text-success-foreground text-xs font-bold shadow-lvl-1">Approve</Button>
+                             <Button size="sm" onClick={() => openApprovalModal(req.id, "rejected", req.leave_type, req.employee_id)} variant="outline" className="flex-1 h-9 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30 text-xs font-bold bg-background">Deny...</Button>
                            </div>
                         </div>
                       ))}
@@ -960,15 +960,15 @@ const Leave = () => {
       {/* Rejection / Approval Modal for Managers */}
       <Dialog open={approvalModalOpen} onOpenChange={setApprovalModalOpen}>
         <DialogContent className="sm:max-w-lg bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-red-500" />
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-destructive" />
           <DialogHeader className="pt-4 px-2">
-            <DialogTitle className="text-xl font-black text-red-600 flex items-center gap-2">
+            <DialogTitle className="text-xl font-black text-destructive flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" /> Deny Leave Request
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 px-2 py-2">
-             <div className="bg-red-50 dark:bg-red-900/10 p-3 rounded-xl border border-red-200 dark:border-red-800/30">
-                <p className="text-sm font-medium text-red-900 dark:text-red-300">
+             <div className="bg-destructive/10 p-3 rounded-xl border border-destructive/30">
+                <p className="text-sm font-medium text-destructive">
                   You are about to deny a <strong>{selectedRequestAction?.type}</strong> request for <strong>{selectedRequestAction?.employee}</strong>.
                 </p>
              </div>
@@ -985,7 +985,7 @@ const Leave = () => {
              </div>
              <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => setApprovalModalOpen(false)} className="flex-1 rounded-xl h-11 font-bold">Cancel</Button>
-                <Button onClick={() => selectedRequestAction && handleApproval(selectedRequestAction.id, "rejected", approvalReason)} className="flex-1 rounded-xl h-11 bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-600/20">
+                <Button onClick={() => selectedRequestAction && handleApproval(selectedRequestAction.id, "rejected", approvalReason)} className="flex-1 rounded-xl h-11 bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold shadow-lvl-2">
                    Confirm Denial
                 </Button>
              </div>

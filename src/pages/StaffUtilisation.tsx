@@ -881,7 +881,7 @@ const ReallocationBoard = ({ profiles, departments }: { profiles: any[], departm
     
     setIsUpdating(true);
     try {
-      const { error } = await supabase.from('profiles').update({ department: realTarget }).eq('id', profileId);
+      const { error } = await (supabase as any).from('profiles').update({ department: realTarget }).eq('id', profileId);
       if (error) throw error;
       toast.success(`Staff reallocated to ${targetDept}`);
     } catch (err: any) {

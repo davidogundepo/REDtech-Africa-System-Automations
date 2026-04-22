@@ -247,7 +247,7 @@ const Dashboard = () => {
         (s || "—").split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
       const [tasksRes, clientsRes, leaveRes] = await Promise.all([
-        (supabase as any).from("tasks").select("id, title, status, updated_at, assigned_to").order("updated_at", { ascending: false }).limit(6),
+        (supabase as any).from("tasks").select("id, title, status, updated_at, assigned_to_user_id").order("updated_at", { ascending: false }).limit(6),
         (supabase as any).from("clients").select("id, name, company, created_at").order("created_at", { ascending: false }).limit(4),
         (supabase as any).from("leave_requests").select("id, leave_type, status, start_date, created_at").order("created_at", { ascending: false }).limit(4),
       ]);

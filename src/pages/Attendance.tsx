@@ -346,43 +346,47 @@ const Attendance = () => {
           
           <div className="flex items-center gap-2">
             {!myRecord && new Date().getDay() !== 0 && new Date().getDay() !== 6 ? (
-              <Button 
+              <Button
                 onClick={() => setNotesDialog(true)}
-                className="bg-[#bc7e57] hover:bg-[#a56d49] text-white font-bold px-6 shadow-lg shadow-[#bc7e57]/20"
+                className="h-13 px-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base shadow-lvl-2 hover:shadow-lvl-3 hover:-translate-y-0.5 transition-all"
               >
-                <LogIn className="w-4 h-4 mr-2" /> Clock In
+                <LogIn className="w-4 h-4 mr-2" /> Clock In →
               </Button>
             ) : !myRecord && (new Date().getDay() === 0 || new Date().getDay() === 6) ? (
-              <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 py-2 px-4 text-sm font-bold">
+              <Badge className="bg-info/10 text-info border-info/20 py-2 px-4 text-sm font-bold">
                 ☀️ Weekend — No Clock-In Required
               </Badge>
             ) : !myRecord.clock_out ? (
-              <Button 
+              <Button
                 onClick={() => {
                   const now = new Date();
                   const endHour = shiftConfig?.used_days ?? 17;
                   if (now.getHours() < endHour) setEarlyLeaveDialog(true);
                   else clockOutMutation.mutate();
                 }}
-                variant="outline"
-                className="border-[#bc7e57] text-[#bc7e57] hover:bg-[#bc7e57]/5 font-bold px-6"
+                className="h-13 px-8 rounded-full bg-success hover:bg-success/90 text-white font-bold text-base shadow-lvl-2 transition-all relative"
               >
-                <LogOut className="w-4 h-4 mr-2" /> Clock Out
+                <span className="relative flex h-2.5 w-2.5 mr-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+                </span>
+                Clock Out
               </Button>
             ) : (
-              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 py-2 px-4 text-sm font-bold">
+              <Badge className="bg-success/10 text-success border-success/20 py-2 px-4 text-sm font-bold">
                 <CheckCircle2 className="w-4 h-4 mr-2" /> Shift Completed
               </Badge>
             )}
-            
+
             {(isAdmin || isSuperAdmin) && (
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="icon"
                 onClick={() => setAutomationsOpen(true)}
                 className="rounded-full hover:bg-muted/80"
+                title="Admin Automations"
               >
-                <Zap className="w-5 h-5 text-[#bc7e57]" />
+                <Zap className="w-5 h-5 text-primary" />
               </Button>
             )}
           </div>

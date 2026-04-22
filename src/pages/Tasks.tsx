@@ -25,6 +25,10 @@ import { brandedEmailTemplate } from "@/lib/email-template";
 import { format } from "date-fns";
 import { MotionPage } from "@/components/shared/MotionPage";
 import { useDepartmentNames } from "@/lib/departments";
+import { Columns3 } from "lucide-react";
+import { TaskBoard } from "@/components/tasks/TaskBoard";
+import { TaskFormModal } from "@/components/tasks/TaskFormModal";
+import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 
 interface Task {
   id: string;
@@ -72,7 +76,8 @@ const Tasks = () => {
   const [filterDept, setFilterDept] = useState<string>("all");
   const [filterStaff, setFilterStaff] = useState<string>("all");
   const [showMyTasks, setShowMyTasks] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"board" | "grid" | "list">("board");
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [formData, setFormData] = useState(emptyTask);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -336,68 +341,23 @@ const Tasks = () => {
               <Download className="h-3.5 w-3.5 mr-1.5" /> Export Report
             </Button>
             <div className="flex border border-border/50 rounded-xl overflow-hidden">
-              <button onClick={() => setViewMode('grid')} className={`px-3 py-2 text-xs font-bold transition-colors ${viewMode === 'grid' ? 'bg-[#bc7e57] text-white' : 'text-muted-foreground hover:bg-muted/60'}`}>
+              <button onClick={() => setViewMode('board')} className={`px-3 py-2 text-xs font-bold transition-colors ${viewMode === 'board' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/60'}`} title="Board">
+                <Columns3 className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => setViewMode('grid')} className={`px-3 py-2 text-xs font-bold transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/60'}`} title="Grid">
                 <LayoutGrid className="h-3.5 w-3.5" />
               </button>
-              <button onClick={() => setViewMode('list')} className={`px-3 py-2 text-xs font-bold transition-colors ${viewMode === 'list' ? 'bg-[#bc7e57] text-white' : 'text-muted-foreground hover:bg-muted/60'}`}>
+              <button onClick={() => setViewMode('list')} className={`px-3 py-2 text-xs font-bold transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/60'}`} title="List">
                 <List className="h-3.5 w-3.5" />
               </button>
             </div>
             {canEdit && (
-              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if(!open) { setFormData(emptyTask); setEditingId(null); } }}>
-                <DialogTrigger asChild>
-                  <Button className="bg-[#bc7e57] hover:bg-[#a56d49] text-white font-bold shadow-lg shadow-[#bc7e57]/20">
-                    <Plus className="h-4 w-4 mr-2" /> New Task
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[550px]">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl font-black">{editingId ? "Edit Project Task" : "Launch New Mission Task"}</DialogTitle>
-                  </DialogHeader>
-                  <div className="grid grid-cols-2 gap-4 py-4">
-                    <div className="col-span-2 space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider">Task Title *</Label>
-                      <Input placeholder="e.g. Q3 Finance Audit" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
-                    </div>
-                    <div className="col-span-2 space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider">Description</Label>
-                      <Textarea placeholder="What needs to be done?" value={formData.description || ""} onChange={e => setFormData({...formData, description: e.target.value})} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider">Assigned To</Label>
-                      <Select value={formData.assigned_to_user_id || ""} onValueChange={v => setFormData({...formData, assigned_to_user_id: v})}>
-                        <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
-                        <SelectContent>
-                          {profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider">Priority</Label>
-                      <Select value={formData.priority} onValueChange={v => setFormData({...formData, priority: v})}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {priorities.map(p => <SelectItem key={p} value={p}>{p.toUpperCase()}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider">Department</Label>
-                      <Select value={formData.department || ""} onValueChange={v => setFormData({...formData, department: v})}>
-                        <SelectTrigger><SelectValue placeholder="Select dept" /></SelectTrigger>
-                        <SelectContent>
-                          {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider">Due Date</Label>
-                      <Input type="date" value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})} />
-                    </div>
-                  </div>
-                  <Button onClick={handleSubmit} className="w-full bg-[#bc7e57] font-bold py-6 text-lg">{editingId ? "Update Task" : "Deploy Task"}</Button>
-                </DialogContent>
-              </Dialog>
+              <Button
+                onClick={() => { setFormData(emptyTask); setEditingId(null); setDialogOpen(true); }}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lvl-2"
+              >
+                <Plus className="h-4 w-4 mr-2" /> New Task
+              </Button>
             )}
           </div>
         </div>
@@ -459,10 +419,20 @@ const Tasks = () => {
                   </CardContent>
                 </Card>
 
-                {viewMode === 'grid' ? (
+                {viewMode === 'board' ? (
+                  <TaskBoard
+                    tasks={filtered}
+                    onCardClick={(t) => setDetailTask(t as Task)}
+                    onStatusChange={(id, status) => handleStatusChange(id, status)}
+                  />
+                ) : viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filtered.map((task) => (
-                    <Card key={task.id} className="border-border/40 shadow-sm hover:shadow-md transition-all group rounded-2xl overflow-hidden bg-card/40 backdrop-blur-md">
+                    <Card
+                      key={task.id}
+                      onClick={(e) => { if ((e.target as HTMLElement).closest('button, [role="dialog"]')) return; setDetailTask(task); }}
+                      className="border-border/40 shadow-sm hover:shadow-md transition-all group rounded-2xl overflow-hidden bg-card/40 backdrop-blur-md cursor-pointer"
+                    >
                       <div className={`h-1.5 w-full ${
                         task.priority === 'urgent' ? 'bg-red-500' : 
                         task.priority === 'high' ? 'bg-orange-500' : 
@@ -471,7 +441,7 @@ const Tasks = () => {
                       <CardContent className="p-5 space-y-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0">
-                            <h3 className="text-base font-black text-foreground group-hover:text-[#bc7e57] transition-colors leading-tight mb-1">{task.title}</h3>
+                            <h3 className="text-base font-black text-foreground group-hover:text-primary transition-colors leading-tight mb-1">{task.title}</h3>
                             <p className="text-xs text-muted-foreground font-medium line-clamp-2">{task.description || "No description provided."}</p>
                           </div>
                           <Badge className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${statusConfig[task.status as keyof typeof statusConfig]?.bg} ${statusConfig[task.status as keyof typeof statusConfig]?.color}`}>
@@ -492,14 +462,14 @@ const Tasks = () => {
                                   <span className={`text-[10px] font-bold truncate ${s.completed ? 'line-through text-muted-foreground opacity-50' : 'text-foreground'}`}>{s.title}</span>
                                 </div>
                               ))}
-                              {task.subtasks.length > 2 && <p className="text-[9px] font-black text-[#bc7e57] italic">+{task.subtasks.length - 2} more subtasks...</p>}
+                              {task.subtasks.length > 2 && <p className="text-[9px] font-black text-primary italic">+{task.subtasks.length - 2} more subtasks...</p>}
                             </div>
                           </div>
                         )}
 
                         <div className="flex items-center justify-between pt-2">
                           <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-[#bc7e57] text-[10px] font-black border border-[#bc7e57]/20">
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-black border border-primary/20">
                               {getInitials(task.assigned_to || "??")}
                             </div>
                             <div>
@@ -510,15 +480,15 @@ const Tasks = () => {
                           <div className="text-right">
                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">Due Date</p>
                             <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                              <CalendarDays className="h-3.5 w-3.5 text-[#bc7e57]" />
+                              <CalendarDays className="h-3.5 w-3.5 text-primary" />
                               {task.due_date ? formatDate(task.due_date) : "TBD"}
                             </div>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 pt-2">
-                          <Button variant="outline" size="sm" className="h-9 font-bold text-[10px] uppercase tracking-widest rounded-xl border-border/40 hover:bg-[#bc7e57]/5" onClick={() => setSubtaskDialogOpen(task)}>
-                            <ListTodo className="h-3.5 w-3.5 mr-2 text-[#bc7e57]" /> Subtasks
+                          <Button variant="outline" size="sm" className="h-9 font-bold text-[10px] uppercase tracking-widest rounded-xl border-border/40 hover:bg-primary/5" onClick={() => setSubtaskDialogOpen(task)}>
+                            <ListTodo className="h-3.5 w-3.5 mr-2 text-primary" /> Subtasks
                           </Button>
                           <Button variant="outline" size="sm" className="h-9 font-bold text-[10px] uppercase tracking-widest rounded-xl border-border/40 hover:bg-amber-500/5" onClick={() => setBlockerDialogTask(task)}>
                             <AlertTriangle className="h-3.5 w-3.5 mr-2 text-amber-500" /> Blockers
@@ -535,8 +505,8 @@ const Tasks = () => {
                               </Button>
                            </div>
                            <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-[#bc7e57]/10" onClick={() => handleEdit(task)}>
-                                <Pencil className="h-3.5 w-3.5 text-[#bc7e57]" />
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10" onClick={() => handleEdit(task)}>
+                                <Pencil className="h-3.5 w-3.5 text-primary" />
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
@@ -578,7 +548,7 @@ const Tasks = () => {
                     </TableHeader>
                     <TableBody>
                       {filtered.map(task => (
-                        <TableRow key={task.id} className="hover:bg-muted/10 transition-colors group">
+                        <TableRow key={task.id} className="hover:bg-muted/10 transition-colors group cursor-pointer" onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; setDetailTask(task); }}>
                           <TableCell className="pl-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className={`h-2 w-2 rounded-full shrink-0 ${statusConfig[task.status as keyof typeof statusConfig]?.dot}`} />
@@ -590,7 +560,7 @@ const Tasks = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <div className="h-6 w-6 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-[#bc7e57] text-[9px] font-black border border-[#bc7e57]/20">
+                              <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[9px] font-black border border-primary/20">
                                 {getInitials(task.assigned_to || "??")}
                               </div>
                               <span className="text-xs font-bold text-foreground">{task.assigned_to || "—"}</span>
@@ -618,7 +588,7 @@ const Tasks = () => {
                             {task.subtasks && task.subtasks.length > 0 ? (
                               <div className="flex items-center gap-2">
                                 <div className="h-1.5 w-16 rounded-full bg-muted/50 overflow-hidden">
-                                  <div className="h-full bg-[#bc7e57] rounded-full" style={{ width: `${(task.subtasks.filter(s => s.completed).length / task.subtasks.length) * 100}%` }} />
+                                  <div className="h-full bg-primary rounded-full" style={{ width: `${(task.subtasks.filter(s => s.completed).length / task.subtasks.length) * 100}%` }} />
                                 </div>
                                 <span className="text-[10px] font-bold text-muted-foreground">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
                               </div>
@@ -629,8 +599,8 @@ const Tasks = () => {
                               <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-emerald-500/10" onClick={() => handleStatusChange(task.id, 'completed')}>
                                 <CheckSquare className="h-3 w-3 text-emerald-500" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-[#bc7e57]/10" onClick={() => handleEdit(task)}>
-                                <Pencil className="h-3 w-3 text-[#bc7e57]" />
+                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-primary/10" onClick={() => handleEdit(task)}>
+                                <Pencil className="h-3 w-3 text-primary" />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-amber-500/10" onClick={() => setBlockerDialogTask(task)}>
                                 <AlertTriangle className="h-3 w-3 text-amber-500" />
@@ -665,7 +635,7 @@ const Tasks = () => {
           <div className="space-y-4 py-4">
             <div className="flex gap-2">
               <Input placeholder="Add new subtask..." value={newSubtaskTitle} onChange={e => setNewSubtaskTitle(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddSubtask(subtaskDialogOpen!.id, subtaskDialogOpen!.subtasks || [])} />
-              <Button onClick={() => handleAddSubtask(subtaskDialogOpen!.id, subtaskDialogOpen!.subtasks || [])} className="bg-[#bc7e57]"><Plus className="w-4 h-4" /></Button>
+              <Button onClick={() => handleAddSubtask(subtaskDialogOpen!.id, subtaskDialogOpen!.subtasks || [])} className="bg-primary"><Plus className="w-4 h-4" /></Button>
             </div>
             <ScrollArea className="h-[300px] pr-4">
               <div className="space-y-3">
@@ -699,7 +669,7 @@ const Tasks = () => {
                   <div key={i} className="bg-muted/30 p-4 rounded-2xl border border-border/10 relative">
                     <p className="text-sm font-medium text-foreground leading-relaxed">{note.note}</p>
                     <div className="mt-2 flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-[#bc7e57]">{note.by}</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-primary">{note.by}</span>
                       <span className="text-[10px] text-muted-foreground font-medium">{format(new Date(note.at), "MMM d, HH:mm")}</span>
                     </div>
                   </div>
@@ -713,10 +683,56 @@ const Tasks = () => {
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Log New Blocker / Note</Label>
               <Textarea placeholder="Describe the issue or update..." value={newBlockerNote} onChange={e => setNewBlockerNote(e.target.value)} className="min-h-[100px] rounded-2xl bg-muted/20 border-border/40" />
             </div>
-            <Button onClick={handleAddBlockerNote} className="w-full bg-[#bc7e57] font-bold py-6">Save Blocker Note</Button>
+            <Button onClick={handleAddBlockerNote} className="w-full bg-primary font-bold py-6">Save Blocker Note</Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Premium New / Edit Task split modal */}
+      <TaskFormModal
+        open={dialogOpen}
+        onOpenChange={(o) => { setDialogOpen(o); if (!o) { setFormData(emptyTask); setEditingId(null); } }}
+        formData={formData}
+        setFormData={setFormData}
+        onSubmit={handleSubmit}
+        editingId={editingId}
+        profiles={profiles}
+        departments={departments}
+        priorities={priorities}
+        statuses={statuses}
+      />
+
+      {/* 960px Task Detail split modal */}
+      <TaskDetailModal
+        task={detailTask}
+        open={!!detailTask}
+        onOpenChange={(o) => !o && setDetailTask(null)}
+        onAddSubtask={async (taskId, current, title) => {
+          const updated = [...current, { title, completed: false, id: Date.now().toString() }];
+          await (supabase as any).from("tasks").update({ subtasks: updated }).eq("id", taskId);
+          setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, subtasks: updated } : t));
+          setDetailTask((prev) => prev ? { ...prev, subtasks: updated } : null);
+        }}
+        onToggleSubtask={async (taskId, current, subtaskId) => {
+          const updated = current.map((s: any) => s.id === subtaskId ? { ...s, completed: !s.completed } : s);
+          await (supabase as any).from("tasks").update({ subtasks: updated }).eq("id", taskId);
+          setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, subtasks: updated } : t));
+          setDetailTask((prev) => prev ? { ...prev, subtasks: updated } : null);
+        }}
+        onAddBlocker={async (taskId, note) => {
+          const t = tasks.find((x) => x.id === taskId);
+          const updated = [...((t?.blocker_notes) || []), { note, by: profile?.full_name || "Unknown", at: new Date().toISOString() }];
+          await (supabase as any).from("tasks").update({ blocker_notes: updated }).eq("id", taskId);
+          setTasks((prev) => prev.map((x) => x.id === taskId ? { ...x, blocker_notes: updated } : x));
+          setDetailTask((prev) => prev ? { ...prev, blocker_notes: updated } : null);
+          toast.success("Blocker logged");
+        }}
+        onStatusChange={async (taskId, status) => {
+          await handleStatusChange(taskId, status);
+          setDetailTask((prev) => prev ? { ...prev, status } : null);
+        }}
+        onEdit={(t) => handleEdit(t as Task)}
+      />
     </MotionPage>
   );
 };
