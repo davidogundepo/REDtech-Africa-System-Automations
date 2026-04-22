@@ -593,7 +593,7 @@ const DocumentRepository = () => {
                       {Object.entries(deptGroups).sort((a, b) => b[1] - a[1]).map(([dept, count]) => (
                         <div key={dept} className="flex items-center justify-between">
                           <span className="text-sm text-foreground">{dept}</span>
-                          <span className="text-sm font-bold" style={{ color: '#bc7e57' }}>{count}</span>
+                          <span className="text-sm font-bold text-primary">{count}</span>
                         </div>
                       ))}
                     </div>
