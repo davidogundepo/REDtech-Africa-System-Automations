@@ -882,11 +882,11 @@ const DocumentRepository = () => {
       {/* 🗂️ Premium Manage Folders Dialog */}
       <Dialog open={manageFoldersOpen} onOpenChange={setManageFoldersOpen}>
         <DialogContent className="sm:max-w-2xl bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl overflow-hidden p-0">
-          <div className="h-1.5 w-full bg-gradient-to-r from-[#bc7e57] via-amber-500 to-emerald-500" />
+          <div className="h-1.5 w-full bg-gradient-to-r from-primary via-gold to-success" />
           <DialogHeader className="px-8 pt-6 pb-0">
             <DialogTitle className="text-2xl font-black flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-[#bc7e57]/10 border border-[#bc7e57]/20">
-                <FolderOpen className="w-5 h-5 text-[#bc7e57]" />
+              <div className="p-2.5 rounded-2xl bg-primary/10 border border-primary/20">
+                <FolderOpen className="w-5 h-5 text-primary" />
               </div>
               Folder Management Console
             </DialogTitle>
