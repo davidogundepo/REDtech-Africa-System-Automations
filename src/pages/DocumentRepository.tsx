@@ -557,7 +557,7 @@ const DocumentRepository = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Files</p>
-                    <p className="text-2xl font-black mt-1" style={{ color: '#bc7e57' }}>{docs.length}</p>
+                    <p className="text-2xl font-black mt-1 text-primary">{docs.length}</p>
                   </div>
                   <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">File Types</p>
