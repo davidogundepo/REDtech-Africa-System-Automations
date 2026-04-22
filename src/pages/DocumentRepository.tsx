@@ -339,13 +339,13 @@ const DocumentRepository = () => {
   };
 
   const mockFolders = [
-    { title: "Finance & Accounting", count: computeFolderCount("finance"), size: computeFolderSize("finance"), icon: <Building2 className="w-6 h-6 text-emerald-500"/>, color: "bg-emerald-500/10", border: "border-emerald-500/20",
+    { title: "Finance & Accounting", count: computeFolderCount("finance"), size: computeFolderSize("finance"), icon: <Building2 className="w-6 h-6 text-success"/>, color: "bg-success/10", border: "border-success/20",
       docs: ["Expense Reimbursement Policy.pdf", "Petty Cash Guidelines.pdf", "Vendor Payment Terms.pdf", "Tax Compliance Manual.pdf", "Annual Budget Template.xlsx"] },
-    { title: "Human Resources", count: computeFolderCount("hr") + computeFolderCount("human"), size: computeFolderSize("hr"), icon: <FileText className="w-6 h-6 text-indigo-500"/>, color: "bg-indigo-500/10", border: "border-indigo-500/20",
+    { title: "Human Resources", count: computeFolderCount("hr") + computeFolderCount("human"), size: computeFolderSize("hr"), icon: <FileText className="w-6 h-6 text-info"/>, color: "bg-info/10", border: "border-info/20",
       docs: ["Employee Handbook 2026.pdf", "Onboarding Checklist.pdf", "Code of Conduct.pdf", "Anti-Harassment Policy.pdf", "Performance Review Framework.pdf"] },
-    { title: "Company Policies", count: computeFolderCount("polic") + computeFolderCount("legal"), size: computeFolderSize("polic"), icon: <AlertCircle className="w-6 h-6 text-amber-500"/>, color: "bg-amber-500/10", border: "border-amber-500/20",
+    { title: "Company Policies", count: computeFolderCount("polic") + computeFolderCount("legal"), size: computeFolderSize("polic"), icon: <AlertCircle className="w-6 h-6 text-warning"/>, color: "bg-warning/10", border: "border-warning/20",
       docs: ["Data Protection & NDPR Compliance.pdf", "Remote Work Policy.pdf", "Leave Allowance Policy.pdf", "IT Security Guidelines.pdf", "Whistleblower Protection Policy.pdf"] },
-    { title: "Brand Assets", count: computeFolderCount("brand") + computeFolderCount("market") + computeFolderCount("design"), size: computeFolderSize("brand"), icon: <FileImage className="w-6 h-6 text-purple-500"/>, color: "bg-purple-500/10", border: "border-purple-500/20",
+    { title: "Brand Assets", count: computeFolderCount("brand") + computeFolderCount("market") + computeFolderCount("design"), size: computeFolderSize("brand"), icon: <FileImage className="w-6 h-6 text-gold"/>, color: "bg-gold/10", border: "border-gold/20",
       docs: ["REDtech Brand Guidelines v3.pdf", "Logo Suite (All Formats).zip", "Social Media Templates.psd", "Presentation Master Deck.pptx", "Letterhead & Stationery.pdf"] },
   ];
 
