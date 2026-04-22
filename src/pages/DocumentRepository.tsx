@@ -352,7 +352,7 @@ const DocumentRepository = () => {
   if (isLoading) return (
     <div className="flex-1 w-full min-h-screen flex items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
-        <FolderOpen className="h-8 w-8 text-[#bc7e57] animate-pulse" />
+        <FolderOpen className="h-8 w-8 text-primary animate-pulse" />
         <p className="text-muted-foreground animate-pulse">Mounting secure drive...</p>
       </div>
     </div>
