@@ -3,6 +3,14 @@ import type { Config } from "tailwindcss";
 export default {
   darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  safelist: [
+    // Dynamic semantic tone classes used across modules (KPIs, badges, ranking bars)
+    { pattern: /^(bg|text|border)-(success|warning|info|destructive|primary)(\/\d{1,3})?$/ },
+    { pattern: /^bg-(success|warning|info|destructive|primary)\/(10|15|20|30)$/ },
+    { pattern: /^text-(success|warning|info|destructive|primary)$/ },
+    { pattern: /^border-(success|warning|info|destructive|primary)\/(10|20|30|40)$/ },
+    { pattern: /^border-l-(success|warning|info|destructive|primary)$/ },
+  ],
   prefix: "",
   theme: {
     container: {
