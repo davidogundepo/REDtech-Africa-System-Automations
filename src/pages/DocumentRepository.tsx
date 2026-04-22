@@ -569,7 +569,7 @@ const DocumentRepository = () => {
                   </div>
                   <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Shared</p>
-                    <p className="text-2xl font-black mt-1 text-emerald-600 dark:text-emerald-400">{docs.filter((d: any) => d.visibility === 'public').length}</p>
+                    <p className="text-2xl font-black mt-1 text-success">{docs.filter((d: any) => d.visibility === 'public').length}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
