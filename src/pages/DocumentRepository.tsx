@@ -22,39 +22,38 @@ import { DocumentsDashboard } from "@/components/documents/DocumentsDashboard";
 
 const TypeIcon = ({ type, className }: { type: string, className?: string }) => {
   switch (type.toLowerCase()) {
-    case "folder": return <FolderOpen className={`text-[#bc7e57] ${className}`} />;
-    case "pdf": return <FileText className={`text-red-500 ${className}`} />;
+    case "folder": return <FolderOpen className={`text-primary ${className}`} />;
+    case "pdf": return <FileText className={`text-destructive ${className}`} />;
     case "excel": 
-    case "csv": return <FileSpreadsheet className={`text-emerald-500 ${className}`} />;
+    case "csv": return <FileSpreadsheet className={`text-success ${className}`} />;
     case "word": 
-    case "docx": return <FileIcon className={`text-indigo-500 ${className}`} />;
-    case "image": return <FileImage className={`text-purple-500 ${className}`} />;
-    case "link": return <LinkIcon className={`text-sky-500 ${className}`} />;
-    default: return <FileIcon className={`text-slate-500 ${className}`} />;
+    case "docx": return <FileIcon className={`text-info ${className}`} />;
+    case "image": return <FileImage className={`text-gold ${className}`} />;
+    case "link": return <LinkIcon className={`text-info ${className}`} />;
+    default: return <FileIcon className={`text-muted-foreground ${className}`} />;
   }
 };
 
 const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
-  const { theme } = useTheme();
   const themeGradients: Record<string, string> = {
-    pdf: "from-red-500/20 to-rose-500/5",
-    excel: "from-emerald-500/20 to-teal-500/5",
-    csv: "from-emerald-500/20 to-teal-500/5",
-    word: "from-indigo-500/20 to-blue-500/5",
-    docx: "from-indigo-500/20 to-blue-500/5",
-    image: "from-purple-500/20 to-fuchsia-500/5",
-    link: "from-sky-500/20 to-cyan-500/5"
+    pdf: "from-destructive/20 to-destructive/5",
+    excel: "from-success/20 to-success/5",
+    csv: "from-success/20 to-success/5",
+    word: "from-info/20 to-info/5",
+    docx: "from-info/20 to-info/5",
+    image: "from-gold/20 to-gold/5",
+    link: "from-info/20 to-info/5"
   };
 
-  const gradient = themeGradients[file.type] || "from-[#bc7e57]/20 to-[#bc7e57]/5";
+  const gradient = themeGradients[file.type] || "from-primary/20 to-primary/5";
 
   return (
-    <Card className="group relative overflow-hidden border-border/50 hover:shadow-xl transition-all duration-300 bg-card/40 backdrop-blur-md cursor-pointer flex flex-col h-full" onClick={() => onPreview(file)}>
+    <Card className="surface-bevel group relative overflow-hidden border-border/60 hover:shadow-lvl-2 transition-all duration-300 cursor-pointer flex flex-col h-full" onClick={() => onPreview(file)}>
        <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl ${gradient} rounded-bl-full opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500`} />
        
        <CardContent className="p-6 flex-1 flex flex-col z-10">
          <div className="flex justify-between items-start mb-4">
-           <div className={`p-4 rounded-2xl bg-gradient-to-br ${gradient} border border-border/30 shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+           <div className={`p-4 rounded-2xl bg-gradient-to-br ${gradient} border border-border/40 shadow-sm group-hover:scale-110 transition-transform duration-300`}>
              <TypeIcon type={file.type} className="h-8 w-8" />
            </div>
            
@@ -82,7 +81,7 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
                  <ExternalLink className="h-4 w-4 mr-2" /> Open External
                </DropdownMenuItem>
                {canEdit && (
-                 <DropdownMenuItem className="text-red-500 focus:bg-red-500/10 focus:text-red-600" onClick={(e) => {
+                 <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={(e) => {
                    e.stopPropagation();
                    if (window.confirm("Are you sure you want to delete this document?")) {
                      onDelete(file.id);
@@ -96,7 +95,7 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
          </div>
 
          <div className="flex-1">
-           <h3 className="font-semibold text-base line-clamp-2 leading-tight group-hover:text-[#bc7e57] transition-colors">
+           <h3 className="font-semibold text-base line-clamp-2 leading-tight group-hover:text-primary transition-colors">
              {file.name}
            </h3>
            <div className="flex flex-wrap gap-2 mt-3">
@@ -104,17 +103,17 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
                {file.size}
              </span>
              {file.department && (
-               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#bc7e57]/10 text-[#bc7e57] border border-[#bc7e57]/20">
+               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                  <FolderOpen className="h-2.5 w-2.5 mr-1" /> {file.department}
                </span>
              )}
              {file.type === 'link' && (
-               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+               <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-info/10 text-info border border-info/20">
                  External
                </span>
              )}
               {(file.name?.startsWith('INV-') || file.department === 'Finance') && file.type === 'pdf' && (
-                <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                <span className="inline-flex items-center text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
                   <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> Invoice
                 </span>
               )}
@@ -130,7 +129,7 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
             </div>
             <div className="flex items-center gap-2">
               <button
-                className="h-7 w-7 rounded-full flex items-center justify-center bg-muted/50 hover:bg-[#bc7e57]/20 text-muted-foreground hover:text-[#bc7e57] transition-all opacity-0 group-hover:opacity-100"
+                className="h-7 w-7 rounded-full flex items-center justify-center bg-muted/50 hover:bg-primary/15 text-muted-foreground hover:text-primary transition-all opacity-0 group-hover:opacity-100"
                 title="Download"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -174,14 +173,12 @@ const DocumentRepository = () => {
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderColor, setNewFolderColor] = useState("emerald");
   const FOLDER_COLORS = [
-    { key: "emerald", bg: "bg-emerald-500/10", border: "border-emerald-500/20", text: "text-emerald-500", dot: "bg-emerald-500" },
-    { key: "indigo", bg: "bg-indigo-500/10", border: "border-indigo-500/20", text: "text-indigo-500", dot: "bg-indigo-500" },
-    { key: "amber", bg: "bg-amber-500/10", border: "border-amber-500/20", text: "text-amber-500", dot: "bg-amber-500" },
-    { key: "purple", bg: "bg-purple-500/10", border: "border-purple-500/20", text: "text-purple-500", dot: "bg-purple-500" },
-    { key: "rose", bg: "bg-rose-500/10", border: "border-rose-500/20", text: "text-rose-500", dot: "bg-rose-500" },
-    { key: "sky", bg: "bg-sky-500/10", border: "border-sky-500/20", text: "text-sky-500", dot: "bg-sky-500" },
-    { key: "teal", bg: "bg-teal-500/10", border: "border-teal-500/20", text: "text-teal-500", dot: "bg-teal-500" },
-    { key: "orange", bg: "bg-orange-500/10", border: "border-orange-500/20", text: "text-orange-500", dot: "bg-orange-500" },
+    { key: "success", bg: "bg-success/10", border: "border-success/20", text: "text-success", dot: "bg-success" },
+    { key: "info", bg: "bg-info/10", border: "border-info/20", text: "text-info", dot: "bg-info" },
+    { key: "warning", bg: "bg-warning/10", border: "border-warning/20", text: "text-warning", dot: "bg-warning" },
+    { key: "primary", bg: "bg-primary/10", border: "border-primary/20", text: "text-primary", dot: "bg-primary" },
+    { key: "destructive", bg: "bg-destructive/10", border: "border-destructive/20", text: "text-destructive", dot: "bg-destructive" },
+    { key: "gold", bg: "bg-gold/10", border: "border-gold/20", text: "text-gold", dot: "bg-gold" },
   ];
   
   const queryClient = useQueryClient();
@@ -342,20 +339,20 @@ const DocumentRepository = () => {
   };
 
   const mockFolders = [
-    { title: "Finance & Accounting", count: computeFolderCount("finance"), size: computeFolderSize("finance"), icon: <Building2 className="w-6 h-6 text-emerald-500"/>, color: "bg-emerald-500/10", border: "border-emerald-500/20",
+    { title: "Finance & Accounting", count: computeFolderCount("finance"), size: computeFolderSize("finance"), icon: <Building2 className="w-6 h-6 text-success"/>, color: "bg-success/10", border: "border-success/20",
       docs: ["Expense Reimbursement Policy.pdf", "Petty Cash Guidelines.pdf", "Vendor Payment Terms.pdf", "Tax Compliance Manual.pdf", "Annual Budget Template.xlsx"] },
-    { title: "Human Resources", count: computeFolderCount("hr") + computeFolderCount("human"), size: computeFolderSize("hr"), icon: <FileText className="w-6 h-6 text-indigo-500"/>, color: "bg-indigo-500/10", border: "border-indigo-500/20",
+    { title: "Human Resources", count: computeFolderCount("hr") + computeFolderCount("human"), size: computeFolderSize("hr"), icon: <FileText className="w-6 h-6 text-info"/>, color: "bg-info/10", border: "border-info/20",
       docs: ["Employee Handbook 2026.pdf", "Onboarding Checklist.pdf", "Code of Conduct.pdf", "Anti-Harassment Policy.pdf", "Performance Review Framework.pdf"] },
-    { title: "Company Policies", count: computeFolderCount("polic") + computeFolderCount("legal"), size: computeFolderSize("polic"), icon: <AlertCircle className="w-6 h-6 text-amber-500"/>, color: "bg-amber-500/10", border: "border-amber-500/20",
+    { title: "Company Policies", count: computeFolderCount("polic") + computeFolderCount("legal"), size: computeFolderSize("polic"), icon: <AlertCircle className="w-6 h-6 text-warning"/>, color: "bg-warning/10", border: "border-warning/20",
       docs: ["Data Protection & NDPR Compliance.pdf", "Remote Work Policy.pdf", "Leave Allowance Policy.pdf", "IT Security Guidelines.pdf", "Whistleblower Protection Policy.pdf"] },
-    { title: "Brand Assets", count: computeFolderCount("brand") + computeFolderCount("market") + computeFolderCount("design"), size: computeFolderSize("brand"), icon: <FileImage className="w-6 h-6 text-purple-500"/>, color: "bg-purple-500/10", border: "border-purple-500/20",
+    { title: "Brand Assets", count: computeFolderCount("brand") + computeFolderCount("market") + computeFolderCount("design"), size: computeFolderSize("brand"), icon: <FileImage className="w-6 h-6 text-gold"/>, color: "bg-gold/10", border: "border-gold/20",
       docs: ["REDtech Brand Guidelines v3.pdf", "Logo Suite (All Formats).zip", "Social Media Templates.psd", "Presentation Master Deck.pptx", "Letterhead & Stationery.pdf"] },
   ];
 
   if (isLoading) return (
     <div className="flex-1 w-full min-h-screen flex items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
-        <FolderOpen className="h-8 w-8 text-[#bc7e57] animate-pulse" />
+        <FolderOpen className="h-8 w-8 text-primary animate-pulse" />
         <p className="text-muted-foreground animate-pulse">Mounting secure drive...</p>
       </div>
     </div>
@@ -367,11 +364,11 @@ const DocumentRepository = () => {
       {/* Hero Header Region */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
         <div>
-          <div className="inline-flex items-center space-x-2 text-xs font-semibold text-[#bc7e57] uppercase tracking-wider mb-2">
-            <span className="w-2 h-2 rounded-full bg-[#bc7e57]" />
+          <div className="inline-flex items-center space-x-2 text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span>Secure Storage Access</span>
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight">Enterprise <span className="text-[#bc7e57]">Drive</span></h1>
+          <h1 className="text-display tracking-tight">Enterprise <span className="text-brand-gradient">Drive</span></h1>
           <p className="text-muted-foreground mt-2 max-w-xl leading-relaxed">
             Centralized document repository for REDtech Africa operations. Browse, preview, and securely manage files.
           </p>
@@ -398,7 +395,7 @@ const DocumentRepository = () => {
             <Input 
               type="search" 
               placeholder="Search by filename..." 
-              className="pl-10 h-11 bg-card border-border/50 shadow-sm focus-visible:ring-[#bc7e57]/50 rounded-full" 
+              className="pl-10 h-11 bg-card border-border/50 shadow-sm rounded-full" 
               value={searchQuery} 
               onChange={(e) => setSearchQuery(e.target.value)} 
             />
@@ -407,26 +404,30 @@ const DocumentRepository = () => {
           {profile && (
             <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white shadow-lg hover:shadow-xl transition-all h-11 px-6 rounded-full group w-full sm:w-auto">
-                  <Upload className="mr-2 h-4 w-4 transition-transform group-hover:-translate-y-1" /> Add to Drive
+                <Button className="bg-primary hover:bg-primary-dark text-primary-foreground shadow-lvl-2 hover:shadow-lvl-3 transition-all h-11 px-6 rounded-full group w-full sm:w-auto">
+                  <Upload className="mr-2 h-4 w-4 transition-transform group-hover:-translate-y-0.5" /> Add to Drive
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl p-0 overflow-hidden border-0 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 shadow-2xl">
                 <div className="grid grid-cols-1 md:grid-cols-5 h-[500px]">
                   {/* Left Pane: Branding / Mode Switcher */}
-                  <div className="md:col-span-2 bg-[#1a1a1a] p-8 text-white flex flex-col relative overflow-hidden border-r border-white/5 hidden md:flex">
+                  <div className="md:col-span-2 premium-hero-gradient p-8 text-white flex flex-col relative overflow-hidden border-r border-white/5 hidden md:flex">
+                    <div className="absolute -bottom-20 -right-16 w-64 h-64 rounded-full bg-primary/30 blur-3xl pointer-events-none" />
+                    <div className="absolute top-12 right-8 w-20 h-20 rounded-3xl bg-primary/10 border border-primary/30 flex items-center justify-center">
+                      <FolderOpen className="h-10 w-10 text-primary" />
+                    </div>
                     <div className="relative z-10 flex flex-col h-full">
-                      <FolderOpen className="h-10 w-10 mb-6 opacity-90 text-[#bc7e57]" />
-                      <h3 className="text-2xl font-bold mb-2">Add to <br/>Repository</h3>
+                      <div className="text-[10px] font-black tracking-[0.2em] uppercase text-primary mb-3">Drive Console</div>
+                      <h3 className="text-2xl font-bold mb-2 leading-tight">Add to <br/>Repository</h3>
                       <p className="text-white/60 text-sm leading-relaxed mb-auto">
-                        Upload physical files to our secure Supabase bucket, or link out to external SharePoint environments.
+                        Upload physical files to our secure storage bucket, or link out to external SharePoint environments.
                       </p>
                       
                       <div className="space-y-2 mt-8">
                         <button 
                           type="button"
                           onClick={() => setUploadMode("file")}
-                          className={`w-full flex items-center gap-3 p-4 rounded-xl transition-all ${uploadMode === 'file' ? 'bg-[#bc7e57] text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+                          className={`w-full flex items-center gap-3 p-4 rounded-xl transition-all ${uploadMode === 'file' ? 'bg-primary text-primary-foreground shadow-lvl-2' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
                         >
                           <Upload className="h-5 w-5" />
                           <div className="text-left">
@@ -437,7 +438,7 @@ const DocumentRepository = () => {
                         <button 
                            type="button"
                           onClick={() => setUploadMode("link")}
-                          className={`w-full flex items-center gap-3 p-4 rounded-xl transition-all ${uploadMode === 'link' ? 'bg-[#bc7e57] text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+                          className={`w-full flex items-center gap-3 p-4 rounded-xl transition-all ${uploadMode === 'link' ? 'bg-primary text-primary-foreground shadow-lvl-2' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
                         >
                           <LinkIcon className="h-5 w-5" />
                           <div className="text-left">
@@ -445,6 +446,10 @@ const DocumentRepository = () => {
                             <p className="text-[10px] opacity-80">OneDrive, SharePoint</p>
                           </div>
                         </button>
+                      </div>
+
+                      <div className="mt-6 pt-5 border-t border-white/10 text-[10px] font-medium text-white/40 uppercase tracking-widest">
+                        🔒 Encrypted at rest · RAC Cloud
                       </div>
                     </div>
                   </div>
@@ -455,14 +460,14 @@ const DocumentRepository = () => {
                       <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                         <div className="text-center py-8 px-6 border-2 border-dashed border-border rounded-2xl bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                           <div className="mx-auto w-16 h-16 bg-background rounded-full flex items-center justify-center mb-4 shadow-sm border border-border/50">
-                            <Upload className="h-8 w-8 text-[#bc7e57]" />
+                            <Upload className="h-8 w-8 text-primary" />
                           </div>
                           <h4 className="text-lg font-semibold mb-1">Click to browse files</h4>
                           <p className="text-sm text-muted-foreground w-64 mx-auto leading-relaxed">System will auto-detect file type and securely compress images.</p>
                           <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
                           
                           {uploadDocMutation.isPending && (
-                            <div className="mt-6 flex items-center justify-center gap-2 text-[#bc7e57] font-medium">
+                            <div className="mt-6 flex items-center justify-center gap-2 text-primary font-medium">
                               <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> Uploading block storage...
                             </div>
                           )}
@@ -512,7 +517,7 @@ const DocumentRepository = () => {
                             </SelectContent>
                           </Select>
                         </div>
-                        <Button type="submit" className="w-full h-12 bg-[#bc7e57] hover:bg-[#a66c4a] text-white text-base rounded-xl mt-4 shadow-md" disabled={addLinkMutation.isPending}>
+                        <Button type="submit" className="w-full h-12 bg-primary hover:bg-primary-dark text-primary-foreground text-base rounded-xl mt-4 shadow-lvl-2" disabled={addLinkMutation.isPending}>
                           {addLinkMutation.isPending ? "Mapping resource..." : "Publish External Link"}
                         </Button>
                       </form>
@@ -552,7 +557,7 @@ const DocumentRepository = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Files</p>
-                    <p className="text-2xl font-black mt-1" style={{ color: '#bc7e57' }}>{docs.length}</p>
+                    <p className="text-2xl font-black mt-1 text-primary">{docs.length}</p>
                   </div>
                   <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">File Types</p>
@@ -564,7 +569,7 @@ const DocumentRepository = () => {
                   </div>
                   <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Shared</p>
-                    <p className="text-2xl font-black mt-1 text-emerald-600 dark:text-emerald-400">{docs.filter((d: any) => d.visibility === 'public').length}</p>
+                    <p className="text-2xl font-black mt-1 text-success">{docs.filter((d: any) => d.visibility === 'public').length}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -588,7 +593,7 @@ const DocumentRepository = () => {
                       {Object.entries(deptGroups).sort((a, b) => b[1] - a[1]).map(([dept, count]) => (
                         <div key={dept} className="flex items-center justify-between">
                           <span className="text-sm text-foreground">{dept}</span>
-                          <span className="text-sm font-bold" style={{ color: '#bc7e57' }}>{count}</span>
+                          <span className="text-sm font-bold text-primary">{count}</span>
                         </div>
                       ))}
                     </div>
@@ -626,7 +631,7 @@ const DocumentRepository = () => {
                 <div className="space-y-1.5 border-t border-border/40 pt-3">
                   {folder.docs.map((doc, di) => (
                     <div key={di} className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-0.5">
-                      <FileText className="w-3 h-3 flex-shrink-0 text-[#bc7e57]" />
+                      <FileText className="w-3 h-3 flex-shrink-0 text-primary" />
                       <span className="truncate font-medium">{doc}</span>
                     </div>
                   ))}
@@ -641,10 +646,10 @@ const DocumentRepository = () => {
       <div className="flex flex-col sm:flex-row justify-between items-center bg-card border border-border/60 p-2 rounded-2xl shadow-sm mb-6">
         <Tabs value={docState} onValueChange={setDocState} className="w-full sm:w-auto">
           <TabsList className="bg-transparent h-10">
-             <TabsTrigger value="all" className="data-[state=active]:bg-[#bc7e57]/10 data-[state=active]:text-[#bc7e57] rounded-xl px-4 font-medium">All States</TabsTrigger>
-             <TabsTrigger value="approved" className="data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-500 rounded-xl px-4 font-medium"><CheckCircle2 className="w-3.5 h-3.5 mr-1.5"/> Approved</TabsTrigger>
-             <TabsTrigger value="waiting" className="data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-500 rounded-xl px-4 font-medium"><Clock3 className="w-3.5 h-3.5 mr-1.5"/> Waiting Auth</TabsTrigger>
-             <TabsTrigger value="draft" className="data-[state=active]:bg-slate-500/10 data-[state=active]:text-slate-500 rounded-xl px-4 font-medium"><Edit3 className="w-3.5 h-3.5 mr-1.5"/> Drafts</TabsTrigger>
+             <TabsTrigger value="all" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-xl px-4 font-medium">All States</TabsTrigger>
+             <TabsTrigger value="approved" className="data-[state=active]:bg-success/10 data-[state=active]:text-success rounded-xl px-4 font-medium"><CheckCircle2 className="w-3.5 h-3.5 mr-1.5"/> Approved</TabsTrigger>
+             <TabsTrigger value="waiting" className="data-[state=active]:bg-warning/10 data-[state=active]:text-warning rounded-xl px-4 font-medium"><Clock3 className="w-3.5 h-3.5 mr-1.5"/> Waiting Auth</TabsTrigger>
+             <TabsTrigger value="draft" className="data-[state=active]:bg-muted data-[state=active]:text-muted-foreground rounded-xl px-4 font-medium"><Edit3 className="w-3.5 h-3.5 mr-1.5"/> Drafts</TabsTrigger>
           </TabsList>
         </Tabs>
         
@@ -661,16 +666,16 @@ const DocumentRepository = () => {
       {/* Type Tabs Layout */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col space-y-8">
         <TabsList className="bg-transparent border-b border-border w-full flex justify-start rounded-none h-auto p-0 gap-8">
-          <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-4 text-sm font-medium transition-all text-muted-foreground data-[state=active]:text-foreground">
+          <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-4 text-sm font-medium transition-all text-muted-foreground data-[state=active]:text-foreground">
             All Documents
           </TabsTrigger>
-          <TabsTrigger value="documents" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-4 text-sm font-medium transition-all text-muted-foreground data-[state=active]:text-foreground">
+          <TabsTrigger value="documents" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-4 text-sm font-medium transition-all text-muted-foreground data-[state=active]:text-foreground">
             Files & Spreadsheets
           </TabsTrigger>
-          <TabsTrigger value="images" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-4 text-sm font-medium transition-all text-muted-foreground data-[state=active]:text-foreground">
+          <TabsTrigger value="images" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-4 text-sm font-medium transition-all text-muted-foreground data-[state=active]:text-foreground">
             Media & Images
           </TabsTrigger>
-          <TabsTrigger value="links" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#bc7e57] data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-4 text-sm font-medium transition-all text-muted-foreground data-[state=active]:text-foreground">
+          <TabsTrigger value="links" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-4 text-sm font-medium transition-all text-muted-foreground data-[state=active]:text-foreground">
             External Repos
           </TabsTrigger>
         </TabsList>
@@ -723,7 +728,7 @@ const DocumentRepository = () => {
                         </td>
                         <td className="px-6 py-4">
                           {file.department ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#bc7e57]/10 text-[#bc7e57]">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
                               {file.department}
                             </span>
                           ) : (
@@ -742,7 +747,7 @@ const DocumentRepository = () => {
                         <td className="px-6 py-4 text-muted-foreground">{format(parseISO(file.created_at), 'MMM dd, yyyy')}</td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2 pr-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-[#bc7e57]/10 hover:text-[#bc7e57]" onClick={(e) => { e.stopPropagation(); setPreviewDoc(file); }}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary" onClick={(e) => { e.stopPropagation(); setPreviewDoc(file); }}>
                               <Eye className="h-4 w-4" />
                             </Button>
                             {canEdit && (
@@ -755,10 +760,10 @@ const DocumentRepository = () => {
                                 <DropdownMenuContent align="end">
                                   {profile?.role === 'super_admin' && (
                                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toast.success("Document flagged as Internal Only"); }}>
-                                       <AlertCircle className="h-4 w-4 mr-2 text-amber-500" /> Flag Visibility
+                                       <AlertCircle className="h-4 w-4 mr-2 text-warning" /> Flag Visibility
                                      </DropdownMenuItem>
                                   )}
-                                  <DropdownMenuItem className="text-red-500" onClick={(e) => { e.stopPropagation(); deleteDocMutation.mutate(file.id); }}>
+                                  <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); deleteDocMutation.mutate(file.id); }}>
                                     <Trash2 className="h-4 w-4 mr-2" /> Delete
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -864,7 +869,7 @@ const DocumentRepository = () => {
                   <p className="text-muted-foreground max-w-sm mx-auto mb-6 text-sm">
                      This file type cannot be previewed in the browser. Click below to open it externally.
                   </p>
-                  <Button onClick={() => window.open(previewDoc.url, '_blank')} className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white px-6">
+                  <Button onClick={() => window.open(previewDoc.url, '_blank')} className="bg-primary hover:bg-primary-dark text-primary-foreground px-6">
                     <ExternalLink className="h-4 w-4 mr-2" /> Download / Open File
                   </Button>
                 </div>
@@ -877,11 +882,11 @@ const DocumentRepository = () => {
       {/* 🗂️ Premium Manage Folders Dialog */}
       <Dialog open={manageFoldersOpen} onOpenChange={setManageFoldersOpen}>
         <DialogContent className="sm:max-w-2xl bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl overflow-hidden p-0">
-          <div className="h-1.5 w-full bg-gradient-to-r from-[#bc7e57] via-amber-500 to-emerald-500" />
+          <div className="h-1.5 w-full bg-gradient-to-r from-primary via-gold to-success" />
           <DialogHeader className="px-8 pt-6 pb-0">
             <DialogTitle className="text-2xl font-black flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-[#bc7e57]/10 border border-[#bc7e57]/20">
-                <FolderOpen className="w-5 h-5 text-[#bc7e57]" />
+              <div className="p-2.5 rounded-2xl bg-primary/10 border border-primary/20">
+                <FolderOpen className="w-5 h-5 text-primary" />
               </div>
               Folder Management Console
             </DialogTitle>
