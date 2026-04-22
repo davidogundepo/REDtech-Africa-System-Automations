@@ -10,239 +10,54 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
-      app_settings: {
-        Row: {
-          key: string
-          updated_at: string
-          updated_by: string | null
-          value: Json
-        }
-        Insert: {
-          key: string
-          updated_at?: string
-          updated_by?: string | null
-          value?: Json
-        }
-        Update: {
-          key?: string
-          updated_at?: string
-          updated_by?: string | null
-          value?: Json
-        }
-        Relationships: []
-      }
-      attendance_records: {
-        Row: {
-          clock_in: string | null
-          clock_out: string | null
-          created_at: string
-          date: string
-          id: string
-          notes: string | null
-          status: string | null
-          user_id: string | null
-        }
-        Insert: {
-          clock_in?: string | null
-          clock_out?: string | null
-          created_at?: string
-          date?: string
-          id?: string
-          notes?: string | null
-          status?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          clock_in?: string | null
-          clock_out?: string | null
-          created_at?: string
-          date?: string
-          id?: string
-          notes?: string | null
-          status?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "attendance_records_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      budgets: {
-        Row: {
-          actual_amount: number
-          budgeted_amount: number
-          category: string
-          created_at: string
-          id: string
-          quarter: number
-          updated_at: string
-          year: number
-        }
-        Insert: {
-          actual_amount?: number
-          budgeted_amount?: number
-          category: string
-          created_at?: string
-          id?: string
-          quarter: number
-          updated_at?: string
-          year: number
-        }
-        Update: {
-          actual_amount?: number
-          budgeted_amount?: number
-          category?: string
-          created_at?: string
-          id?: string
-          quarter?: number
-          updated_at?: string
-          year?: number
-        }
-        Relationships: []
-      }
       clients: {
         Row: {
-          assigned_to: string | null
+          address: string | null
           company: string | null
-          contact_email: string | null
-          contact_phone: string | null
           created_at: string
-          deal_status: string | null
-          deal_value: number | null
+          created_by: string | null
+          email: string | null
           id: string
+          industry: string | null
           name: string
           notes: string | null
+          phone: string | null
+          source: string | null
           updated_at: string
         }
         Insert: {
-          assigned_to?: string | null
+          address?: string | null
           company?: string | null
-          contact_email?: string | null
-          contact_phone?: string | null
           created_at?: string
-          deal_status?: string | null
-          deal_value?: number | null
+          created_by?: string | null
+          email?: string | null
           id?: string
+          industry?: string | null
           name: string
           notes?: string | null
+          phone?: string | null
+          source?: string | null
           updated_at?: string
         }
         Update: {
-          assigned_to?: string | null
+          address?: string | null
           company?: string | null
-          contact_email?: string | null
-          contact_phone?: string | null
           created_at?: string
-          deal_status?: string | null
-          deal_value?: number | null
+          created_by?: string | null
+          email?: string | null
           id?: string
+          industry?: string | null
           name?: string
           notes?: string | null
+          phone?: string | null
+          source?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "clients_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      documents: {
-        Row: {
-          access_roles: string[] | null
-          category: string | null
-          created_at: string
-          department: string | null
-          file_path: string
-          file_size: number | null
-          id: string
-          mime_type: string | null
-          name: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          access_roles?: string[] | null
-          category?: string | null
-          created_at?: string
-          department?: string | null
-          file_path: string
-          file_size?: number | null
-          id?: string
-          mime_type?: string | null
-          name: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          access_roles?: string[] | null
-          category?: string | null
-          created_at?: string
-          department?: string | null
-          file_path?: string
-          file_size?: number | null
-          id?: string
-          mime_type?: string | null
-          name?: string
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "documents_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      leave_balances: {
-        Row: {
-          bonus_days: number
-          id: string
-          leave_type: string
-          total_days: number
-          used_days: number
-          user_id: string | null
-          year: number
-        }
-        Insert: {
-          bonus_days?: number
-          id?: string
-          leave_type: string
-          total_days?: number
-          used_days?: number
-          user_id?: string | null
-          year?: number
-        }
-        Update: {
-          bonus_days?: number
-          id?: string
-          leave_type?: string
-          total_days?: number
-          used_days?: number
-          user_id?: string | null
-          year?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "leave_balances_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       leave_requests: {
         Row: {
@@ -256,7 +71,6 @@ export type Database = {
           start_date: string
           status: string
           updated_at: string
-          user_id: string | null
         }
         Insert: {
           approved_by?: string | null
@@ -264,12 +78,11 @@ export type Database = {
           employee_id?: string | null
           end_date: string
           id?: string
-          leave_type: string
+          leave_type?: string
           reason?: string | null
           start_date: string
           status?: string
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
           approved_by?: string | null
@@ -282,7 +95,6 @@ export type Database = {
           start_date?: string
           status?: string
           updated_at?: string
-          user_id?: string | null
         }
         Relationships: [
           {
@@ -293,127 +105,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "leave_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      notifications: {
-        Row: {
-          created_at: string
-          id: string
-          link: string | null
-          message: string | null
-          read: boolean
-          title: string
-          type: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          link?: string | null
-          message?: string | null
-          read?: boolean
-          title: string
-          type?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          link?: string | null
-          message?: string | null
-          read?: boolean
-          title?: string
-          type?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ops_metrics: {
-        Row: {
-          created_at: string
-          date: string
-          id: string
-          metric_name: string
-          metric_value: number
-          notes: string | null
-        }
-        Insert: {
-          created_at?: string
-          date?: string
-          id?: string
-          metric_name: string
-          metric_value?: number
-          notes?: string | null
-        }
-        Update: {
-          created_at?: string
-          date?: string
-          id?: string
-          metric_name?: string
-          metric_value?: number
-          notes?: string | null
-        }
-        Relationships: []
-      }
-      payment_requests: {
-        Row: {
-          amount: number
-          approved_by: string | null
-          category: string
-          created_at: string
-          description: string | null
-          id: string
-          requested_by: string | null
-          resolved_at: string | null
-          status: string
-        }
-        Insert: {
-          amount: number
-          approved_by?: string | null
-          category: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          requested_by?: string | null
-          resolved_at?: string | null
-          status?: string
-        }
-        Update: {
-          amount?: number
-          approved_by?: string | null
-          category?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          requested_by?: string | null
-          resolved_at?: string | null
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payment_requests_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payment_requests_requested_by_fkey"
-            columns: ["requested_by"]
+            foreignKeyName: "leave_requests_employee_id_fkey"
+            columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -425,245 +118,90 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           department: string | null
-          email: string
+          email: string | null
           full_name: string
           id: string
-          is_active: boolean
-          role: Database["public"]["Enums"]["user_role"]
+          role: string
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           department?: string | null
-          email: string
+          email?: string | null
           full_name?: string
           id: string
-          is_active?: boolean
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: string
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           department?: string | null
-          email?: string
+          email?: string | null
           full_name?: string
           id?: string
-          is_active?: boolean
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: string
           updated_at?: string
         }
         Relationships: []
       }
-      social_posts: {
-        Row: {
-          approval_status: string | null
-          approved_by: string | null
-          content: string
-          created_at: string
-          created_by: string | null
-          id: string
-          image_urls: string[] | null
-          platform: string
-          scheduled_for: string | null
-          status: string | null
-          updated_at: string
-        }
-        Insert: {
-          approval_status?: string | null
-          approved_by?: string | null
-          content: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          image_urls?: string[] | null
-          platform: string
-          scheduled_for?: string | null
-          status?: string | null
-          updated_at?: string
-        }
-        Update: {
-          approval_status?: string | null
-          approved_by?: string | null
-          content?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          image_urls?: string[] | null
-          platform?: string
-          scheduled_for?: string | null
-          status?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "social_posts_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "social_posts_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      task_updates: {
-        Row: {
-          action: string
-          created_at: string
-          id: string
-          note: string | null
-          task_id: string | null
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          created_at?: string
-          id?: string
-          note?: string | null
-          task_id?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          created_at?: string
-          id?: string
-          note?: string | null
-          task_id?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_updates_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_updates_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       tasks: {
         Row: {
-          assigned_to_user_id: string | null
-          blocker_notes: Json | null
-          completed_at: string | null
+          assigned_to: string | null
+          client_id: string | null
           created_at: string
           created_by: string | null
+          department: string | null
           description: string | null
           due_date: string | null
           id: string
-          is_recurring: boolean | null
-          priority: string | null
-          recurrence_pattern: string | null
+          priority: string
           status: string
           title: string
           updated_at: string
         }
         Insert: {
-          assigned_to_user_id?: string | null
-          blocker_notes?: Json | null
-          completed_at?: string | null
+          assigned_to?: string | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
+          department?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
-          is_recurring?: boolean | null
-          priority?: string | null
-          recurrence_pattern?: string | null
+          priority?: string
           status?: string
           title: string
           updated_at?: string
         }
         Update: {
-          assigned_to_user_id?: string | null
-          blocker_notes?: Json | null
-          completed_at?: string | null
+          assigned_to?: string | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
+          department?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
-          is_recurring?: boolean | null
-          priority?: string | null
-          recurrence_pattern?: string | null
+          priority?: string
           status?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "tasks_assigned_to_user_id_fkey"
-            columns: ["assigned_to_user_id"]
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tasks_created_by_fkey"
-            columns: ["created_by"]
+            foreignKeyName: "tasks_client_id_fkey"
+            columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      transactions: {
-        Row: {
-          amount: number
-          category: string
-          created_at: string
-          created_by: string | null
-          date: string
-          deleted_at: string | null
-          description: string | null
-          id: string
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          amount?: number
-          category?: string
-          created_at?: string
-          created_by?: string | null
-          date?: string
-          deleted_at?: string | null
-          description?: string | null
-          id?: string
-          type?: string
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          category?: string
-          created_at?: string
-          created_by?: string | null
-          date?: string
-          deleted_at?: string | null
-          description?: string | null
-          id?: string
-          type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -673,17 +211,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["user_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      [_ in never]: never
     }
     Enums: {
-      user_role: "super_admin" | "admin" | "team_member" | "viewer"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -810,8 +341,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      user_role: ["super_admin", "admin", "team_member", "viewer"],
-    },
+    Enums: {},
   },
 } as const
