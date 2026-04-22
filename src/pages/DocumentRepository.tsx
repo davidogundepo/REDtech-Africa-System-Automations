@@ -869,7 +869,7 @@ const DocumentRepository = () => {
                   <p className="text-muted-foreground max-w-sm mx-auto mb-6 text-sm">
                      This file type cannot be previewed in the browser. Click below to open it externally.
                   </p>
-                  <Button onClick={() => window.open(previewDoc.url, '_blank')} className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white px-6">
+                  <Button onClick={() => window.open(previewDoc.url, '_blank')} className="bg-primary hover:bg-primary-dark text-primary-foreground px-6">
                     <ExternalLink className="h-4 w-4 mr-2" /> Download / Open File
                   </Button>
                 </div>
