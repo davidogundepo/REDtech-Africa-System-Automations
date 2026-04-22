@@ -411,19 +411,23 @@ const DocumentRepository = () => {
               <DialogContent className="max-w-4xl p-0 overflow-hidden border-0 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 shadow-2xl">
                 <div className="grid grid-cols-1 md:grid-cols-5 h-[500px]">
                   {/* Left Pane: Branding / Mode Switcher */}
-                  <div className="md:col-span-2 bg-[#1a1a1a] p-8 text-white flex flex-col relative overflow-hidden border-r border-white/5 hidden md:flex">
+                  <div className="md:col-span-2 premium-hero-gradient p-8 text-white flex flex-col relative overflow-hidden border-r border-white/5 hidden md:flex">
+                    <div className="absolute -bottom-20 -right-16 w-64 h-64 rounded-full bg-primary/30 blur-3xl pointer-events-none" />
+                    <div className="absolute top-12 right-8 w-20 h-20 rounded-3xl bg-primary/10 border border-primary/30 flex items-center justify-center">
+                      <FolderOpen className="h-10 w-10 text-primary" />
+                    </div>
                     <div className="relative z-10 flex flex-col h-full">
-                      <FolderOpen className="h-10 w-10 mb-6 opacity-90 text-[#bc7e57]" />
-                      <h3 className="text-2xl font-bold mb-2">Add to <br/>Repository</h3>
+                      <div className="text-[10px] font-black tracking-[0.2em] uppercase text-primary mb-3">Drive Console</div>
+                      <h3 className="text-2xl font-bold mb-2 leading-tight">Add to <br/>Repository</h3>
                       <p className="text-white/60 text-sm leading-relaxed mb-auto">
-                        Upload physical files to our secure Supabase bucket, or link out to external SharePoint environments.
+                        Upload physical files to our secure storage bucket, or link out to external SharePoint environments.
                       </p>
                       
                       <div className="space-y-2 mt-8">
                         <button 
                           type="button"
                           onClick={() => setUploadMode("file")}
-                          className={`w-full flex items-center gap-3 p-4 rounded-xl transition-all ${uploadMode === 'file' ? 'bg-[#bc7e57] text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+                          className={`w-full flex items-center gap-3 p-4 rounded-xl transition-all ${uploadMode === 'file' ? 'bg-primary text-primary-foreground shadow-lvl-2' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
                         >
                           <Upload className="h-5 w-5" />
                           <div className="text-left">
@@ -434,7 +438,7 @@ const DocumentRepository = () => {
                         <button 
                            type="button"
                           onClick={() => setUploadMode("link")}
-                          className={`w-full flex items-center gap-3 p-4 rounded-xl transition-all ${uploadMode === 'link' ? 'bg-[#bc7e57] text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+                          className={`w-full flex items-center gap-3 p-4 rounded-xl transition-all ${uploadMode === 'link' ? 'bg-primary text-primary-foreground shadow-lvl-2' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
                         >
                           <LinkIcon className="h-5 w-5" />
                           <div className="text-left">
@@ -442,6 +446,10 @@ const DocumentRepository = () => {
                             <p className="text-[10px] opacity-80">OneDrive, SharePoint</p>
                           </div>
                         </button>
+                      </div>
+
+                      <div className="mt-6 pt-5 border-t border-white/10 text-[10px] font-medium text-white/40 uppercase tracking-widest">
+                        🔒 Encrypted at rest · RAC Cloud
                       </div>
                     </div>
                   </div>
