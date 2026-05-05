@@ -522,6 +522,19 @@ const Leave = () => {
             </div>
           )}
 
+          {(isAdmin || isSuperAdmin) && !showMyLeave && deptOptions.length > 0 && (
+            <Select value={filterDept} onValueChange={setFilterDept}>
+              <SelectTrigger className="h-11 w-[180px] rounded-xl border-border/50 text-xs font-bold">
+                <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {deptOptions.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+
           {isSuperAdmin && (
             <Dialog open={creditDaysDialog} onOpenChange={setCreditDaysDialog}>
               <DialogTrigger asChild>
