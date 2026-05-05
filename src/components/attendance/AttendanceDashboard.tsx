@@ -9,7 +9,7 @@ import { AttendanceHeatmap } from "@/components/attendance/AttendanceHeatmap";
 import { getUpcomingHolidays, isNigerianHoliday } from "@/lib/nigerian-holidays";
 import { format } from "date-fns";
 
-const BRAND = "#C4622D";
+const BRAND = "hsl(var(--primary))";
 const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899"];
 const PIE_COLORS = ["#3b82f6", "#ec4899", "#94a3b8"];
 

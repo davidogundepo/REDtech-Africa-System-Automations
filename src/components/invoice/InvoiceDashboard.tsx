@@ -15,7 +15,7 @@ const formatCurrency = (amount: number, currency: string = '₦') => {
 };
 
 const COLORS = {
-  primary: "#C4622D",
+  primary: "hsl(var(--primary))",
   emerald: "#10b981",
   destructive: "#ef4444",
   amber: "#f59e0b",

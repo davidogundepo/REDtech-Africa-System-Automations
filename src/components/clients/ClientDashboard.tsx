@@ -6,7 +6,7 @@ import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tool
 import { format } from "date-fns";
 import { Users, Target, Award, TrendingUp, Clock, Activity, CalendarDays, Zap, FileText, Phone, Mail, Building2, Star, StarHalf } from "lucide-react";
 
-const BRAND = "#C4622D";
+const BRAND = "hsl(var(--primary))";
 const CHART_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899"];
 const DEAL_STAGE_COLORS: Record<string, string> = {
   lead: "#94a3b8",      // slate-400
