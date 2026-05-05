@@ -69,6 +69,7 @@ const Leave = () => {
   const [formData, setFormData] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [showMyLeave, setShowMyLeave] = useState(true);
+  const [filterDept, setFilterDept] = useState<string>("all");
   const [balances, setBalances] = useState<any[]>([]);
   const [teamProfiles, setTeamProfiles] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('my-leave');
@@ -469,11 +470,22 @@ const Leave = () => {
     fetchBalances();
   };
 
-  const filteredRequests = showMyLeave && !isAdmin && !isSuperAdmin
+  const filteredRequests = (showMyLeave && !isAdmin && !isSuperAdmin
     ? requests.filter(r => r.user_id === profile?.id || r.employee_id === profile?.full_name)
     : showMyLeave
     ? requests.filter(r => r.user_id === profile?.id || r.employee_id === profile?.full_name)
-    : requests;
+    : requests
+  ).filter(r => {
+    if (filterDept === "all") return true;
+    const tp = teamProfiles.find(p => p.id === r.user_id || p.full_name === r.employee_id);
+    return (tp?.department || "") === filterDept;
+  });
+
+  const deptOptions = useMemo(() => {
+    const set = new Set<string>();
+    teamProfiles.forEach(p => { if (p.department) set.add(p.department); });
+    return Array.from(set).sort();
+  }, [teamProfiles]);
 
   const formatDate = (d: string) => {
     try {
