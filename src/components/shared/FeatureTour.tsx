@@ -116,15 +116,24 @@ function buildSteps(firstName: string, role: Role | undefined) {
   ];
 }
 
+function filterAvailableSteps(steps: ReturnType<typeof buildSteps>) {
+  if (typeof document === "undefined") return steps;
+  return steps.filter((s: any) => {
+    if (!s.element) return true; // intro/outro popovers always show
+    return !!document.querySelector(s.element);
+  });
+}
+
 function makeDriver(steps: ReturnType<typeof buildSteps>, onDone?: () => void) {
   return driver({
     showProgress: true,
     animate: true,
     smoothScroll: true,
     allowClose: true,
-    overlayOpacity: 0.65,
-    stagePadding: 6,
-    stageRadius: 12,
+    overlayOpacity: 0.5,
+    stagePadding: 8,
+    stageRadius: 14,
+    popoverOffset: 14,
     popoverClass: "rta-tour-popover",
     nextBtnText: "Next →",
     prevBtnText: "← Back",
@@ -143,7 +152,8 @@ export function FeatureTour() {
   const ranRef = useRef(false);
 
   const runTour = useCallback((firstName: string, role: Role | undefined, storageKey: string) => {
-    const steps = buildSteps(firstName, role);
+    const allSteps = buildSteps(firstName, role);
+    const steps = filterAvailableSteps(allSteps);
     const d = makeDriver(steps, () => {
       localStorage.setItem(storageKey, new Date().toISOString());
     });
