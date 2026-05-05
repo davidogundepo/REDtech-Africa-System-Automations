@@ -22,10 +22,10 @@ const getInitialWaybillData = (): WaybillData => {
     companyName: defaultWaybillInfo.companyName || "REDtech Africa",
     companyAddress: defaultWaybillInfo.companyAddress || "Trocadero Square, The Rock Drive, Lekki Phase 1",
     companyPhone: defaultWaybillInfo.companyPhone || "0818 428 1100",
-    companyEmail: defaultWaybillInfo.companyEmail || "olu@redtechafrica.com",
+    companyEmail: defaultWaybillInfo.companyEmail || "hello@redtechafrica.com",
     companyWebsite: defaultWaybillInfo.companyWebsite || "WWW.REDTECHAFRICA.COM",
     supplierName: defaultWaybillInfo.supplierName || "REDtech Africa Consulting LTD",
-    supplierEmail: defaultWaybillInfo.supplierEmail || "olu@redtechafrica.com",
+    supplierEmail: defaultWaybillInfo.supplierEmail || "hello@redtechafrica.com",
     supplierPhone: defaultWaybillInfo.supplierPhone || "0818 428 1100",
     waybillNumber: `${day}${month}${year}`,
     waybillDate: today.toISOString().split('T')[0],
@@ -44,7 +44,7 @@ const getInitialWaybillData = (): WaybillData => {
     showWebsite: defaultWaybillInfo.showWebsite ?? true,
     showThankYouMessage: defaultWaybillInfo.showThankYouMessage ?? true,
     thankYouMessage: defaultWaybillInfo.thankYouMessage || "Thank you for considering services.",
-    accentColor: defaultWaybillInfo.accentColor || "#bc7e57",
+    accentColor: defaultWaybillInfo.accentColor || "hsl(var(--primary))",
   };
 };
 
@@ -161,17 +161,35 @@ export const WaybillGenerator = () => {
   });
 
   const handleGenerateWaybill = () => {
-    if (!waybillData.deliveredTo) {
+    if (isGenerating) return; // double-submit guard
+    const recipient = (waybillData.deliveredTo || "").trim();
+    if (!recipient) {
       toast.error("Please enter delivery recipient");
       return;
     }
-    if (waybillData.items.length === 0 || !waybillData.items[0].description) {
-      toast.error("Please add at least one item");
+    if (recipient.length > 200) {
+      toast.error("Recipient name is too long (max 200 chars)");
+      return;
+    }
+    if (!waybillData.items?.length || !waybillData.items[0].description?.trim()) {
+      toast.error("Please add at least one item with a description");
+      return;
+    }
+    const badItem = waybillData.items.find(
+      (it: any) => (it.quantity != null && Number(it.quantity) < 0)
+    );
+    if (badItem) {
+      toast.error("Item quantity cannot be negative");
       return;
     }
     setIsGenerating(true);
     setTimeout(() => {
-      handlePrint();
+      try {
+        handlePrint();
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to generate waybill");
+        setIsGenerating(false);
+      }
     }, 500);
   };
 

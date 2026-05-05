@@ -2,8 +2,9 @@ import { useState, useMemo } from "react";
 import { 
   FileText, Truck, Users, CheckSquare, CalendarDays, 
   LayoutDashboard, LogOut, BarChart3, FolderOpen, TrendingUp, Megaphone,
-  Moon, Sun, Shield, Clock, UserCog, UsersRound, HardDrive, PanelLeftClose, PanelLeft, Handshake
+  Moon, Sun, Shield, Clock, UserCog, UsersRound, HardDrive, PanelLeftClose, PanelLeft, Handshake, Search, Sparkles
 } from "lucide-react";
+import { startFeatureTour } from "@/components/shared/FeatureTour";
 import { useTheme } from "@/components/ThemeProvider";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
@@ -29,7 +30,7 @@ import { toast } from "sonner";
 import companyLogo from "@/assets/company-logo.png";
 import { useModuleToggles } from "@/lib/module-toggles";
 import { Settings2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ALL_MODULES, type ModuleKey } from "@/lib/module-toggles";
 import { PremiumToggle } from "@/components/ui/premium-toggle";
 
@@ -63,6 +64,133 @@ const roleLabels: Record<string, string> = {
   team_member: "Team Member",
   viewer: "Viewer",
 };
+
+function ModuleManagerDialogContent({ disabledModules, toggleModule }: { disabledModules: ModuleKey[]; toggleModule: (key: ModuleKey) => void }) {
+  const [query, setQuery] = useState("");
+  const enabledCount = ALL_MODULES.length - disabledModules.length;
+  const completion = Math.round((enabledCount / ALL_MODULES.length) * 100);
+  const filteredModules = ALL_MODULES.filter((mod) => mod.label.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <DialogContent className="h-[100dvh] w-screen max-w-none gap-0 overflow-hidden border-0 bg-card p-0 shadow-lvl-3 sm:h-[92vh] sm:w-[calc(100vw-2rem)] sm:max-w-6xl sm:rounded-[24px] sm:border sm:border-border/70">
+      <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden lg:grid-cols-[340px_minmax(0,1fr)]">
+        <aside className="relative hidden overflow-hidden bg-sidebar p-7 lg:flex lg:flex-col lg:justify-between">
+          <div className="absolute inset-0 bg-[linear-gradient(150deg,hsl(var(--primary)/0.22),transparent_36%),radial-gradient(circle_at_18%_88%,hsl(var(--accent-gold)/0.12),transparent_34%)]" />
+          <div className="relative z-10 space-y-7">
+            <div className="inline-flex items-center gap-3 rounded-full border border-sidebar-border bg-sidebar-accent/80 px-3 py-2 text-xs font-bold uppercase tracking-widest text-sidebar-foreground/70">
+              <Settings2 className="h-4 w-4 text-primary" /> System control
+            </div>
+            <DialogHeader className="space-y-3 text-left">
+              <DialogTitle className="text-3xl font-black leading-tight text-sidebar-foreground">Module Manager</DialogTitle>
+              <DialogDescription className="text-sm leading-6 text-sidebar-foreground/65">
+                Decide what appears in the team sidebar without affecting Dashboard or Profile access.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-2xl border border-sidebar-border bg-sidebar-accent/55 p-5 shadow-lvl-2">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-4xl font-black text-sidebar-foreground">{completion}%</p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/45">Navigation coverage</p>
+                </div>
+                <Badge className="rounded-full bg-primary/15 text-primary hover:bg-primary/15">{enabledCount}/{ALL_MODULES.length} live</Badge>
+              </div>
+              <div className="mt-5 h-2 overflow-hidden rounded-full bg-sidebar-background">
+                <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${completion}%` }} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Live", value: enabledCount },
+                { label: "Hidden", value: disabledModules.length },
+                { label: "Fixed", value: 2 },
+              ].map((item) => (
+                <div key={item.label} className="rounded-xl border border-sidebar-border bg-sidebar-background/35 p-3">
+                  <p className="text-2xl font-black text-sidebar-foreground">{item.value}</p>
+                  <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-sidebar-foreground/40">{item.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="relative z-10 text-xs leading-5 text-sidebar-foreground/45">Changes are instant, reversible, and synced quietly in the background.</p>
+        </aside>
+
+        <section className="flex min-h-0 flex-col overflow-hidden">
+          <div className="border-b border-border/70 bg-card/95 px-5 py-5 sm:px-7">
+            <div className="lg:hidden">
+              <DialogHeader className="text-left">
+                <DialogTitle className="text-2xl font-black">Module Manager</DialogTitle>
+                <DialogDescription>{enabledCount}/{ALL_MODULES.length} modules visible to the team.</DialogDescription>
+              </DialogHeader>
+            </div>
+            <div className="hidden items-start justify-between gap-4 lg:flex">
+              <div>
+                <h2 className="text-2xl font-black tracking-tight">System Modules</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Search, review status, and toggle each workspace from one place.</p>
+              </div>
+              <Badge className="rounded-full bg-primary/10 px-3 py-1 text-primary hover:bg-primary/10">{enabledCount}/{ALL_MODULES.length} live</Badge>
+            </div>
+            <div className="relative mt-5">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search modules..."
+                className="h-11 w-full rounded-xl border border-input bg-background pl-10 pr-4 text-sm font-medium outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+              />
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-7 sm:py-6">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredModules.map((mod) => {
+                const enabled = !disabledModules.includes(mod.key);
+                return (
+                  <button
+                    key={mod.key}
+                    type="button"
+                    onClick={() => {
+                      toggleModule(mod.key);
+                      toast.success(enabled ? `${mod.label} hidden from all staff` : `${mod.label} restored for all staff`);
+                    }}
+                    className={`group flex min-h-[118px] w-full flex-col justify-between rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lvl-2 ${
+                      enabled ? "border-primary/25 bg-gradient-to-br from-primary/10 to-card" : "border-border bg-muted/30 opacity-80"
+                    }`}
+                    aria-pressed={enabled}
+                  >
+                    <div className="flex w-full items-start justify-between gap-3">
+                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${enabled ? "border-primary/25 bg-primary/15" : "border-border bg-background"}`}>
+                        <Settings2 className={`h-5 w-5 ${enabled ? "text-primary" : "text-muted-foreground"}`} />
+                      </div>
+                      <PremiumToggle size="sm" checked={enabled} onChange={() => {}} />
+                    </div>
+                    <div className="w-full min-w-0">
+                      <p className={`max-w-[12rem] text-base font-black leading-tight ${enabled ? "text-foreground" : "text-muted-foreground"}`}>{mod.label}</p>
+                      <p className={`mt-2 text-[10px] font-bold uppercase tracking-widest ${enabled ? "text-success" : "text-muted-foreground"}`}>
+                        {enabled ? "Visible to team" : "Hidden from sidebar"}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {filteredModules.length === 0 && (
+              <div className="flex min-h-[240px] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/20 text-center">
+                <Settings2 className="h-9 w-9 text-muted-foreground/40" />
+                <p className="mt-3 text-sm font-bold">No module found</p>
+                <p className="mt-1 text-xs text-muted-foreground">Try a different search term.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-border/70 bg-muted/20 px-5 py-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-7">
+            <p className="font-medium">Dashboard and Profile are protected and always available.</p>
+            <p className="font-bold text-primary">Auto-saved</p>
+          </div>
+        </section>
+      </div>
+    </DialogContent>
+  );
+}
 
 function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
   const MAX_BYTES = 2_147_483_648; // 2 GB per staff
@@ -106,16 +234,16 @@ function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
   if (isCollapsed) {
     return (
       <div className="flex justify-center mb-2 cursor-pointer" title={`${usedMB} MB / ${totalGB} GB used`} onClick={() => setDetailOpen(true)}>
-        <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-[#bc7e57]/10 transition-colors">
+        <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-primary/10 transition-colors">
           <HardDrive className="h-4 w-4 text-muted-foreground" />
         </div>
         <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
           <DialogContent className="sm:max-w-[560px] rounded-3xl border-border/30 shadow-2xl p-0 overflow-hidden">
             {/* Hero Header */}
-            <div className="bg-gradient-to-br from-[#bc7e57]/10 via-background to-background border-b border-border/30 p-8">
+            <div className="bg-gradient-to-br from-primary/10 via-background to-background border-b border-border/30 p-8">
               <div className="flex items-center gap-4 mb-4">
-                <div className="h-14 w-14 rounded-2xl bg-[#bc7e57]/15 flex items-center justify-center shadow-lg border border-[#bc7e57]/20">
-                  <HardDrive className="h-7 w-7 text-[#bc7e57]" />
+                <div className="h-14 w-14 rounded-2xl bg-primary/15 flex items-center justify-center shadow-lg border border-primary/20">
+                  <HardDrive className="h-7 w-7 text-primary" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-black tracking-tight">Storage Overview</h2>
@@ -125,7 +253,7 @@ function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
               <div className="relative">
                 <Progress value={pct} className="h-3 rounded-full" />
                 <div className="flex justify-between mt-3">
-                  <span className="text-lg font-black" style={{ color: '#bc7e57' }}>{usedMB} MB</span>
+                  <span className="text-lg font-black" style={{ color: 'hsl(var(--primary))' }}>{usedMB} MB</span>
                   <span className="text-lg font-black text-muted-foreground">{totalGB} GB</span>
                 </div>
                 <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold text-muted-foreground/60">
@@ -137,12 +265,12 @@ function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
             <div className="p-6 space-y-5 max-h-[50vh] overflow-y-auto">
               {typeBreakdown.length > 0 && (
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground mb-3 flex items-center gap-2"><span className="h-1 w-4 rounded-full bg-[#bc7e57]"></span> File Type Breakdown</h3>
+                  <h3 className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground mb-3 flex items-center gap-2"><span className="h-1 w-4 rounded-full bg-primary"></span> File Type Breakdown</h3>
                   <div className="grid gap-2">
                     {typeBreakdown.map(t => (
                       <div key={t.type} className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/30 hover:bg-muted/40 transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-lg bg-[#bc7e57]/10 flex items-center justify-center text-[9px] font-black text-[#bc7e57] border border-[#bc7e57]/20">{t.type}</div>
+                          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-[9px] font-black text-primary border border-primary/20">{t.type}</div>
                           <span className="text-sm font-bold">.{t.type.toLowerCase()} files</span>
                         </div>
                         <span className="text-sm font-black text-muted-foreground">{formatBytes(t.size)}</span>
@@ -153,7 +281,7 @@ function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
               )}
               {storageInfo?.files && storageInfo.files.length > 0 && (
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground mb-3 flex items-center gap-2"><span className="h-1 w-4 rounded-full bg-[#bc7e57]"></span> Largest Files</h3>
+                  <h3 className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground mb-3 flex items-center gap-2"><span className="h-1 w-4 rounded-full bg-primary"></span> Largest Files</h3>
                   <div className="space-y-1 max-h-[200px] overflow-y-auto">
                     {storageInfo.files.slice(0, 8).map((f, i) => (
                       <div key={i} className="flex items-center justify-between text-sm px-3 py-2.5 rounded-xl hover:bg-muted/30 transition-colors">
@@ -182,7 +310,7 @@ function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
     <>
       <div className="rounded-xl border border-border/50 bg-muted/20 p-3 mb-2 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setDetailOpen(true)}>
         <div className="flex items-center gap-2 mb-2">
-          <HardDrive className="h-3.5 w-3.5 text-[#bc7e57]" />
+          <HardDrive className="h-3.5 w-3.5 text-primary" />
           <span className="text-[11px] font-semibold text-foreground">Storage</span>
           <span className="text-[9px] text-muted-foreground ml-auto">Click for details</span>
         </div>
@@ -195,10 +323,10 @@ function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="sm:max-w-[560px] rounded-3xl border-border/30 shadow-2xl p-0 overflow-hidden">
           {/* Hero Header */}
-          <div className="bg-gradient-to-br from-[#bc7e57]/10 via-background to-background border-b border-border/30 p-8">
+          <div className="bg-gradient-to-br from-primary/10 via-background to-background border-b border-border/30 p-8">
             <div className="flex items-center gap-4 mb-4">
-              <div className="h-14 w-14 rounded-2xl bg-[#bc7e57]/15 flex items-center justify-center shadow-lg border border-[#bc7e57]/20">
-                <HardDrive className="h-7 w-7 text-[#bc7e57]" />
+              <div className="h-14 w-14 rounded-2xl bg-primary/15 flex items-center justify-center shadow-lg border border-primary/20">
+                <HardDrive className="h-7 w-7 text-primary" />
               </div>
               <div>
                 <h2 className="text-2xl font-black tracking-tight">Storage Overview</h2>
@@ -208,7 +336,7 @@ function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
             <div className="relative">
               <Progress value={pct} className="h-3 rounded-full" />
               <div className="flex justify-between mt-3">
-                <span className="text-lg font-black" style={{ color: '#bc7e57' }}>{usedMB} MB</span>
+                <span className="text-lg font-black" style={{ color: 'hsl(var(--primary))' }}>{usedMB} MB</span>
                 <span className="text-lg font-black text-muted-foreground">{totalGB} GB</span>
               </div>
               <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold text-muted-foreground/60">
@@ -220,12 +348,12 @@ function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
           <div className="p-6 space-y-5 max-h-[50vh] overflow-y-auto">
             {typeBreakdown.length > 0 && (
               <div>
-                <h3 className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground mb-3 flex items-center gap-2"><span className="h-1 w-4 rounded-full bg-[#bc7e57]"></span> File Type Breakdown</h3>
+                <h3 className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground mb-3 flex items-center gap-2"><span className="h-1 w-4 rounded-full bg-primary"></span> File Type Breakdown</h3>
                 <div className="grid gap-2">
                   {typeBreakdown.map(t => (
                     <div key={t.type} className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/30 hover:bg-muted/40 transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-[#bc7e57]/10 flex items-center justify-center text-[9px] font-black text-[#bc7e57] border border-[#bc7e57]/20">{t.type}</div>
+                        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-[9px] font-black text-primary border border-primary/20">{t.type}</div>
                         <span className="text-sm font-bold">.{t.type.toLowerCase()} files</span>
                       </div>
                       <span className="text-sm font-black text-muted-foreground">{formatBytes(t.size)}</span>
@@ -236,7 +364,7 @@ function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
             )}
             {storageInfo?.files && storageInfo.files.length > 0 && (
               <div>
-                <h3 className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground mb-3 flex items-center gap-2"><span className="h-1 w-4 rounded-full bg-[#bc7e57]"></span> Largest Files</h3>
+                <h3 className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground mb-3 flex items-center gap-2"><span className="h-1 w-4 rounded-full bg-primary"></span> Largest Files</h3>
                 <div className="space-y-1 max-h-[200px] overflow-y-auto">
                   {storageInfo.files.slice(0, 8).map((f, i) => (
                     <div key={i} className="flex items-center justify-between text-sm px-3 py-2.5 rounded-xl hover:bg-muted/30 transition-colors">
@@ -301,7 +429,7 @@ export function AppSidebar() {
                         : "h-9 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-all duration-200 hover:translate-x-0.5"
                     }
                   >
-                    <NavLink to={item.path} className="flex items-center gap-2.5">
+                    <NavLink to={item.path} className="flex items-center gap-2.5" data-tour={`nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}>
                       <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
                       <span className="truncate">{item.title}</span>
                     </NavLink>
@@ -355,6 +483,7 @@ export function AppSidebar() {
         {/* Current User Info */}
         {profile && (
           <div
+            data-tour="footer-profile"
             className="flex items-center gap-2 px-1 cursor-pointer rounded-lg hover:bg-sidebar-accent transition-colors p-2 -m-1 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:m-0"
             onClick={() => navigate("/profile")}
             title="View your profile"
@@ -392,157 +521,35 @@ export function AppSidebar() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full justify-start text-muted-foreground border-dashed border-[#bc7e57]/30 hover:bg-[#bc7e57]/5 hover:text-[#bc7e57]"
+                className="w-full justify-start text-muted-foreground border-dashed border-primary/30 hover:bg-primary/5 hover:text-primary"
               >
                 <Settings2 className="h-4 w-4 shrink-0 mr-2" />
                 <span>Manage Modules</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="p-0 gap-0 max-w-[95vw] sm:max-w-5xl overflow-hidden bg-background shadow-2xl border-border/40">
-              <div className="flex flex-col md:flex-row min-h-[560px]">
-                {/* LEFT: Brand panel */}
-                <div className="hidden md:flex flex-col justify-between w-64 shrink-0 bg-gradient-to-b from-[#1a0e06] via-[#0f0905] to-[#080503] p-8 relative overflow-hidden">
-                  <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, #bc7e5720 0%, transparent 60%)' }} />
-                  <div className="relative z-10">
-                    <div className="h-12 w-12 rounded-2xl bg-[#bc7e57]/15 border border-[#bc7e57]/30 flex items-center justify-center mb-6">
-                      <Settings2 className="h-6 w-6 text-[#bc7e57]" />
-                    </div>
-                    <h2 className="text-xl font-black text-white mb-2 leading-tight">Module<br/>Manager</h2>
-                    <p className="text-xs text-white/45 leading-relaxed mb-8">Control exactly which tools are visible to your team. Changes are instant and org-wide.</p>
-                    <div className="space-y-4">
-                      {[{ e: '⚡', t: 'Instant effect', d: 'No refresh needed' }, { e: '👥', t: 'Org-wide', d: 'Affects all staff' }, { e: '🔒', t: 'Super Admin only', d: 'Protected control' }].map(s => (
-                        <div key={s.t} className="flex gap-3 items-start">
-                          <span className="text-sm mt-0.5">{s.e}</span>
-                          <div><p className="text-xs font-bold text-white/75">{s.t}</p><p className="text-[10px] text-white/35 mt-0.5">{s.d}</p></div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <p className="relative z-10 text-[10px] text-white/20 font-medium tracking-widest uppercase">RAC System Control</p>
-                </div>
-                {/* RIGHT: Module list */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="p-8 pb-5 border-b border-border/30">
-                    <h2 className="text-2xl font-black">System Modules</h2>
-                    <p className="text-sm text-muted-foreground mt-1">Toggle modules on or off. Disabled modules hide instantly for all users.</p>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-6 space-y-3">
-                    {ALL_MODULES.map((mod) => {
-                      const enabled = !disabledModules.includes(mod.key);
-                      return (
-                        <div
-                          key={mod.key}
-                          className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all duration-200 ${
-                            enabled
-                              ? 'border-[#bc7e57]/25 bg-[#bc7e57]/5'
-                              : 'border-border/30 bg-muted/20 opacity-50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${ enabled ? 'bg-[#bc7e57]/15' : 'bg-muted/40' }`}>
-                              <Settings2 className={`h-4 w-4 ${ enabled ? 'text-[#bc7e57]' : 'text-muted-foreground/40' }`} />
-                            </div>
-                            <div>
-                              <p className={`font-black text-sm ${ enabled ? 'text-foreground' : 'text-muted-foreground/50 line-through' }`}>{mod.label}</p>
-                              <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${ enabled ? 'text-emerald-500' : 'text-muted-foreground/40' }`}>{enabled ? '● Visible' : '○ Hidden'}</p>
-                            </div>
-                          </div>
-                          <PremiumToggle
-                            size="md"
-                            checked={enabled}
-                            onChange={() => {
-                              toggleModule(mod.key);
-                              toast.success(enabled ? `${mod.label} hidden from all staff` : `${mod.label} restored for all staff`);
-                            }}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="border-t border-border/30 px-8 py-4 bg-muted/10 shrink-0">
-                    <p className="text-[11px] text-muted-foreground font-medium">Dashboard &amp; Profile are always visible and cannot be disabled.</p>
-                  </div>
-                </div>
-              </div>
-            </DialogContent>
+            <ModuleManagerDialogContent disabledModules={disabledModules} toggleModule={toggleModule} />
           </Dialog>
         )}
         {isSuperAdmin && isCollapsed && (
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-[#bc7e57]" title="Manage Modules">
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-primary" title="Manage Modules">
                 <Settings2 className="h-4 w-4" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="p-0 gap-0 max-w-[95vw] sm:max-w-5xl overflow-hidden bg-background shadow-2xl border-border/40">
-              <div className="flex flex-col md:flex-row min-h-[560px]">
-                {/* LEFT: Brand panel */}
-                <div className="hidden md:flex flex-col justify-between w-64 shrink-0 bg-gradient-to-b from-[#1a0e06] via-[#0f0905] to-[#080503] p-8 relative overflow-hidden">
-                  <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, #bc7e5720 0%, transparent 60%)' }} />
-                  <div className="relative z-10">
-                    <div className="h-12 w-12 rounded-2xl bg-[#bc7e57]/15 border border-[#bc7e57]/30 flex items-center justify-center mb-6">
-                      <Settings2 className="h-6 w-6 text-[#bc7e57]" />
-                    </div>
-                    <h2 className="text-xl font-black text-white mb-2 leading-tight">Module<br/>Manager</h2>
-                    <p className="text-xs text-white/45 leading-relaxed mb-8">Control exactly which tools are visible to your team. Changes are instant and org-wide.</p>
-                    <div className="space-y-4">
-                      {[{ e: '⚡', t: 'Instant effect', d: 'No refresh needed' }, { e: '👥', t: 'Org-wide', d: 'Affects all staff' }, { e: '🔒', t: 'Super Admin only', d: 'Protected control' }].map(s => (
-                        <div key={s.t} className="flex gap-3 items-start">
-                          <span className="text-sm mt-0.5">{s.e}</span>
-                          <div><p className="text-xs font-bold text-white/75">{s.t}</p><p className="text-[10px] text-white/35 mt-0.5">{s.d}</p></div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <p className="relative z-10 text-[10px] text-white/20 font-medium tracking-widest uppercase">RAC System Control</p>
-                </div>
-                {/* RIGHT: Module list */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="p-8 pb-5 border-b border-border/30">
-                    <h2 className="text-2xl font-black">System Modules</h2>
-                    <p className="text-sm text-muted-foreground mt-1">Toggle modules on or off. Disabled modules hide instantly for all users.</p>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-6 space-y-3">
-                    {ALL_MODULES.map((mod) => {
-                      const enabled = !disabledModules.includes(mod.key);
-                      return (
-                        <div
-                          key={mod.key}
-                          className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all duration-200 ${
-                            enabled
-                              ? 'border-[#bc7e57]/25 bg-[#bc7e57]/5'
-                              : 'border-border/30 bg-muted/20 opacity-50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${ enabled ? 'bg-[#bc7e57]/15' : 'bg-muted/40' }`}>
-                              <Settings2 className={`h-4 w-4 ${ enabled ? 'text-[#bc7e57]' : 'text-muted-foreground/40' }`} />
-                            </div>
-                            <div>
-                              <p className={`font-black text-sm ${ enabled ? 'text-foreground' : 'text-muted-foreground/50 line-through' }`}>{mod.label}</p>
-                              <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${ enabled ? 'text-emerald-500' : 'text-muted-foreground/40' }`}>{enabled ? '● Visible' : '○ Hidden'}</p>
-                            </div>
-                          </div>
-                          <PremiumToggle
-                            size="md"
-                            checked={enabled}
-                            onChange={() => {
-                              toggleModule(mod.key);
-                              toast.success(enabled ? `${mod.label} hidden from all staff` : `${mod.label} restored for all staff`);
-                            }}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="border-t border-border/30 px-8 py-4 bg-muted/10 shrink-0">
-                    <p className="text-[11px] text-muted-foreground font-medium">Dashboard &amp; Profile are always visible and cannot be disabled.</p>
-                  </div>
-                </div>
-              </div>
-            </DialogContent>
+            <ModuleManagerDialogContent disabledModules={disabledModules} toggleModule={toggleModule} />
           </Dialog>
         )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-sidebar-foreground/65 hover:text-primary hover:bg-primary/10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-0"
+          onClick={() => startFeatureTour((profile?.full_name || "there").split(" ")[0], profile?.role as any)}
+          title="Replay onboarding tour"
+        >
+          <Sparkles className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} />
+          {!isCollapsed && <span>Replay Tour</span>}
+        </Button>
         <Button
           variant="ghost"
           size="sm"

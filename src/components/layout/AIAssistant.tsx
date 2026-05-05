@@ -6,7 +6,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sparkles, Send, Bot, Clock, Plus, ChevronLeft, MessageSquare, Trash2, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -245,104 +244,41 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
 
   // Main LLM Interaction Loop
   const invokeAgentLoop = async (messageHistory: Message[]) => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Gemini API Key missing. Please add VITE_GEMINI_API_KEY to your .env file.");
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const roleText = profile?.role === 'super_admin' ? 'Super Admin - Full Access' : profile?.role === 'admin' ? 'Admin - Elevated Access' : 'Team Member - Restricted Access';
-    
-    // ⚡ HOT CONTEXT INJECTION (Prevents slow ReAct DB loops for common queries)
-    let tasksRes = { data: [] };
-    let leavesRes = { data: [] };
-    let staffRes = { data: [] };
+    // ⚡ HOT CONTEXT — preloaded once per send
+    let tasks: any[] = [];
+    let leaves: any[] = [];
+    let staff: any[] = [];
     try {
-      [tasksRes, leavesRes, staffRes] = await Promise.all([
+      const [tasksRes, leavesRes, staffRes] = await Promise.all([
         (supabase as any).from('tasks').select('title, status, priority').eq('user_id', profile?.id).in('status', ['todo', 'in_progress']).limit(5),
         (supabase as any).from('leave_requests').select('status, leave_type').eq('user_id', profile?.id).eq('status', 'pending').limit(1),
-        (supabase as any).from('profiles').select('full_name, department, email, role, performance_score').limit(50)
+        (supabase as any).from('profiles').select('full_name, department, email, role, performance_score').limit(50),
       ]);
+      tasks = tasksRes.data || [];
+      leaves = leavesRes.data || [];
+      staff = staffRes.data || [];
     } catch (dbErr) {
-      console.warn("Failed to fetch hot context for AI, proceeding without it", dbErr);
+      console.warn('Failed to fetch hot context for AI, proceeding without it', dbErr);
     }
 
-    const systemPrompt = `You are REDtech AI Assistance, an elite Fortune 500 internal ERP Agent.
-Current User: ${profile?.full_name || 'User'}
-Role: ${profile?.role || 'user'} (${roleText})
-Department: ${profile?.department || 'no department'}
-Current Page URL: ${location.pathname}
+    const apiMessages = messageHistory
+      .filter(m => m.role !== 'system')
+      .map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
 
-⚡ HOT CONTEXT (PRELOADED LIVE DATA — answer from this data DIRECTLY, do NOT use query_database for profiles, tasks, or leaves):
-- User's Active Tasks: ${JSON.stringify(tasksRes.data || [])}
-- User's Pending Leaves: ${JSON.stringify(leavesRes.data || [])}
-- Company Staff Directory (ALL STAFF): ${JSON.stringify(staffRes.data || [])}
+    const { data, error } = await supabase.functions.invoke('ai-assistant', {
+      body: {
+        messages: apiMessages,
+        profile: { full_name: profile?.full_name, role: profile?.role, department: profile?.department },
+        hotContext: { tasks, leaves, staff },
+        location: location.pathname,
+      },
+    });
 
-CRITICAL: The Company Staff Directory above contains ALL employees. When the user asks about staff in a department, who works here, show users in X, etc., answer DIRECTLY from the data above. Do NOT use query_database for profiles — it is already preloaded. Only use query_database for tables NOT in the hot context (e.g. clients, attendance_records, transactions, etc.).
-
-SECURITY & STRICT RBAC ENFORCEMENT:
-If the user's Role is 'team-member', you MUST legally and strictly refuse to summarize global company analytics, staff utilisation stats of other users, or finance data. Act politely to deny. If they are 'super-admin' or 'admin', provide any requested global insights.
-
-ABILITIES (JSON ACTION BLOCKS):
-You can navigate the UI or query/manipulate Supabase by appending a JSON block at the end of your response.
-Format:
-\`\`\`json
-[
-  { "action": "navigate", "path": "/attendance" },
-  { "action": "query_database", "target": "clients", "filters": {"status": "active"} },
-  { "action": "insert_database", "target": "tasks", "payload": { "title": "Buy hardware", "priority": "high", "status": "todo" } },
-  { "action": "update_database", "target": "invoices", "id_to_update": "uuid-here", "payload": { "status": "Paid" } }
-]
-\`\`\`
-Valid tables: 'clients', 'attendance_records', 'leave_requests', 'transactions', 'budgets', 'documents', 'ops_metrics', 'payment_requests', 'notifications', 'social_posts', 'tasks'.
-
-IMPORTANT: If you need DB data NOT in the hot context, output the JSON action block. The system will run it and feed results back as a SYSTEM message. You then answer using that data in your next turn.
-
-Style & Formatting: Highly professional, warm, concise. Use bullet points and clear line breaks. Use **bold** for emphasis.
-`;
-
-    let historyString = messageHistory.map(m => `${m.role === 'system' ? 'SYSTEM' : m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`).join("\n");
-    const prompt = `${systemPrompt}\n\n--- Chat History ---\n${historyString}`;
-    
-    // Model fallback chain: try gemini-2.0-flash first, fallback to gemini-1.5-flash on quota errors
-    const modelNames = ["gemini-1.5-flash", "gemini-2.0-flash"]; // Prioritize 1.5 for stability if 2.0 is failing
-    
-    for (const modelName of modelNames) {
-      try {
-        const model = genAI.getGenerativeModel({ 
-          model: modelName,
-          generationConfig: {
-            temperature: 0.7,
-            topP: 0.8,
-            topK: 40,
-          }
-        });
-        
-        // Add a strict 20-second timeout so it never hangs indefinitely
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("AI Copilot request timed out. Please try again.")), 20000);
-        });
-
-        const result = await Promise.race([
-          model.generateContent(prompt),
-          timeoutPromise
-        ]) as any;
-        
-        const text = result.response.text();
-        return text || "I was unable to process that request.";
-      } catch (apiError: any) {
-        const errorMsg = apiError?.message || '';
-        const isQuotaError = errorMsg.includes('429') || errorMsg.includes('quota') || errorMsg.includes('rate');
-        
-        if (isQuotaError && modelName !== modelNames[modelNames.length - 1]) {
-          console.warn(`Model ${modelName} hit rate limit, falling back to next model...`);
-          continue; // Try next model in the chain
-        }
-        
-        console.error(`Gemini API Error (${modelName}):`, apiError);
-        throw apiError;
-      }
+    if (error) {
+      const msg = (error as any)?.context?.error || (error as any)?.message || 'AI Copilot is unavailable.';
+      throw new Error(msg);
     }
-    
-    throw new Error("All AI models are currently unavailable. Please try again in a few minutes.");
+    return (data?.content as string) || 'I was unable to process that request.';
   };
 
   const handleSend = async (e?: React.FormEvent, OverrideInput?: string) => {
@@ -526,7 +462,7 @@ Style & Formatting: Highly professional, warm, concise. Use bullet points and cl
       {/* Drag Handle */}
       {isOpen && (
         <div 
-          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-[#bc7e57] active:bg-[#bc7e57] z-[100] transition-colors"
+          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-primary active:bg-primary z-[100] transition-colors"
           style={{ cursor: 'ew-resize' }}
           onMouseDown={(e) => {
             e.preventDefault();
@@ -548,7 +484,7 @@ Style & Formatting: Highly professional, warm, concise. Use bullet points and cl
             <h2 className="font-semibold text-sm">Chat History</h2>
           </div>
           <div className="p-4 shrink-0">
-            <Button onClick={startNewChat} className="w-full gap-2 bg-[#bc7e57] hover:bg-[#a66c4a] text-white">
+            <Button onClick={startNewChat} className="w-full gap-2 bg-primary hover:bg-[#a66c4a] text-white">
               <Plus className="h-4 w-4" /> Start New Chat
             </Button>
           </div>
@@ -559,10 +495,10 @@ Style & Formatting: Highly professional, warm, concise. Use bullet points and cl
               <div className="space-y-1 p-2">
                 {chatSessions.map(session => (
                   <div key={session.id} 
-                       className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${currentChatId === session.id ? 'bg-[#bc7e57]/10' : 'hover:bg-muted/50'}`}
+                       className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${currentChatId === session.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}
                        onClick={() => loadChat(session)}>
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <MessageSquare className={`h-4 w-4 shrink-0 ${currentChatId === session.id ? 'text-[#bc7e57]' : 'text-muted-foreground'}`} />
+                      <MessageSquare className={`h-4 w-4 shrink-0 ${currentChatId === session.id ? 'text-primary' : 'text-muted-foreground'}`} />
                       <span className="text-sm font-medium truncate">{session.title}</span>
                     </div>
                     <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 transition-opacity" onClick={(e) => deleteChat(e, session.id)}>
@@ -580,7 +516,7 @@ Style & Formatting: Highly professional, warm, concise. Use bullet points and cl
       {view === 'chat' && (
         <div className="w-full h-full flex flex-col">
           {/* Header */}
-          <div className="bg-[#bc7e57] text-white px-4 py-3 flex items-center shadow-sm shrink-0">
+          <div className="bg-primary text-white px-4 py-3 flex items-center shadow-sm shrink-0">
             <div className="h-9 w-9 flex items-center justify-center bg-white/20 rounded-lg mr-3 border border-white/20">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
@@ -611,17 +547,17 @@ Style & Formatting: Highly professional, warm, concise. Use bullet points and cl
                     {msg.role === 'user' ? (
                       <>
                         {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.full_name} className="object-cover" />}
-                        <AvatarFallback className="bg-[#bc7e57]/10 text-[#bc7e57] text-[9px] font-bold">{getInitials(profile?.full_name)}</AvatarFallback>
+                        <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-bold">{getInitials(profile?.full_name)}</AvatarFallback>
                       </>
                     ) : (
-                      <div className="bg-[#bc7e57] h-full w-full flex items-center justify-center">
+                      <div className="bg-primary h-full w-full flex items-center justify-center">
                         <Sparkles className="h-3.5 w-3.5 text-white" />
                       </div>
                     )}
                   </Avatar>
 
                   <div className={`px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed shadow-sm whitespace-pre-wrap ${
-                    msg.role === 'user' ? 'bg-[#bc7e57] text-white rounded-tr-sm' 
+                    msg.role === 'user' ? 'bg-primary text-white rounded-tr-sm' 
                     : 'bg-muted/50 border border-border/40 text-foreground rounded-tl-sm'
                   }`}>
                     {renderFormattedText(msg.content)}
@@ -632,12 +568,12 @@ Style & Formatting: Highly professional, warm, concise. Use bullet points and cl
               {isTyping && (
                 <div className="flex gap-2.5 self-start max-w-[85%]">
                   <Avatar className="h-7 w-7 shrink-0 mt-0.5">
-                    <div className="bg-[#bc7e57] h-full w-full flex items-center justify-center rounded-full"><Sparkles className="h-3.5 w-3.5 text-white" /></div>
+                    <div className="bg-primary h-full w-full flex items-center justify-center rounded-full"><Sparkles className="h-3.5 w-3.5 text-white" /></div>
                   </Avatar>
                   <div className="px-4 py-3 rounded-2xl bg-muted/50 border border-border/40 rounded-tl-sm flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#bc7e57] animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#bc7e57] animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#bc7e57] animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               )}
@@ -651,7 +587,7 @@ Style & Formatting: Highly professional, warm, concise. Use bullet points and cl
                 <Badge 
                   key={idx} 
                   variant="secondary" 
-                  className="whitespace-nowrap cursor-pointer hover:bg-[#bc7e57]/10 text-[11px] py-1 px-2.5 border border-border/50 transition-colors"
+                  className="whitespace-nowrap cursor-pointer hover:bg-primary/10 text-[11px] py-1 px-2.5 border border-border/50 transition-colors"
                   onClick={() => handleSend(undefined, s)}
                 >
                   {s}
@@ -667,13 +603,13 @@ Style & Formatting: Highly professional, warm, concise. Use bullet points and cl
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask AI Assistance anything..."
-                className="pr-10 py-5 rounded-xl border-border/50 bg-muted/30 focus-visible:ring-[#bc7e57]/40 text-sm"
+                className="pr-10 py-5 rounded-xl border-border/50 bg-muted/30 focus-visible:ring-primary/40 text-sm"
                 disabled={isTyping}
               />
               <Button 
                 type="submit" 
                 size="icon" 
-                className="absolute right-1.5 h-8 w-8 rounded-lg bg-[#bc7e57] hover:bg-[#a66c4a] text-white transition-transform hover:scale-105"
+                className="absolute right-1.5 h-8 w-8 rounded-lg bg-primary hover:bg-[#a66c4a] text-white transition-transform hover:scale-105"
                 disabled={isTyping || !input.trim()}
               >
                 <Send className="h-3.5 w-3.5" />

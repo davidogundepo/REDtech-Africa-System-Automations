@@ -10,7 +10,7 @@ const formatCurrency = (amount: number) => {
 };
 
 const COLORS = {
-  primary: "#bc7e57",
+  primary: "#C4622D",
   emerald: "#10b981",
   destructive: "#ef4444",
   muted: "#64748b",
@@ -22,7 +22,7 @@ const COLORS = {
 };
 
 // Reusable Circular Gauge (Semicircle)
-const SemicircleGauge = ({ value, max, title, subtitle, colorClass = "text-[#bc7e57]" }: { value: number; max: number; title: string; subtitle: string, colorClass?: string }) => {
+const SemicircleGauge = ({ value, max, title, subtitle, colorClass = "text-primary" }: { value: number; max: number; title: string; subtitle: string, colorClass?: string }) => {
   const percentage = Math.min((value / max) * 100, 100);
   const radius = 80;
   const circumference = Math.PI * radius;
@@ -186,7 +186,7 @@ export const FinanceCharts = ({
     const margin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : "24.5";
     return (
       <div className="flex flex-col h-full justify-center p-2 pt-0">
-         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-2 flex items-center"><Activity className="h-3 w-3 mr-1 text-[#bc7e57]"/> Net Profit Margin</p>
+         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-2 flex items-center"><Activity className="h-3 w-3 mr-1 text-primary"/> Net Profit Margin</p>
          <div className="text-3xl 2xl:text-4xl font-black text-foreground tracking-tight">{margin}%</div>
          <p className={`text-xs flex items-center font-medium mt-3 text-emerald-500`}>
            <ArrowUpRight className="h-3 w-3 mr-1" /> Highly profitable
@@ -288,7 +288,7 @@ export const FinanceCharts = ({
           <div key={m.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
             <div className={`flex items-center justify-center w-3 h-3 rounded-full border-2 border-background absolute left-0 md:left-1/2 -ml-1.5 md:-ml-1.5 shrink-0 z-10 ${m.color} shadow`}></div>
             <div className="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] pl-3 md:pl-0 md:group-odd:pr-6 md:group-even:pl-6 text-sm">
-              <div className="flex items-center justify-between shadow-sm bg-card border border-border/50 p-3 rounded-xl hover:border-[#bc7e57]/50 transition-colors">
+              <div className="flex items-center justify-between shadow-sm bg-card border border-border/50 p-3 rounded-xl hover:border-primary/50 transition-colors">
                  <div>
                    <h4 className="font-bold text-foreground text-xs">{m.title}</h4>
                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{m.due}</span>
@@ -357,7 +357,7 @@ export const FinanceCharts = ({
         
         {/* Placeholder for the native Cashflow Variances vs Recent Trx */}
         <div className="bg-card/60 backdrop-blur-xl border border-border/40 rounded-xl shadow-lg p-5 flex flex-col justify-center relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-64 h-64 bg-[#bc7e57]/10 rounded-full blur-3xl -z-10" />
+           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -z-10" />
            <div className="z-10">
              <h3 className="text-sm font-semibold mb-6 flex items-center justify-between">
                 <span>Cash Flow Variance</span>

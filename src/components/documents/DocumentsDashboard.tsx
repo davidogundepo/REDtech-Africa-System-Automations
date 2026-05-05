@@ -10,7 +10,7 @@ import { format, subMonths, startOfMonth, endOfMonth, parseISO } from "date-fns"
 
 // Mock Data Generators for Analytics
 const COLORS = {
-  primary: "#bc7e57",
+  primary: "#C4622D",
   secondary: "#10b981",
   destructive: "#ef4444",
   muted: "#64748b",
@@ -174,7 +174,7 @@ export const DocumentsDashboard = () => {
     <div className="h-[280px] w-full flex flex-col pt-2">
       <div className="flex justify-between items-center mb-2 px-1">
         <h3 className="text-xs font-black uppercase tracking-widest text-foreground flex items-center">
-          <FileText className="w-4 h-4 mr-2 text-[#bc7e57]" />
+          <FileText className="w-4 h-4 mr-2 text-primary" />
           Invoice & Waybill Status
         </h3>
         <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">Live Sync</Badge>
@@ -218,7 +218,7 @@ export const DocumentsDashboard = () => {
     <div className="h-[280px] w-full flex flex-col pt-2">
       <div className="flex justify-between items-center mb-4 px-1">
         <h3 className="text-xs font-black uppercase tracking-widest text-foreground flex items-center">
-          <Database className="w-4 h-4 mr-2 text-[#bc7e57]" />
+          <Database className="w-4 h-4 mr-2 text-primary" />
           Storage Distribution
         </h3>
         <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">Global</Badge>
@@ -316,7 +316,7 @@ export const DocumentsDashboard = () => {
       <Card className="border-border/40 shadow-sm bg-card/40 backdrop-blur-md flex flex-col h-full overflow-hidden">
         <CardHeader className="py-4 border-b border-border/20">
           <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
-            <Activity className="w-4 h-4 text-[#bc7e57]" />
+            <Activity className="w-4 h-4 text-primary" />
             Real-time Feed
           </CardTitle>
         </CardHeader>

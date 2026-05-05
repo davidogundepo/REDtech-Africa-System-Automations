@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, ListTodo, Sparkles } from "lucide-react";
+import { X, ListTodo, Sparkles, Loader2 } from "lucide-react";
 
 interface ProfileLite { id: string; full_name: string; }
 
@@ -19,12 +19,15 @@ interface Props {
   departments: string[];
   priorities: string[];
   statuses: string[];
+  submitting?: boolean;
 }
 
 export const TaskFormModal = ({
   open, onOpenChange, formData, setFormData, onSubmit, editingId,
-  profiles, departments, priorities, statuses,
+  profiles, departments, priorities, statuses, submitting = false,
 }: Props) => {
+  const titleLen = (formData.title || "").length;
+  const titleInvalid = titleLen === 0 || titleLen > 200;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[760px] w-[92vw] p-0 overflow-hidden border-0 shadow-lvl-3 rounded-[20px] [&>button]:hidden">
@@ -66,8 +69,11 @@ export const TaskFormModal = ({
 
             <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Title *</Label>
-                <Input placeholder="e.g. Q3 Finance Audit" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Title *</Label>
+                  <span className={`text-[10px] font-mono ${titleLen > 200 ? "text-destructive" : "text-muted-foreground/60"}`}>{titleLen}/200</span>
+                </div>
+                <Input placeholder="e.g. Q3 Finance Audit" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} maxLength={220} aria-invalid={titleInvalid} />
               </div>
 
               <div className="space-y-2">
@@ -131,9 +137,17 @@ export const TaskFormModal = ({
             </div>
 
             <div className="p-6 border-t border-border bg-muted/30 flex items-center justify-end gap-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button onClick={onSubmit} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lvl-2 min-w-[140px]">
-                {editingId ? "Update Task" : "Deploy Task"}
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
+              <Button
+                onClick={onSubmit}
+                disabled={submitting || titleInvalid}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lvl-2 min-w-[140px]"
+              >
+                {submitting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</>
+                ) : (
+                  editingId ? "Update Task" : "Deploy Task"
+                )}
               </Button>
             </div>
           </div>

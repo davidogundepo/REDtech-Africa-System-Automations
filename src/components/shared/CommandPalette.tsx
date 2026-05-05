@@ -153,18 +153,18 @@ export const CommandPalette = ({ onClose }: Props) => {
                     <button
                       key={item.id}
                       data-active={isActive}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isActive ? "bg-[#bc7e57]/12" : "hover:bg-muted/50"}`}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isActive ? "bg-primary/12" : "hover:bg-muted/50"}`}
                       onMouseEnter={() => setActiveIdx(idx)}
                       onClick={() => navigateTo(item)}
                     >
-                      <span className={`h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${isActive ? "bg-[#bc7e57] text-white" : "bg-muted text-muted-foreground"}`}>
+                      <span className={`h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${isActive ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
                         {item.icon}
                       </span>
                       <span className="flex-1 min-w-0">
                         <span className="text-sm font-medium block text-foreground">{item.label}</span>
                         {item.description && <span className="text-xs text-muted-foreground truncate block">{item.description}</span>}
                       </span>
-                      {isActive && <ArrowRight className="h-3.5 w-3.5 text-[#bc7e57] flex-shrink-0"/>}
+                      {isActive && <ArrowRight className="h-3.5 w-3.5 text-primary flex-shrink-0"/>}
                     </button>
                   );
                 })}
@@ -180,7 +180,7 @@ export const CommandPalette = ({ onClose }: Props) => {
             <span className="flex items-center gap-1"><kbd className="bg-muted border border-border rounded px-1">↵</kbd> open</span>
           </div>
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <span className="font-semibold" style={{ color: "#bc7e57" }}>RAC</span>
+            <span className="font-semibold text-primary">RAC</span>
             <span>Command</span>
           </div>
         </div>

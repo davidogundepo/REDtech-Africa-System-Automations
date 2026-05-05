@@ -54,13 +54,13 @@ export function ViewerBanner() {
 
   return (
     <>
-      <div className="flex items-center gap-3 py-2.5 px-4 rounded-lg bg-[#bc7e57]/5 border border-[#bc7e57]/15 mb-4">
-        <Shield className="h-4 w-4 flex-shrink-0" style={{ color: '#bc7e57' }} />
+      <div className="flex items-center gap-3 py-2.5 px-4 rounded-lg bg-primary/5 border border-primary/15 mb-4">
+        <Shield className="h-4 w-4 flex-shrink-0" style={{ color: 'hsl(var(--primary))' }} />
         <p className="text-sm text-muted-foreground flex-1">
           <span className="font-medium text-foreground">View-only mode</span> — You're browsing as a Viewer. 
           Actions like creating or editing are restricted.
         </p>
-        <Button variant="outline" size="sm" onClick={() => setUpgradeDialog(true)} className="gap-1 text-xs border-[#bc7e57]/30 hover:bg-[#bc7e57]/5" style={{ color: '#bc7e57' }}>
+        <Button variant="outline" size="sm" onClick={() => setUpgradeDialog(true)} className="gap-1 text-xs border-primary/30 hover:bg-primary/5" style={{ color: 'hsl(var(--primary))' }}>
           <Sparkles className="h-3 w-3" /> Upgrade
         </Button>
       </div>
@@ -68,12 +68,12 @@ export function ViewerBanner() {
       <Dialog open={upgradeDialog} onOpenChange={setUpgradeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" style={{ color: '#bc7e57' }} /> Request a Role Upgrade</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" style={{ color: 'hsl(var(--primary))' }} /> Request a Role Upgrade</DialogTitle>
             <DialogDescription>Tell Ayomide why you'd like an upgrade.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hi Ayomide! I'd like to be upgraded so I can..." rows={4} />
-            <Button onClick={handleSendUpgradeRequest} className="w-full gap-2" style={{ backgroundColor: '#bc7e57' }} disabled={sending}>
+            <Button onClick={handleSendUpgradeRequest} className="w-full gap-2" style={{ backgroundColor: '#C4622D' }} disabled={sending}>
               {sending ? "Sending..." : "Send Upgrade Request"}
             </Button>
           </div>

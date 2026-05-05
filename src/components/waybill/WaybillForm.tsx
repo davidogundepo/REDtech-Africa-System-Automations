@@ -97,12 +97,12 @@ export const WaybillForm = ({ waybillData, setWaybillData }: WaybillFormProps) =
                 <Input
                   value={waybillData.accentColor}
                   onChange={(e) => updateField('accentColor', e.target.value)}
-                  placeholder="#bc7e57"
+                  placeholder="#C4622D"
                   className="flex-1"
                 />
               </div>
               <div className="flex gap-1.5 mt-2 flex-wrap">
-                {['#bc7e57', '#1a1a2e', '#16213e', '#0f3460', '#e94560', '#533483', '#2b9348', '#d4a373', '#264653', '#2a9d8f', '#e76f51', '#606c38'].map(c => (
+                {['#C4622D', '#9E4A1E', '#E8A838', '#1C1917', '#16213e', '#0f3460', '#DC2626', '#533483', '#16A34A', '#264653', '#2a9d8f', '#2563EB'].map(c => (
                   <button
                     key={c}
                     type="button"

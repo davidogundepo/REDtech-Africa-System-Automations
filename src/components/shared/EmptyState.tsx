@@ -22,11 +22,11 @@ const illustrations: Record<string, React.ReactNode> = {
       <line x1="65" y1="88" x2="120" y2="88" stroke="#e8ddd5" strokeWidth="2.5" strokeLinecap="round"/>
       <line x1="65" y1="106" x2="110" y2="106" stroke="#e8ddd5" strokeWidth="2.5" strokeLinecap="round"/>
       {/* Checkmark circle */}
-      <circle cx="58" cy="70" r="5" fill="none" stroke="#bc7e57" strokeWidth="2"/>
-      <circle cx="58" cy="88" r="5" fill="none" stroke="#bc7e57" strokeWidth="2"/>
-      <circle cx="58" cy="106" r="5" fill="none" stroke="#bc7e57" strokeWidth="2"/>
+      <circle cx="58" cy="70" r="5" fill="none" stroke="hsl(var(--primary))" strokeWidth="2"/>
+      <circle cx="58" cy="88" r="5" fill="none" stroke="hsl(var(--primary))" strokeWidth="2"/>
+      <circle cx="58" cy="106" r="5" fill="none" stroke="hsl(var(--primary))" strokeWidth="2"/>
       {/* Pencil */}
-      <rect x="128" y="90" width="10" height="35" rx="2" fill="#bc7e57" transform="rotate(-35, 133, 107)"/>
+      <rect x="128" y="90" width="10" height="35" rx="2" fill="#C4622D" transform="rotate(-35, 133, 107)"/>
       <polygon points="119,128 122,135 129,130" fill="#8a5c3a"/>
       <rect x="129" y="89" width="10" height="6" rx="0" fill="#e8c49a" transform="rotate(-35, 134, 92)"/>
     </svg>
@@ -36,8 +36,8 @@ const illustrations: Record<string, React.ReactNode> = {
       {/* Calendar base */}
       <rect x="35" y="35" width="130" height="110" rx="12" fill="#f8f4f0" stroke="#e8ddd5" strokeWidth="2"/>
       {/* Calendar header */}
-      <rect x="35" y="35" width="130" height="38" rx="12" fill="#bc7e57"/>
-      <rect x="35" y="55" width="130" height="18" fill="#bc7e57"/>
+      <rect x="35" y="35" width="130" height="38" rx="12" fill="#C4622D"/>
+      <rect x="35" y="55" width="130" height="18" fill="#C4622D"/>
       {/* Calendar rings */}
       <rect x="65" y="25" width="8" height="20" rx="4" fill="#8a5c3a"/>
       <rect x="127" y="25" width="8" height="20" rx="4" fill="#8a5c3a"/>
@@ -54,14 +54,14 @@ const illustrations: Record<string, React.ReactNode> = {
         const isHighlighted = d === 10 || d === 11 || d === 12;
         return (
           <g key={d}>
-            {isHighlighted && <rect x={42 + col * 17 - 7} y={92 + row * 17 - 7} width="14" height="14" rx="7" fill="#bc7e57" opacity="0.2"/>}
-            <text x={48 + col * 17} y={100 + row * 17} textAnchor="middle" fill={isHighlighted ? "#bc7e57" : "#9a8070"} fontSize="9" fontFamily="sans-serif" fontWeight={isHighlighted ? "700" : "400"}>{d}</text>
+            {isHighlighted && <rect x={42 + col * 17 - 7} y={92 + row * 17 - 7} width="14" height="14" rx="7" fill="#C4622D" opacity="0.2"/>}
+            <text x={48 + col * 17} y={100 + row * 17} textAnchor="middle" fill={isHighlighted ? "#C4622D" : "#9a8070"} fontSize="9" fontFamily="sans-serif" fontWeight={isHighlighted ? "700" : "400"}>{d}</text>
           </g>
         );
       })}
       {/* Suitcase */}
-      <rect x="130" y="110" width="30" height="22" rx="4" fill="#bc7e57"/>
-      <rect x="138" y="104" width="14" height="8" rx="3" fill="none" stroke="#bc7e57" strokeWidth="2.5"/>
+      <rect x="130" y="110" width="30" height="22" rx="4" fill="#C4622D"/>
+      <rect x="138" y="104" width="14" height="8" rx="3" fill="none" stroke="hsl(var(--primary))" strokeWidth="2.5"/>
       <line x1="130" y1="121" x2="160" y2="121" stroke="#8a5c3a" strokeWidth="1.5"/>
     </svg>
   ),
@@ -72,7 +72,7 @@ const illustrations: Record<string, React.ReactNode> = {
       {/* Left arm */}
       <path d="M20 100 Q35 85 55 90 L85 95" stroke="#d4b89a" strokeWidth="12" strokeLinecap="round" fill="none"/>
       {/* Right arm */}
-      <path d="M180 100 Q165 85 145 90 L115 95" stroke="#bc7e57" strokeWidth="12" strokeLinecap="round" fill="none"/>
+      <path d="M180 100 Q165 85 145 90 L115 95" stroke="hsl(var(--primary))" strokeWidth="12" strokeLinecap="round" fill="none"/>
       {/* Handshake join */}
       <ellipse cx="100" cy="95" rx="22" ry="14" fill="#c8956a"/>
       <ellipse cx="100" cy="90" rx="18" ry="10" fill="#d4a87a"/>
@@ -81,11 +81,11 @@ const illustrations: Record<string, React.ReactNode> = {
       <path d="M87 87 L81 70" stroke="#d4b89a" strokeWidth="7" strokeLinecap="round"/>
       <path d="M94 86 L90 68" stroke="#d4b89a" strokeWidth="7" strokeLinecap="round"/>
       {/* Fingers right */}
-      <path d="M106 86 L110 68" stroke="#bc7e57" strokeWidth="7" strokeLinecap="round"/>
-      <path d="M113 87 L119 70" stroke="#bc7e57" strokeWidth="7" strokeLinecap="round"/>
-      <path d="M120 90 L128 75" stroke="#bc7e57" strokeWidth="7" strokeLinecap="round"/>
+      <path d="M106 86 L110 68" stroke="hsl(var(--primary))" strokeWidth="7" strokeLinecap="round"/>
+      <path d="M113 87 L119 70" stroke="hsl(var(--primary))" strokeWidth="7" strokeLinecap="round"/>
+      <path d="M120 90 L128 75" stroke="hsl(var(--primary))" strokeWidth="7" strokeLinecap="round"/>
       {/* Stars */}
-      <text x="50" y="55" fontSize="16" fill="#bc7e57" opacity="0.8">✦</text>
+      <text x="50" y="55" fontSize="16" fill="#C4622D" opacity="0.8">✦</text>
       <text x="140" y="45" fontSize="12" fill="#d4b89a">✦</text>
       <text x="25" y="75" fontSize="10" fill="#e8ddd5">✦</text>
     </svg>
@@ -93,21 +93,21 @@ const illustrations: Record<string, React.ReactNode> = {
   finance: (
     <svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
       {/* Ledger book */}
-      <rect x="30" y="30" width="90" height="115" rx="8" fill="#bc7e57"/>
+      <rect x="30" y="30" width="90" height="115" rx="8" fill="#C4622D"/>
       <rect x="35" y="25" width="90" height="115" rx="8" fill="#f8f4f0" stroke="#e8ddd5" strokeWidth="1.5"/>
       {/* Lines */}
       {[55,70,85,100,115].map(y => <line key={y} x1="50" y1={y} x2="110" y2={y} stroke="#e8ddd5" strokeWidth="1.5" strokeLinecap="round"/>)}
       {/* ₦ symbol */}
-      <text x="73" y="48" textAnchor="middle" fill="#bc7e57" fontSize="16" fontWeight="bold" fontFamily="serif">₦</text>
+      <text x="73" y="48" textAnchor="middle" fill="#C4622D" fontSize="16" fontWeight="bold" fontFamily="serif">₦</text>
       {/* Amounts */}
       {[55,70,85,100,115].map((y, i) => (
         <text key={y} x="108" y={y - 2} textAnchor="end" fill="#c4a882" fontSize="8" fontFamily="sans-serif">{['4,200','1,800','9,500','3,100','6,700'][i]}</text>
       ))}
       {/* Coin stack */}
       {[130, 124, 118].map((y, i) => (
-        <ellipse key={y} cx="155" cy={y} rx="20" ry="7" fill={['#bc7e57','#c88a60','#d49a70'][i]}/>
+        <ellipse key={y} cx="155" cy={y} rx="20" ry="7" fill={['#C4622D','#c88a60','#d49a70'][i]}/>
       ))}
-      <ellipse cx="155" cy="112" rx="20" ry="7" fill="#e0aa80" stroke="#bc7e57" strokeWidth="1"/>
+      <ellipse cx="155" cy="112" rx="20" ry="7" fill="#e0aa80" stroke="hsl(var(--primary))" strokeWidth="1"/>
       <text x="155" y="115" textAnchor="middle" fill="#8a5c3a" fontSize="9" fontWeight="bold" fontFamily="serif">₦</text>
     </svg>
   ),
@@ -124,11 +124,11 @@ const illustrations: Record<string, React.ReactNode> = {
       <path d="M105 25 L125 25 L125 45 Z" fill="#f8f4f0" stroke="#e8ddd5" strokeWidth="1"/>
       {/* Lines */}
       {[65,78,91,104,117].map(y => <line key={y} x1="58" y1={y} x2="115" y2={y} stroke="#e8ddd5" strokeWidth="2" strokeLinecap="round"/>)}
-      <line x1="58" y1="52" x2="100" y2="52" stroke="#bc7e57" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="58" y1="52" x2="100" y2="52" stroke="hsl(var(--primary))" strokeWidth="2.5" strokeLinecap="round"/>
       {/* Upload arrow */}
-      <circle cx="148" cy="110" r="22" fill="#bc7e57" opacity="0.12" stroke="#bc7e57" strokeWidth="1.5"/>
-      <path d="M148 122 L148 100" stroke="#bc7e57" strokeWidth="2.5" strokeLinecap="round"/>
-      <path d="M140 108 L148 100 L156 108" stroke="#bc7e57" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      <circle cx="148" cy="110" r="22" fill="#C4622D" opacity="0.12" stroke="hsl(var(--primary))" strokeWidth="1.5"/>
+      <path d="M148 122 L148 100" stroke="hsl(var(--primary))" strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M140 108 L148 100 L156 108" stroke="hsl(var(--primary))" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
   ),
   social: (
@@ -143,14 +143,14 @@ const illustrations: Record<string, React.ReactNode> = {
       <circle cx="100" cy="52" r="12" fill="#d4b89a"/>
       <path d="M82 83 Q100 65 118 83" fill="#d4b89a"/>
       {/* Like / comment icons */}
-      <text x="75" y="100" fontSize="11" fill="#bc7e57">♥</text>
+      <text x="75" y="100" fontSize="11" fill="#C4622D">♥</text>
       <text x="90" y="100" fontSize="9" fill="#c4a882">21</text>
       <rect x="104" y="91" width="18" height="9" rx="4" fill="#f0e8df"/>
       {/* Stars / sparkles */}
-      <text x="18" y="60" fontSize="20" fill="#bc7e57" opacity="0.4">✦</text>
+      <text x="18" y="60" fontSize="20" fill="#C4622D" opacity="0.4">✦</text>
       <text x="155" y="50" fontSize="14" fill="#d4b89a" opacity="0.6">✦</text>
       <text x="30" y="120" fontSize="10" fill="#e8ddd5">✦</text>
-      <text x="158" y="100" fontSize="18" fill="#bc7e57" opacity="0.3">✦</text>
+      <text x="158" y="100" fontSize="18" fill="#C4622D" opacity="0.3">✦</text>
     </svg>
   ),
   attendance: (
@@ -166,7 +166,7 @@ const illustrations: Record<string, React.ReactNode> = {
         return <line key={deg}
           x1={100 + inner * Math.cos(rad)} y1={85 + inner * Math.sin(rad)}
           x2={100 + 47 * Math.cos(rad)} y2={85 + 47 * Math.sin(rad)}
-          stroke={isHour ? "#bc7e57" : "#e8ddd5"} strokeWidth={isHour ? "3" : "1.5"}
+          stroke={isHour ? "#C4622D" : "#e8ddd5"} strokeWidth={isHour ? "3" : "1.5"}
           strokeLinecap="round"/>;
       })}
       {/* Hour hand (pointing to 9) */}
@@ -174,9 +174,9 @@ const illustrations: Record<string, React.ReactNode> = {
       {/* Minute hand (pointing to 12) */}
       <line x1="100" y1="85" x2="100" y2="50" stroke="#2d2d2d" strokeWidth="3" strokeLinecap="round"/>
       {/* Centre dot */}
-      <circle cx="100" cy="85" r="4" fill="#bc7e57"/>
+      <circle cx="100" cy="85" r="4" fill="#C4622D"/>
       {/* Check badge */}
-      <circle cx="145" cy="130" r="16" fill="#bc7e57"/>
+      <circle cx="145" cy="130" r="16" fill="#C4622D"/>
       <path d="M137 130 L142 136 L153 124" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
   ),
@@ -186,22 +186,22 @@ const illustrations: Record<string, React.ReactNode> = {
       <rect x="30" y="130" width="140" height="2" rx="1" fill="#e8ddd5"/>
       {/* Bar 1 */}
       <rect x="42" y="75" width="22" height="55" rx="4" fill="#e8ddd5"/>
-      <rect x="42" y="95" width="22" height="35" rx="4" fill="#bc7e57" opacity="0.4"/>
+      <rect x="42" y="95" width="22" height="35" rx="4" fill="#C4622D" opacity="0.4"/>
       {/* Bar 2 */}
       <rect x="74" y="50" width="22" height="80" rx="4" fill="#e8ddd5"/>
-      <rect x="74" y="60" width="22" height="70" rx="4" fill="#bc7e57" opacity="0.6"/>
+      <rect x="74" y="60" width="22" height="70" rx="4" fill="#C4622D" opacity="0.6"/>
       {/* Bar 3 */}
       <rect x="106" y="65" width="22" height="65" rx="4" fill="#e8ddd5"/>
-      <rect x="106" y="80" width="22" height="50" rx="4" fill="#bc7e57" opacity="0.5"/>
+      <rect x="106" y="80" width="22" height="50" rx="4" fill="#C4622D" opacity="0.5"/>
       {/* Bar 4 */}
       <rect x="138" y="40" width="22" height="90" rx="4" fill="#e8ddd5"/>
-      <rect x="138" y="42" width="22" height="88" rx="4" fill="#bc7e57" opacity="0.8"/>
+      <rect x="138" y="42" width="22" height="88" rx="4" fill="#C4622D" opacity="0.8"/>
       {/* People icons */}
       <circle cx="53" cy="65" r="8" fill="#d4b89a"/>
       <ellipse cx="53" cy="82" rx="10" ry="5" fill="#d4b89a" opacity="0"/>
-      <circle cx="85" cy="45" r="8" fill="#bc7e57"/>
+      <circle cx="85" cy="45" r="8" fill="#C4622D"/>
       <circle cx="117" cy="55" r="8" fill="#d4a07a"/>
-      <circle cx="149" cy="30" r="8" fill="#bc7e57"/>
+      <circle cx="149" cy="30" r="8" fill="#C4622D"/>
     </svg>
   ),
   ops: (
@@ -210,7 +210,7 @@ const illustrations: Record<string, React.ReactNode> = {
       <rect x="10" y="115" width="180" height="30" rx="4" fill="#e8ddd5"/>
       <line x1="100" y1="115" x2="100" y2="145" stroke="white" strokeWidth="3" strokeDasharray="8,6"/>
       {/* Van body */}
-      <rect x="25" y="75" width="110" height="45" rx="8" fill="#bc7e57"/>
+      <rect x="25" y="75" width="110" height="45" rx="8" fill="#C4622D"/>
       {/* Van cabin */}
       <rect x="115" y="82" width="45" height="38" rx="6" fill="#8a5c3a"/>
       {/* Windshield */}
@@ -247,15 +247,15 @@ const illustrations: Record<string, React.ReactNode> = {
       <line x1="100" y1="65" x2="100" y2="132" stroke="#e8ddd5" strokeWidth="1.5" strokeLinecap="round"/>
       <line x1="120" y1="65" x2="120" y2="132" stroke="#e8ddd5" strokeWidth="1.5" strokeLinecap="round"/>
       {/* Recycle arrow */}
-      <text x="100" y="110" textAnchor="middle" fontSize="28" fill="#bc7e57" opacity="0.35">♻</text>
+      <text x="100" y="110" textAnchor="middle" fontSize="28" fill="#C4622D" opacity="0.35">♻</text>
     </svg>
   ),
   payments: (
     <svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
       {/* Card */}
       <rect x="30" y="45" width="140" height="90" rx="12" fill="#f8f4f0" stroke="#e8ddd5" strokeWidth="2"/>
-      <rect x="30" y="45" width="140" height="35" rx="12" fill="#bc7e57"/>
-      <rect x="30" y="66" width="140" height="14" fill="#bc7e57"/>
+      <rect x="30" y="45" width="140" height="35" rx="12" fill="#C4622D"/>
+      <rect x="30" y="66" width="140" height="14" fill="#C4622D"/>
       {/* Chip */}
       <rect x="48" y="58" width="24" height="18" rx="4" fill="#d4a870"/>
       <line x1="48" y1="66" x2="72" y2="66" stroke="#b8925c" strokeWidth="1"/>
@@ -267,14 +267,14 @@ const illustrations: Record<string, React.ReactNode> = {
         ))
       ))}
       {/* Amount */}
-      <text x="155" y="128" textAnchor="end" fill="#bc7e57" fontSize="14" fontWeight="bold" fontFamily="sans-serif">₦ —</text>
+      <text x="155" y="128" textAnchor="end" fill="#C4622D" fontSize="14" fontWeight="bold" fontFamily="sans-serif">₦ —</text>
       <text x="48" y="128" fill="#c4a882" fontSize="9" fontFamily="sans-serif">PENDING APPROVAL</text>
       {/* Clock badge */}
       <circle cx="148" cy="48" r="16" fill="#f8f4f0" stroke="#e8ddd5" strokeWidth="1.5"/>
       <circle cx="148" cy="48" r="11" fill="white"/>
-      <line x1="148" y1="48" x2="148" y2="40" stroke="#bc7e57" strokeWidth="1.5" strokeLinecap="round"/>
+      <line x1="148" y1="48" x2="148" y2="40" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round"/>
       <line x1="148" y1="48" x2="154" y2="48" stroke="#9a8070" strokeWidth="1.5" strokeLinecap="round"/>
-      <circle cx="148" cy="48" r="2" fill="#bc7e57"/>
+      <circle cx="148" cy="48" r="2" fill="#C4622D"/>
     </svg>
   ),
   budgets: (
@@ -282,16 +282,16 @@ const illustrations: Record<string, React.ReactNode> = {
       {/* Pie chart */}
       <circle cx="100" cy="88" r="52" fill="#f8f4f0" stroke="#e8ddd5" strokeWidth="2"/>
       {/* Pie slices */}
-      <path d="M100 88 L100 36 A52 52 0 0 1 145 114 Z" fill="#bc7e57" opacity="0.85"/>
+      <path d="M100 88 L100 36 A52 52 0 0 1 145 114 Z" fill="#C4622D" opacity="0.85"/>
       <path d="M100 88 L145 114 A52 52 0 0 1 60 134 Z" fill="#d4a870" opacity="0.7"/>
       <path d="M100 88 L60 134 A52 52 0 0 1 52 60 Z" fill="#e8c49a" opacity="0.6"/>
       <path d="M100 88 L52 60 A52 52 0 0 1 100 36 Z" fill="#f0dac0" opacity="0.5"/>
       {/* Centre */}
       <circle cx="100" cy="88" r="22" fill="white"/>
-      <text x="100" y="84" textAnchor="middle" fill="#bc7e57" fontSize="9" fontFamily="sans-serif" fontWeight="600">Q1</text>
-      <text x="100" y="96" textAnchor="middle" fill="#bc7e57" fontSize="11" fontFamily="sans-serif" fontWeight="bold">2026</text>
+      <text x="100" y="84" textAnchor="middle" fill="#C4622D" fontSize="9" fontFamily="sans-serif" fontWeight="600">Q1</text>
+      <text x="100" y="96" textAnchor="middle" fill="#C4622D" fontSize="11" fontFamily="sans-serif" fontWeight="bold">2026</text>
       {/* Legend dots */}
-      <circle cx="45" cy="28" r="5" fill="#bc7e57"/>
+      <circle cx="45" cy="28" r="5" fill="#C4622D"/>
       <text x="55" y="32" fill="#9a8070" fontSize="9" fontFamily="sans-serif">Operations</text>
       <circle cx="110" cy="28" r="5" fill="#d4a870"/>
       <text x="120" y="32" fill="#9a8070" fontSize="9" fontFamily="sans-serif">Salaries</text>
@@ -308,13 +308,13 @@ const illustrations: Record<string, React.ReactNode> = {
       {/* Inner shading */}
       <path d="M68 92 L132 92 L136 105 L64 105 Z" fill="#f0e8df"/>
       {/* Sparkle lines */}
-      <line x1="148" y1="45" x2="158" y2="38" stroke="#bc7e57" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
-      <line x1="152" y1="55" x2="163" y2="55" stroke="#bc7e57" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
-      <line x1="148" y1="65" x2="158" y2="72" stroke="#bc7e57" strokeWidth="2" strokeLinecap="round" opacity="0.4"/>
+      <line x1="148" y1="45" x2="158" y2="38" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
+      <line x1="152" y1="55" x2="163" y2="55" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+      <line x1="148" y1="65" x2="158" y2="72" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" opacity="0.4"/>
       <line x1="52" y1="45" x2="42" y2="38" stroke="#d4b89a" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
       <line x1="48" y1="55" x2="37" y2="55" stroke="#d4b89a" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
       {/* Badge dot */}
-      <circle cx="135" cy="35" r="10" fill="#bc7e57"/>
+      <circle cx="135" cy="35" r="10" fill="#C4622D"/>
       <text x="135" y="39" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold" fontFamily="sans-serif">0</text>
     </svg>
   ),
@@ -332,7 +332,7 @@ export const EmptyState = ({ illustration, heading, subtext, ctaText, onCta }: E
         <button
           onClick={onCta}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-85 active:scale-95"
-          style={{ backgroundColor: '#bc7e57' }}
+          style={{ backgroundColor: '#C4622D' }}
         >
           {ctaText}
         </button>

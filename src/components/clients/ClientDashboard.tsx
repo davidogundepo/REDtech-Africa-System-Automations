@@ -6,7 +6,7 @@ import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tool
 import { format } from "date-fns";
 import { Users, Target, Award, TrendingUp, Clock, Activity, CalendarDays, Zap, FileText, Phone, Mail, Building2, Star, StarHalf } from "lucide-react";
 
-const BRAND = "#bc7e57";
+const BRAND = "#C4622D";
 const CHART_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899"];
 const DEAL_STAGE_COLORS: Record<string, string> = {
   lead: "#94a3b8",      // slate-400
@@ -259,7 +259,7 @@ export const ClientDashboard = ({
                       <span className="text-2xl font-black text-foreground">{winRate}%</span>
                     </div>
                   </div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[#bc7e57] mt-2">Win Rate Goal</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary mt-2">Win Rate Goal</p>
                   
                   <div className="mt-4 w-full space-y-3">
                     <div className="flex justify-between items-end">
@@ -295,7 +295,7 @@ export const ClientDashboard = ({
                       <div className="flex justify-between items-center mb-1.5">
                         <div className="flex items-center gap-2">
                           <div className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
-                          <span className="text-xs font-bold text-foreground group-hover:text-[#bc7e57] transition-colors">{s.source}</span>
+                          <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">{s.source}</span>
                         </div>
                         <span className="text-[10px] font-black text-muted-foreground">{s.count} Leads ({s.percent}%)</span>
                       </div>
@@ -313,9 +313,9 @@ export const ClientDashboard = ({
               content: (
                 <div className="space-y-3 mt-2 h-[220px] overflow-y-auto pr-1">
                   {topReps.map((rep, i) => (
-                    <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 border border-border/10 hover:bg-muted/40 hover:border-[#bc7e57]/20 transition-all">
+                    <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 border border-border/10 hover:bg-muted/40 hover:border-primary/20 transition-all">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-[#bc7e57] font-black text-xs border border-[#bc7e57]/20 shadow-sm">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs border border-primary/20 shadow-sm">
                           {getInitials(rep.name)}
                         </div>
                         <div>
@@ -324,8 +324,8 @@ export const ClientDashboard = ({
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs font-black text-[#bc7e57]">{formatMoney(rep.value)}</p>
-                        <Badge variant="outline" className="text-[8px] font-black h-4 px-1 mt-1 border-[#bc7e57]/20 text-[#bc7e57]/80">TOP {i + 1}</Badge>
+                        <p className="text-xs font-black text-primary">{formatMoney(rep.value)}</p>
+                        <Badge variant="outline" className="text-[8px] font-black h-4 px-1 mt-1 border-primary/20 text-primary/80">TOP {i + 1}</Badge>
                       </div>
                     </div>
                   ))}
@@ -405,7 +405,7 @@ export const ClientDashboard = ({
                     {topReps.length > 0 ? topReps.map((rep, i) => (
                       <div key={i} className="flex items-center justify-between p-2.5 rounded-xl border border-border/30 bg-muted/10 hover:bg-muted/30 transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#bc7e57]/20 to-[#a56d49]/30 flex items-center justify-center text-xs font-bold text-[#bc7e57] shrink-0 border border-[#bc7e57]/20">
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-[#9E4A1E]/30 flex items-center justify-center text-xs font-bold text-primary shrink-0 border border-primary/20">
                             {getInitials(rep.name)}
                           </div>
                           <div>
@@ -415,7 +415,7 @@ export const ClientDashboard = ({
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(rep.value)}</p>
-                          <Badge variant="outline" className="text-[8px] px-1 py-0 mt-0.5 border-[#bc7e57]/20 text-[#bc7e57]">Rank #{i+1}</Badge>
+                          <Badge variant="outline" className="text-[8px] px-1 py-0 mt-0.5 border-primary/20 text-primary">Rank #{i+1}</Badge>
                         </div>
                       </div>
                     )) : (
@@ -459,12 +459,12 @@ export const ClientDashboard = ({
                  <div className="h-[240px] flex flex-col mt-2">
                    <div className="flex items-center justify-between mb-3 px-1">
                      <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Top Rated Accounts</span>
-                     <Badge className="bg-[#bc7e57]/10 text-[#bc7e57] hover:bg-[#bc7e57]/20 border-0 pointer-events-none px-2 rounded-full shadow-sm text-[10px] font-black tracking-widest uppercase">Global Avg 4.8/5.0</Badge>
+                     <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-0 pointer-events-none px-2 rounded-full shadow-sm text-[10px] font-black tracking-widest uppercase">Global Avg 4.8/5.0</Badge>
                    </div>
                    <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                      {csatScores.length > 0 ? csatScores.map((scoreObj, i) => (
-                       <div key={i} className="flex flex-col gap-1.5 p-3 rounded-[12px] border border-border/60 bg-card hover:border-[#bc7e57]/40 transition-colors shadow-sm relative overflow-hidden group">
-                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#f59e0b] to-[#bc7e57] opacity-60 group-hover:opacity-100 transition-opacity"></div>
+                       <div key={i} className="flex flex-col gap-1.5 p-3 rounded-[12px] border border-border/60 bg-card hover:border-primary/40 transition-colors shadow-sm relative overflow-hidden group">
+                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#f59e0b] to-primary opacity-60 group-hover:opacity-100 transition-opacity"></div>
                          <div className="flex items-start justify-between pl-1">
                             <h4 className="font-bold text-sm truncate pr-2 max-w-[150px]">{scoreObj.name}</h4>
                             <div className="flex items-center gap-1.5 bg-background border border-border/50 px-2 py-1 rounded-full shadow-sm">
@@ -536,7 +536,7 @@ export const ClientDashboard = ({
                 <div className="h-[240px] mt-2">
                   <div className="space-y-3 overflow-y-auto h-full pr-2 custom-scrollbar">
                     {clients.slice(0, 5).map((client, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/40 hover:border-[#bc7e57]/30 transition-colors shadow-sm relative overflow-hidden group">
+                      <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/40 hover:border-primary/30 transition-colors shadow-sm relative overflow-hidden group">
                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${DEAL_STAGE_COLORS[client.deal_status] ? '' : 'bg-slate-300'}`} style={{ backgroundColor: DEAL_STAGE_COLORS[client.deal_status] }}></div>
                         <div className="flex flex-col min-w-0 pl-2">
                           <p className="font-bold text-sm text-foreground truncate">{client.company || client.name}</p>

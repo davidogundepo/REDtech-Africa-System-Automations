@@ -54,7 +54,7 @@ export function ViewerRestricted({ action = "perform this action" }: ViewerRestr
             heading: "Role Upgrade Request",
             body: `
               <p><strong>${profile?.full_name || "A viewer"}</strong> (${profile?.email || ""}) is requesting a role upgrade on the RAC Automations Dashboard.</p>
-              <div style="background: #f8f4f0; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #bc7e57;">
+              <div style="background: #f8f4f0; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #C4622D;">
                 <p style="margin: 0; font-style: italic;">"${message}"</p>
               </div>
               <p>You can manage roles in User Management.</p>
@@ -78,10 +78,10 @@ export function ViewerRestricted({ action = "perform this action" }: ViewerRestr
 
   return (
     <>
-      <Card className="border-dashed border-[#bc7e57]/30 bg-[#bc7e57]/[0.02]">
+      <Card className="border-dashed border-primary/30 bg-primary/[0.02]">
         <CardContent className="py-12 px-8 flex flex-col items-center text-center gap-4">
-          <div className="h-16 w-16 rounded-2xl bg-[#bc7e57]/10 flex items-center justify-center">
-            <Shield className="h-8 w-8" style={{ color: '#bc7e57', opacity: 0.5 }} />
+          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Shield className="h-8 w-8" style={{ color: 'hsl(var(--primary))', opacity: 0.5 }} />
           </div>
           <div className="space-y-2 max-w-md">
             <h3 className="text-lg font-semibold">Viewer Access Only</h3>
@@ -93,14 +93,14 @@ export function ViewerRestricted({ action = "perform this action" }: ViewerRestr
           <Button 
             onClick={() => setUpgradeDialog(true)}
             className="gap-2 mt-2"
-            style={{ backgroundColor: '#bc7e57' }}
+            style={{ backgroundColor: '#C4622D' }}
           >
             <Sparkles className="h-4 w-4" />
             Request Access Upgrade
             <ArrowRight className="h-4 w-4" />
           </Button>
           <p className="text-xs text-muted-foreground">
-            Or email <a href="mailto:ayomide@redtechafrica.com" className="underline" style={{ color: '#bc7e57' }}>ayomide@redtechafrica.com</a> directly
+            Or email <a href="mailto:ayomide@redtechafrica.com" className="underline" style={{ color: 'hsl(var(--primary))' }}>ayomide@redtechafrica.com</a> directly
           </p>
         </CardContent>
       </Card>
@@ -109,7 +109,7 @@ export function ViewerRestricted({ action = "perform this action" }: ViewerRestr
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" style={{ color: '#bc7e57' }} />
+              <Sparkles className="h-5 w-5" style={{ color: 'hsl(var(--primary))' }} />
               Request a Role Upgrade
             </DialogTitle>
             <DialogDescription>
@@ -126,7 +126,7 @@ export function ViewerRestricted({ action = "perform this action" }: ViewerRestr
             <Button
               onClick={handleSendUpgradeRequest}
               className="w-full gap-2"
-              style={{ backgroundColor: '#bc7e57' }}
+              style={{ backgroundColor: '#C4622D' }}
               disabled={sending}
             >
               <Mail className="h-4 w-4" />

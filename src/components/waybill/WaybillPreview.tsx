@@ -13,7 +13,7 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
       : waybillData.deliveryMethod;
 
     const logoSrc = waybillData.companyLogo || defaultLogo;
-    const accent = waybillData.accentColor || '#bc7e57';
+    const accent = waybillData.accentColor || 'hsl(var(--primary))';
 
     return (
       <div 
@@ -36,7 +36,7 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
             alt={waybillData.companyName}
             className="h-10 w-auto object-contain"
           />
-          <span className="font-semibold text-xl" style={{ color: '#000' }}>
+          <span className="font-semibold text-xl text-foreground">
             {waybillData.companyName}
           </span>
         </div>
@@ -74,7 +74,7 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
           <div className="mb-6">
             <div 
               className="inline-block px-4 py-2 text-sm"
-              style={{ backgroundColor: '#f5f5f5' }}
+              style={{ backgroundColor: 'hsl(var(--muted))' }}
             >
               <span className="font-semibold">Attention:</span> {waybillData.attentionTo}
             </div>
@@ -154,14 +154,14 @@ export const WaybillPreview = forwardRef<HTMLDivElement, WaybillPreviewProps>(
         {/* Thank You Message */}
         {waybillData.showThankYouMessage && (
           <div className="text-center mb-6">
-            <p className="font-bold text-sm" style={{ color: '#000' }}>
+            <p className="font-bold text-sm text-foreground">
               {waybillData.thankYouMessage.toUpperCase()}
             </p>
           </div>
         )}
 
         {/* Footer: Website | Address */}
-        <div className="text-center text-sm" style={{ color: '#000' }}>
+        <div className="text-center text-sm text-foreground">
           {waybillData.showWebsite && (
             <>
               <span className="lowercase">{waybillData.companyWebsite.toLowerCase()}</span>

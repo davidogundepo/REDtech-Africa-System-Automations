@@ -9,7 +9,7 @@ import { AttendanceHeatmap } from "@/components/attendance/AttendanceHeatmap";
 import { getUpcomingHolidays, isNigerianHoliday } from "@/lib/nigerian-holidays";
 import { format } from "date-fns";
 
-const BRAND = "#bc7e57";
+const BRAND = "#C4622D";
 const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899"];
 const PIE_COLORS = ["#3b82f6", "#ec4899", "#94a3b8"];
 
@@ -121,7 +121,7 @@ export const MyDashboardCards = ({
                         onClick={() => setHistoryPeriod(p.key)}
                         className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${
                           historyPeriod === p.key
-                            ? 'bg-[#bc7e57] text-white shadow-sm'
+                            ? 'bg-primary text-white shadow-sm'
                             : 'bg-muted/40 text-muted-foreground hover:bg-muted/60 border border-border/30'
                         }`}
                       >
@@ -231,7 +231,7 @@ export const TeamOverviewCards = ({
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                   {departmentBreakdown.map((dept, i) => (
                     <div key={i} className="p-3 rounded-xl border border-border/30 bg-muted/10 hover:bg-muted/20 transition-colors">
-                      <p className="text-xs font-bold text-[#bc7e57] mb-2 truncate">{dept.department}</p>
+                      <p className="text-xs font-bold text-primary mb-2 truncate">{dept.department}</p>
                       <div className="flex items-baseline gap-2">
                         <span className="text-lg font-black text-foreground">{dept.totalStaff}</span>
                         <span className="text-[10px] text-muted-foreground">staff</span>
@@ -279,7 +279,7 @@ export const TeamOverviewCards = ({
                       />
                       <div className="absolute top-2 left-2 bg-card/90 backdrop-blur-sm border border-border/50 rounded-lg px-2.5 py-1.5 shadow-md">
                         <p className="text-[10px] font-bold text-foreground flex items-center gap-1.5">
-                          <MapPin className="h-3 w-3 text-[#bc7e57]" />
+                          <MapPin className="h-3 w-3 text-primary" />
                           {staffWithGPS.length} GPS signal{staffWithGPS.length !== 1 ? 's' : ''} today
                         </p>
                       </div>
@@ -328,7 +328,7 @@ export const TeamOverviewCards = ({
                     </div>
                   </div>
                   <p className="text-base font-black text-foreground">{employeeOfMonth.full_name}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[#bc7e57] mt-0.5">{employeeOfMonth.department || "General Ops"}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary mt-0.5">{employeeOfMonth.department || "General Ops"}</p>
                   
                   <div className="mt-4 w-full grid grid-cols-2 gap-2">
                     <div className="bg-muted/30 rounded-xl p-2 text-center border border-border/20">

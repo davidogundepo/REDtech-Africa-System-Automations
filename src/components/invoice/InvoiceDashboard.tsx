@@ -15,7 +15,7 @@ const formatCurrency = (amount: number, currency: string = '₦') => {
 };
 
 const COLORS = {
-  primary: "#bc7e57",
+  primary: "#C4622D",
   emerald: "#10b981",
   destructive: "#ef4444",
   amber: "#f59e0b",
@@ -138,7 +138,7 @@ export const InvoiceDashboard = () => {
   const TopClientsList = () => (
     <div className="h-[250px] w-full overflow-y-auto pr-2 pt-2 space-y-3">
       {topClients.map((client, i) => (
-        <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-card border border-border hover:border-[#bc7e57]/50 transition-colors shadow-sm">
+        <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-card border border-border hover:border-primary/50 transition-colors shadow-sm">
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-amber-500/20 text-amber-500' : 'bg-muted text-muted-foreground'}`}>
               #{i + 1}
@@ -180,7 +180,7 @@ export const InvoiceDashboard = () => {
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 py-5">
           <div>
             <CardTitle className="text-xl font-bold flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#bc7e57]" /> Global Invoice Ledger
+              <FileText className="w-5 h-5 text-primary" /> Global Invoice Ledger
             </CardTitle>
             <CardDescription>Track, manage, and audit all officially generated bills.</CardDescription>
           </div>
@@ -191,7 +191,7 @@ export const InvoiceDashboard = () => {
                  placeholder="Search by ID or Client..." 
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
-                 className="pl-9 bg-background/50 border-border/50 focus-visible:ring-[#bc7e57]"
+                 className="pl-9 bg-background/50 border-border/50 focus-visible:ring-primary"
                />
              </div>
              <Tabs value={viewType} onValueChange={(v) => setViewType(v as "list"|"grid")} className="h-10">
@@ -266,7 +266,7 @@ export const InvoiceDashboard = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredInvoices.map((inv) => (
-                <div key={inv.id} className="bg-card border border-border/60 hover:border-[#bc7e57]/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                <div key={inv.id} className="bg-card border border-border/60 hover:border-primary/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
                   <div className={`absolute top-0 left-0 w-1 h-full ${inv.status === 'Paid' ? 'bg-emerald-500' : inv.status === 'Overdue' ? 'bg-destructive' : 'bg-muted'}`} />
                   <div className="flex justify-between items-start mb-4 pl-2">
                     <div>

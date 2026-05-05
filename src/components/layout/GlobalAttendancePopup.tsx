@@ -3,20 +3,28 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { format } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { LogIn, Clock, AlertTriangle, Building2, Home, Laptop, MapPin, X } from "lucide-react";
+import { LogIn, Clock, AlertTriangle, Building2, Home, Laptop, MapPin, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
+import loginHero from "@/assets/login-hero.jpg";
 
 const WORK_MODES = [
-  { id: "office", label: "HQ Office", icon: Building2 },
-  { id: "wfh", label: "Work From Home", icon: Home },
-  { id: "hybrid", label: "Hybrid", icon: Laptop },
-  { id: "field", label: "Field Ops", icon: MapPin },
+  { id: "office", label: "HQ Office", icon: Building2, hint: "On-site at HQ" },
+  { id: "wfh", label: "Work From Home", icon: Home, hint: "Remote today" },
+  { id: "hybrid", label: "Hybrid", icon: Laptop, hint: "Split day" },
+  { id: "field", label: "Field Ops", icon: MapPin, hint: "Out on assignment" },
 ] as const;
 
 const DISMISS_KEY_PREFIX = "clockin-dismiss-count-";
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 export function GlobalAttendancePopup() {
   const { profile } = useAuth();
@@ -47,14 +55,12 @@ export function GlobalAttendancePopup() {
 
   useEffect(() => {
     if (!isLoading && profile && myRecord === null) {
-      // Skip clock-in prompt on weekends (Saturday=6, Sunday=0)
       const dayOfWeek = new Date().getDay();
       if (dayOfWeek === 0 || dayOfWeek === 6) return;
 
       const stored = parseInt(localStorage.getItem(dismissKey) || "0", 10);
       setDismissCount(stored);
 
-      // Only show if dismissed fewer than 2 times today
       if (stored < 2) {
         const timer = setTimeout(() => setIsOpen(true), 1500);
         return () => clearTimeout(timer);
@@ -66,18 +72,15 @@ export function GlobalAttendancePopup() {
     const newCount = dismissCount + 1;
 
     if (newCount === 1) {
-      // First dismiss: close it, but it will return on next page load
       setDismissCount(newCount);
       localStorage.setItem(dismissKey, newCount.toString());
       setIsOpen(false);
       toast.info("Reminder: You haven't clocked in yet today.", { duration: 4000 });
     } else {
-      // Second dismiss: show the final warning first, then hide permanently
       if (!showFinalWarning) {
         setShowFinalWarning(true);
-        return; // Don't close yet — let user see the warning and dismiss again
+        return;
       }
-      // User confirmed the final warning
       setDismissCount(newCount);
       localStorage.setItem(dismissKey, newCount.toString());
       setIsOpen(false);
@@ -93,12 +96,14 @@ export function GlobalAttendancePopup() {
     },
   });
 
+  const startHour = (shiftConfig as any)?.total_days ?? 9;
+  const isLateNow = new Date().getHours() >= startHour;
+
   const clockInMutation = useMutation({
     mutationFn: async () => {
       if (!profile) throw new Error("Not logged in");
       const now = new Date();
       const hour = now.getHours();
-      const startHour = (shiftConfig as any)?.total_days ?? 9;
       const isLate = hour >= startHour;
       const status = isLate ? "late" : "present";
       const modeObj = WORK_MODES.find(m => m.id === workMode);
@@ -120,19 +125,19 @@ export function GlobalAttendancePopup() {
           .select("performance_score")
           .eq("id", profile.id)
           .single();
-          
+
         const currentScore = (currentProfile as any)?.performance_score ?? 100;
-        await (supabase as any).from("profiles").update({ 
-          performance_score: currentScore - 2 
+        await (supabase as any).from("profiles").update({
+          performance_score: currentScore - 2
         }).eq("id", profile.id);
       }
       return { isLate };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["my-attendance"] });
-      queryClient.invalidateQueries({ queryKey: ["profiles"] }); 
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
       setIsOpen(false);
-      
+
       if (data.isLate) {
         toast.warning(`Clocked in late. 2 points deducted, ${(profile?.full_name || "").split(" ")[0]}.`);
       } else {
@@ -144,91 +149,174 @@ export function GlobalAttendancePopup() {
 
   if (!profile || isLoading) return null;
 
+  const firstName = (profile?.full_name || "").split(" ")[0] || "there";
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleDismiss(); }}>
-      <DialogContent className="sm:max-w-md border-border/40 bg-background/95 backdrop-blur-xl shadow-2xl rounded-2xl" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
-            <Clock className="h-5 w-5 text-muted-foreground" /> Check In
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground pt-1">
-            {format(new Date(), "EEEE, MMMM d, yyyy")}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-6 py-2">
-          {/* Final Warning Banner */}
-          {showFinalWarning && (
-            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <p className="text-xs font-medium leading-relaxed">
-                This reminder <strong>will not appear again today</strong> if you close it now. Are you sure you don't want to clock in?
-              </p>
-            </div>
-          )}
+      <DialogContent
+        className="p-0 overflow-hidden border-border/40 bg-card shadow-2xl rounded-3xl sm:max-w-[920px] w-[calc(100vw-2rem)] max-h-[92vh]"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
+        <DialogTitle className="sr-only">Check In</DialogTitle>
+        <DialogDescription className="sr-only">
+          Register your attendance for {format(new Date(), "EEEE, MMMM d, yyyy")}
+        </DialogDescription>
 
-          <div className="p-4 rounded-xl bg-muted/30 border border-border/40 text-left">
-            <h4 className="font-medium text-foreground tracking-tight mb-1 text-md">Register Attendance</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">Please clock in to register your attendance for today. Your performance score tracks your punctuality automatically.</p>
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold text-foreground mb-3 tracking-tight">Working Mode</p>
-            <div className="grid grid-cols-2 gap-3 mb-5">
-              {WORK_MODES.map((mode) => {
-                const Icon = mode.icon;
-                const isSelected = workMode === mode.id;
-                return (
-                  <button
-                    key={mode.id}
-                    onClick={() => setWorkMode(mode.id)}
-                    className={`flex items-center gap-3 p-3 rounded-xl border text-sm transition-all focus:outline-none shadow-sm ${
-                      isSelected 
-                        ? 'bg-zinc-900 border-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:border-zinc-100 dark:text-zinc-900 font-medium' 
-                        : 'bg-background border-border text-muted-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    <Icon className={`h-4 w-4 ${isSelected ? 'opacity-100' : 'opacity-60'}`} />
-                    {mode.label}
-                  </button>
-                )
-              })}
-            </div>
-
-            <p className="text-sm text-foreground mb-2 font-medium tracking-tight">Additional Notes <span className="text-muted-foreground font-normal">(Optional)</span></p>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g., Running 10 mins late..."
-              className="resize-none bg-background/50 border-border/50 focus-visible:ring-1 focus-visible:ring-ring rounded-xl text-sm"
-              rows={2}
+        <div className="grid md:grid-cols-[0.85fr_1fr] max-h-[92vh]">
+          {/* LEFT — Wallpaper pane (hidden on mobile) */}
+          <div className="relative hidden md:block overflow-hidden">
+            <img
+              src={loginHero}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              loading="eager"
             />
+            {/* gradient overlays */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-primary/10 to-background/80" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+
+            {/* ambient glow */}
+            <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary/30 blur-3xl" />
+            <div className="absolute bottom-10 -right-16 h-64 w-64 rounded-full bg-accent-gold/20 blur-3xl" />
+
+            {/* content */}
+            <div className="relative z-10 flex h-full flex-col justify-between p-8 text-white">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-white/80">
+                <Sparkles className="h-3.5 w-3.5" />
+                RAC Daily Ritual
+              </div>
+
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-3 py-1.5 text-xs font-medium ring-1 ring-white/20">
+                  <Clock className="h-3.5 w-3.5" />
+                  {format(new Date(), "EEEE, MMMM d")}
+                </div>
+                <h2 className="text-3xl font-semibold leading-tight tracking-tight">
+                  {getGreeting()},<br />
+                  <span className="text-white/90">{firstName}.</span>
+                </h2>
+                <p className="text-sm leading-relaxed text-white/75 max-w-[280px]">
+                  A new day, a new rhythm. Register your attendance to keep the whole team in sync.
+                </p>
+
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <div className="rounded-xl bg-white/8 backdrop-blur-md ring-1 ring-white/15 p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-white/60">Shift starts</div>
+                    <div className="text-lg font-semibold mt-0.5">{startHour.toString().padStart(2, "0")}:00</div>
+                  </div>
+                  <div className="rounded-xl bg-white/8 backdrop-blur-md ring-1 ring-white/15 p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-white/60">Right now</div>
+                    <div className="text-lg font-semibold mt-0.5">{format(new Date(), "HH:mm")}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="pt-2 space-y-3">
-            <Button
-              onClick={() => clockInMutation.mutate()}
-              className="w-full py-6 text-base font-medium rounded-xl shadow-lg hover:shadow-xl transition-all gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              disabled={clockInMutation.isPending}
-            >
-              <LogIn className="h-5 w-5" />
-              {clockInMutation.isPending ? "Connecting..." : "Confirm Clock In"}
-            </Button>
-
-            {/* Dismiss with context */}
-            <button
-              onClick={handleDismiss}
-              className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-2 font-medium"
-            >
-              {dismissCount === 0 ? "Remind me later" : "I'll clock in later — dismiss permanently"}
-            </button>
-
-            {new Date().getHours() >= ((shiftConfig as any)?.total_days ?? 9) && (
-              <div className="flex items-center justify-center gap-2 text-rose-500 text-xs font-medium bg-rose-500/10 py-2.5 px-3 rounded-lg border border-rose-500/20">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                <span>Late Arrival: {((shiftConfig as any)?.total_days ?? 9).toString().padStart(2, '0')}:00 Time Limit Exceeded (-2 pts)</span>
+          {/* RIGHT — Action pane */}
+          <div className="relative flex flex-col overflow-y-auto">
+            <div className="p-7 md:p-8 space-y-6">
+              {/* Header (mobile only) */}
+              <div className="md:hidden">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" /> Check In
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight">{getGreeting()}, {firstName}.</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
               </div>
-            )}
+
+              {/* Desktop header */}
+              <div className="hidden md:block">
+                <h3 className="text-xl font-semibold tracking-tight text-foreground">Register attendance</h3>
+                <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                  Your performance score tracks punctuality automatically. Pick where you're working from today.
+                </p>
+              </div>
+
+              {/* Final Warning Banner */}
+              {showFinalWarning && (
+                <div className="flex items-start gap-3 p-3.5 rounded-xl bg-warning/10 border border-warning/30 text-warning-foreground">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
+                  <p className="text-xs font-medium leading-relaxed text-foreground">
+                    This reminder <strong>will not appear again today</strong> if you close it now. Are you sure you don't want to clock in?
+                  </p>
+                </div>
+              )}
+
+              {/* Working Mode */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Working Mode</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {WORK_MODES.map((mode) => {
+                    const Icon = mode.icon;
+                    const isSelected = workMode === mode.id;
+                    return (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        onClick={() => setWorkMode(mode.id)}
+                        className={`group relative flex flex-col items-start gap-1.5 p-3.5 rounded-xl border text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                          isSelected
+                            ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20"
+                            : "bg-background border-border hover:border-primary/40 hover:bg-muted/40"
+                        }`}
+                      >
+                        <Icon className={`h-4 w-4 ${isSelected ? "opacity-100" : "opacity-70 group-hover:opacity-100"}`} />
+                        <div>
+                          <div className="text-sm font-medium leading-tight">{mode.label}</div>
+                          <div className={`text-[11px] mt-0.5 leading-tight ${isSelected ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                            {mode.hint}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  Notes <span className="text-muted-foreground/60 normal-case font-normal tracking-normal">— optional</span>
+                </p>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="e.g., Running 10 mins late, on a client call this morning…"
+                  className="resize-none bg-muted/30 border-border/60 focus-visible:ring-1 focus-visible:ring-ring rounded-xl text-sm"
+                  rows={2}
+                />
+              </div>
+
+              {/* Late warning */}
+              {isLateNow && (
+                <div className="flex items-center gap-2.5 text-destructive text-xs font-medium bg-destructive/10 py-2.5 px-3.5 rounded-xl border border-destructive/20">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span>Late arrival — past {startHour.toString().padStart(2, "0")}:00 cutoff (−2 pts)</span>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="space-y-2.5 pt-1">
+                <Button
+                  onClick={() => clockInMutation.mutate()}
+                  className="w-full h-12 text-sm font-semibold rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                  disabled={clockInMutation.isPending}
+                >
+                  <LogIn className="h-4 w-4" />
+                  {clockInMutation.isPending ? "Connecting…" : "Confirm Clock In"}
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={handleDismiss}
+                  className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-2 font-medium"
+                >
+                  {dismissCount === 0 ? "Remind me later" : "I'll clock in later — dismiss permanently"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </DialogContent>

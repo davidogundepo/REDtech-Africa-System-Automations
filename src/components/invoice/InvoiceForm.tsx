@@ -172,12 +172,12 @@ export const InvoiceForm = ({ invoiceData, setInvoiceData }: InvoiceFormProps) =
                 <Input
                   value={invoiceData.accentColor}
                   onChange={(e) => updateField('accentColor', e.target.value)}
-                  placeholder="#bc7e57"
+                  placeholder="#C4622D"
                   className="flex-1"
                 />
               </div>
               <div className="flex gap-1.5 mt-2 flex-wrap">
-                {['#bc7e57', '#1a1a2e', '#16213e', '#0f3460', '#e94560', '#533483', '#2b9348', '#d4a373', '#264653', '#2a9d8f', '#e76f51', '#606c38'].map(c => (
+                {['#C4622D', '#1a1a2e', '#16213e', '#0f3460', '#e94560', '#533483', '#2b9348', '#d4a373', '#264653', '#2a9d8f', '#e76f51', '#606c38'].map(c => (
                   <button
                     key={c}
                     type="button"
