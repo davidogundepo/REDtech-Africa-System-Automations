@@ -89,7 +89,7 @@ const FinanceDashboard = () => {
   const expensesFill = theme === "dark" ? "#9ca3af" : "#1f2937";
   const tooltipBg = theme === "dark" ? "#1f2937" : "#ffffff";
   const tooltipBorder = theme === "dark" ? "#374151" : "#e5e7eb";
-  const pieColors = ["#C4622D", "#1e293b", "#10b981", "#f59e0b", "#6366f1", "#e11d48"];
+  const pieColors = ["hsl(var(--primary))", "hsl(var(--foreground))", "hsl(var(--success))", "hsl(var(--warning))", "hsl(var(--info))", "hsl(var(--destructive))"];
 
   // 1. Fetch Active Transactions
   const { data: transactions, isLoading: loadingTx } = useQuery({
