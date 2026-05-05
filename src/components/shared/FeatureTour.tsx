@@ -221,7 +221,7 @@ export function FeatureTour() {
 
 /** Manual replay — call from anywhere (e.g. profile menu button). */
 export function startFeatureTour(firstName = "there", role?: Role) {
-  const steps = buildSteps(firstName, role);
+  const steps = filterAvailableSteps(buildSteps(firstName, role));
   const d = makeDriver(steps);
   d.drive();
 }
