@@ -89,7 +89,7 @@ const FinanceDashboard = () => {
   const expensesFill = theme === "dark" ? "#9ca3af" : "#1f2937";
   const tooltipBg = theme === "dark" ? "#1f2937" : "#ffffff";
   const tooltipBorder = theme === "dark" ? "#374151" : "#e5e7eb";
-  const pieColors = ["#C4622D", "#1e293b", "#10b981", "#f59e0b", "#6366f1", "#e11d48"];
+  const pieColors = ["hsl(var(--primary))", "hsl(var(--foreground))", "hsl(var(--success))", "hsl(var(--warning))", "hsl(var(--info))", "hsl(var(--destructive))"];
 
   // 1. Fetch Active Transactions
   const { data: transactions, isLoading: loadingTx } = useQuery({
@@ -481,7 +481,7 @@ const FinanceDashboard = () => {
                   <div><Label>Amount (NGN) *</Label><Input type="number" required min="0" step="0.01" value={newReq.amount} onChange={(e) => setNewReq({...newReq, amount: e.target.value})} /></div>
                   <div><Label>Category *</Label><Input required value={newReq.category} onChange={(e) => setNewReq({...newReq, category: e.target.value})} placeholder="e.g., Software, Travel, Office Supplies" /></div>
                   <div><Label>Description</Label><Input value={newReq.description} onChange={(e) => setNewReq({...newReq, description: e.target.value})} placeholder="Detailed reason for request" /></div>
-                  <Button type="submit" className="w-full" style={{ backgroundColor: '#C4622D' }} disabled={addRequestMutation.isPending}>Submit Request</Button>
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={addRequestMutation.isPending}>Submit Request</Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -529,7 +529,7 @@ const FinanceDashboard = () => {
                     <div><Label>Category *</Label><Input required maxLength={120} value={newTx.category} onChange={(e) => setNewTx({...newTx, category: e.target.value})} placeholder="e.g., Retainer, AWS, Payroll" /></div>
                   </div>
                   <div><Label>Description</Label><Input maxLength={500} value={newTx.description} onChange={(e) => setNewTx({...newTx, description: e.target.value})} placeholder="Notes..." /></div>
-                  <Button type="submit" className="w-full" style={{ backgroundColor: '#C4622D' }} disabled={addTxMutation.isPending}>
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={addTxMutation.isPending}>
                     {addTxMutation.isPending ? "Saving…" : "Save Transaction"}
                   </Button>
                 </form>
@@ -1034,7 +1034,7 @@ const FinanceDashboard = () => {
                         <Label>Budgeted Amount (NGN)</Label>
                         <Input type="number" required min="0" step="1000" value={newBudget.budgeted_amount} onChange={(e) => setNewBudget({...newBudget, budgeted_amount: e.target.value})} />
                       </div>
-                      <Button type="submit" className="w-full" style={{ backgroundColor: '#C4622D' }} disabled={addBudgetMutation.isPending}>Save Budget</Button>
+                      <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={addBudgetMutation.isPending}>Save Budget</Button>
                     </form>
                   </DialogContent>
                 </Dialog>

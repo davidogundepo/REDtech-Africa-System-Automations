@@ -10,7 +10,7 @@ const formatCurrency = (amount: number) => {
 };
 
 const COLORS = {
-  primary: "#C4622D",
+  primary: "hsl(var(--primary))",
   emerald: "#10b981",
   destructive: "#ef4444",
   muted: "#64748b",

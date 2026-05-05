@@ -73,7 +73,7 @@ export function ViewerBanner() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hi Ayomide! I'd like to be upgraded so I can..." rows={4} />
-            <Button onClick={handleSendUpgradeRequest} className="w-full gap-2" style={{ backgroundColor: '#C4622D' }} disabled={sending}>
+            <Button onClick={handleSendUpgradeRequest} className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={sending}>
               {sending ? "Sending..." : "Send Upgrade Request"}
             </Button>
           </div>

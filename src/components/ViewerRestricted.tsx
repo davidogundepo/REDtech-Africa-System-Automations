@@ -92,8 +92,7 @@ export function ViewerRestricted({ action = "perform this action" }: ViewerRestr
           </div>
           <Button 
             onClick={() => setUpgradeDialog(true)}
-            className="gap-2 mt-2"
-            style={{ backgroundColor: '#C4622D' }}
+            className="gap-2 mt-2 bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <Sparkles className="h-4 w-4" />
             Request Access Upgrade
@@ -125,8 +124,7 @@ export function ViewerRestricted({ action = "perform this action" }: ViewerRestr
             />
             <Button
               onClick={handleSendUpgradeRequest}
-              className="w-full gap-2"
-              style={{ backgroundColor: '#C4622D' }}
+              className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
               disabled={sending}
             >
               <Mail className="h-4 w-4" />

@@ -10,7 +10,7 @@ import { format, subMonths, startOfMonth, endOfMonth, parseISO } from "date-fns"
 
 // Mock Data Generators for Analytics
 const COLORS = {
-  primary: "#C4622D",
+  primary: "hsl(var(--primary))",
   secondary: "#10b981",
   destructive: "#ef4444",
   muted: "#64748b",
