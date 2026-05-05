@@ -26,17 +26,17 @@ export const PremiumToggle: React.FC<PremiumToggleProps> = ({ checked, onChange,
       className={[
         'relative inline-flex flex-shrink-0 cursor-pointer items-center rounded-full',
         'border-2 border-transparent transition-all duration-300 ease-in-out',
-        'focus:outline-none focus-visible:ring-4 focus-visible:ring-[#bc7e57]/30',
+        'focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30',
         'disabled:opacity-40 disabled:cursor-not-allowed',
         d.track,
         checked
-          ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-lg shadow-emerald-500/30'
+          ? 'bg-success shadow-lg shadow-success/30'
           : 'bg-muted/70 dark:bg-muted',
       ].join(' ')}
     >
       <span
         className={[
-          'pointer-events-none inline-block transform rounded-full bg-white',
+          'pointer-events-none inline-block transform rounded-full bg-primary-foreground',
           'shadow-xl ring-0 transition-all duration-300 ease-in-out',
           d.thumb,
           checked ? d.on : d.off,
