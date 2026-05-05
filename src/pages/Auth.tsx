@@ -12,6 +12,14 @@ import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { supabase } from "@/integrations/supabase/client";
 
+const WORK_EMAIL_DOMAIN = "redtechafrica.com";
+
+const isWorkEmail = (email: string) => {
+  const normalized = email.trim().toLowerCase();
+  const [, domain = ""] = normalized.split("@");
+  return domain === WORK_EMAIL_DOMAIN;
+};
+
 const Auth = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -64,7 +72,16 @@ const Auth = () => {
     setLoading(true);
     const { error } = await signIn(loginEmail, loginPassword);
     if (error) {
-      toast.error(error);
+      const msg = error.toLowerCase();
+      if (msg.includes("invalid login") || msg.includes("invalid credentials")) {
+        toast.error("Wrong email or password. Try again or reset your password.");
+      } else if (msg.includes("email not confirmed") || msg.includes("not confirmed")) {
+        toast.error("Please confirm your email — check your inbox for the verification link.");
+      } else if (msg.includes("rate") || msg.includes("too many")) {
+        toast.error("Too many attempts. Wait a minute and try again.");
+      } else {
+        toast.error(error);
+      }
     } else {
       const { data: prof } = await (supabase as any).from("profiles").select("full_name").eq("email", loginEmail).maybeSingle();
       const firstName = (prof?.full_name || "").split(" ")[0] || "";
@@ -80,8 +97,8 @@ const Auth = () => {
       toast.error("Please fill in all fields");
       return;
     }
-    if (!signupEmail.endsWith("@redtechafrica.com") && signupEmail !== "david.oludepo@gmail.com") {
-      toast.error("Only @redtechafrica.com emails are allowed");
+    if (!isWorkEmail(signupEmail)) {
+      toast.error("Use your verified work email to create an account.");
       return;
     }
     if (signupPassword.length < 6) {
@@ -91,7 +108,14 @@ const Auth = () => {
     setLoading(true);
     const { error } = await signUp(signupEmail, signupPassword, signupName);
     if (error) {
-      const isExisting = error.toLowerCase().includes("already") || error.toLowerCase().includes("registered") || error.toLowerCase().includes("exists");
+      const lower = error.toLowerCase();
+      const isExisting = lower.includes("already") || lower.includes("registered") || lower.includes("exists");
+      const isWeak = lower.includes("pwned") || lower.includes("breach") || lower.includes("compromised");
+      if (isWeak) {
+        toast.error("This password has been seen in a data breach. Please choose a stronger one.");
+        setLoading(false);
+        return;
+      }
       if (isExisting) {
         const { error: loginError } = await signIn(signupEmail, signupPassword);
         if (loginError) {
@@ -183,13 +207,13 @@ const Auth = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="h-8 w-8 animate-spin text-[#bc7e57]" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-[#f0eeeb]">
+    <div className="min-h-screen flex bg-background">
 
       {/* ═══ LEFT: Clean White Form Panel ═══ */}
       <div className="w-full lg:w-[45%] xl:w-[42%] flex flex-col justify-center px-8 sm:px-12 lg:px-16 xl:px-20 py-12 bg-white lg:rounded-r-[0px]">
@@ -208,34 +232,34 @@ const Auth = () => {
         {view === "login" && !isRecoveryFlow && (
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <h1 className="text-[28px] font-bold text-[#1a1a1a] tracking-tight">Welcome Back</h1>
-              <p className="text-sm text-[#888] mt-1.5">Welcome back! Please enter your details below.</p>
+              <h1 className="text-[28px] font-bold text-foreground tracking-tight">Welcome Back</h1>
+              <p className="mt-1.5 text-sm text-muted-foreground">Welcome back! Please enter your details below.</p>
             </div>
 
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="login-email" className="text-sm font-semibold text-[#1a1a1a]">
+                <Label htmlFor="login-email" className="text-sm font-semibold text-foreground">
                   Email <span className="text-red-400">*</span>
                 </Label>
                 <Input
                   id="login-email"
                   type="email"
-                  placeholder="you@redtechafrica.com"
+                  placeholder={`you@${WORK_EMAIL_DOMAIN}`}
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  className="h-12 border-[#e5e5e5] bg-white rounded-xl text-sm placeholder:text-[#bbb] focus:border-[#bc7e57] focus:ring-[#bc7e57]/20 transition-colors"
+                  className="h-12 rounded-xl border-border bg-background text-sm placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:ring-primary/20"
                 />
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="login-password" className="text-sm font-semibold text-[#1a1a1a]">
+                  <Label htmlFor="login-password" className="text-sm font-semibold text-foreground">
                     Password <span className="text-red-400">*</span>
                   </Label>
                   <button
                     type="button"
                     onClick={() => setView("reset")}
-                    className="text-xs font-medium text-[#bc7e57] hover:text-[#a06b48] transition-colors"
+                    className="text-xs font-medium text-primary transition-colors hover:text-primary/80"
                   >
                     Forgot password?
                   </button>
@@ -247,12 +271,12 @@ const Auth = () => {
                     placeholder="Enter your password"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="h-12 border-[#e5e5e5] bg-white rounded-xl text-sm placeholder:text-[#bbb] focus:border-[#bc7e57] focus:ring-[#bc7e57]/20 pr-11 transition-colors"
+                    className="h-12 rounded-xl border-border bg-background pr-11 text-sm placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:ring-primary/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#bbb] hover:text-[#888] transition-colors"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition-colors hover:text-foreground"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -263,7 +287,7 @@ const Auth = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-[#1a1a1a] hover:bg-[#333] text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-none"
+              className="h-12 w-full rounded-xl bg-foreground text-sm font-semibold text-background shadow-none transition-all duration-200 hover:bg-foreground/90"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                 <span className="flex items-center justify-center gap-2">
@@ -272,9 +296,9 @@ const Auth = () => {
               )}
             </Button>
 
-            <p className="text-center text-sm text-[#888]">
+            <p className="text-center text-sm text-muted-foreground">
               Don't have an account?{" "}
-              <button type="button" onClick={() => setView("signup")} className="font-semibold text-[#1a1a1a] hover:text-[#bc7e57] transition-colors">
+              <button type="button" onClick={() => setView("signup")} className="font-semibold text-foreground transition-colors hover:text-primary">
                 Sign up today!
               </button>
             </p>
@@ -285,13 +309,13 @@ const Auth = () => {
         {view === "signup" && !isRecoveryFlow && (
           <form onSubmit={handleSignup} className="space-y-6">
             <div>
-              <h1 className="text-[28px] font-bold text-[#1a1a1a] tracking-tight">Create Account</h1>
-              <p className="text-sm text-[#888] mt-1.5">Join your team on the RAC Dashboard.</p>
+              <h1 className="text-[28px] font-bold text-foreground tracking-tight">Create Account</h1>
+              <p className="mt-1.5 text-sm text-muted-foreground">Join your team on the RAC Dashboard.</p>
             </div>
 
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="signup-name" className="text-sm font-semibold text-[#1a1a1a]">
+                <Label htmlFor="signup-name" className="text-sm font-semibold text-foreground">
                   Full Name <span className="text-red-400">*</span>
                 </Label>
                 <Input
@@ -300,26 +324,26 @@ const Auth = () => {
                   placeholder={randomPlaceholder}
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
-                  className="h-12 border-[#e5e5e5] bg-white rounded-xl text-sm placeholder:text-[#bbb] focus:border-[#bc7e57] focus:ring-[#bc7e57]/20 transition-colors"
+                  className="h-12 rounded-xl border-border bg-background text-sm placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:ring-primary/20"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="signup-email" className="text-sm font-semibold text-[#1a1a1a]">
+                <Label htmlFor="signup-email" className="text-sm font-semibold text-foreground">
                   Email <span className="text-red-400">*</span>
                 </Label>
                 <Input
                   id="signup-email"
                   type="email"
-                  placeholder="you@redtechafrica.com"
+                  placeholder={`you@${WORK_EMAIL_DOMAIN}`}
                   value={signupEmail}
                   onChange={(e) => setSignupEmail(e.target.value)}
-                  className="h-12 border-[#e5e5e5] bg-white rounded-xl text-sm placeholder:text-[#bbb] focus:border-[#bc7e57] focus:ring-[#bc7e57]/20 transition-colors"
+                  className="h-12 rounded-xl border-border bg-background text-sm placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:ring-primary/20"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="signup-password" className="text-sm font-semibold text-[#1a1a1a]">
+                <Label htmlFor="signup-password" className="text-sm font-semibold text-foreground">
                   Password <span className="text-red-400">*</span>
                 </Label>
                 <div className="relative">
@@ -329,12 +353,12 @@ const Auth = () => {
                     placeholder="Min. 6 characters"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
-                    className="h-12 border-[#e5e5e5] bg-white rounded-xl text-sm placeholder:text-[#bbb] focus:border-[#bc7e57] focus:ring-[#bc7e57]/20 pr-11 transition-colors"
+                    className="h-12 rounded-xl border-border bg-background pr-11 text-sm placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:ring-primary/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#bbb] hover:text-[#888] transition-colors"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition-colors hover:text-foreground"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -345,7 +369,7 @@ const Auth = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-[#1a1a1a] hover:bg-[#333] text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-none"
+              className="h-12 w-full rounded-xl bg-foreground text-sm font-semibold text-background shadow-none transition-all duration-200 hover:bg-foreground/90"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                 <span className="flex items-center justify-center gap-2">
@@ -354,9 +378,9 @@ const Auth = () => {
               )}
             </Button>
 
-            <p className="text-center text-sm text-[#888]">
+            <p className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
-              <button type="button" onClick={() => setView("login")} className="font-semibold text-[#1a1a1a] hover:text-[#bc7e57] transition-colors">
+              <button type="button" onClick={() => setView("login")} className="font-semibold text-foreground transition-colors hover:text-primary">
                 Sign in
               </button>
             </p>
@@ -367,22 +391,22 @@ const Auth = () => {
         {view === "reset" && !isRecoveryFlow && (
           <form onSubmit={handleResetPassword} className="space-y-6">
             <div>
-              <h1 className="text-[28px] font-bold text-[#1a1a1a] tracking-tight">Reset Password</h1>
-              <p className="text-sm text-[#888] mt-1.5">Enter your email and we'll send you reset instructions.</p>
+              <h1 className="text-[28px] font-bold text-foreground tracking-tight">Reset Password</h1>
+              <p className="mt-1.5 text-sm text-muted-foreground">Enter your email and we'll send you reset instructions.</p>
             </div>
 
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="reset-email" className="text-sm font-semibold text-[#1a1a1a]">
+                <Label htmlFor="reset-email" className="text-sm font-semibold text-foreground">
                   Email <span className="text-red-400">*</span>
                 </Label>
                 <Input
                   id="reset-email"
                   type="email"
-                  placeholder="you@redtechafrica.com"
+                  placeholder={`you@${WORK_EMAIL_DOMAIN}`}
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
-                  className="h-12 border-[#e5e5e5] bg-white rounded-xl text-sm placeholder:text-[#bbb] focus:border-[#bc7e57] focus:ring-[#bc7e57]/20 transition-colors"
+                  className="h-12 rounded-xl border-border bg-background text-sm placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:ring-primary/20"
                 />
               </div>
             </div>
@@ -390,14 +414,14 @@ const Auth = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-[#1a1a1a] hover:bg-[#333] text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-none"
+              className="h-12 w-full rounded-xl bg-foreground text-sm font-semibold text-background shadow-none transition-all duration-200 hover:bg-foreground/90"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Reset Link"}
             </Button>
 
-            <p className="text-center text-sm text-[#888]">
+            <p className="text-center text-sm text-muted-foreground">
               Remember your password?{" "}
-              <button type="button" onClick={() => setView("login")} className="font-semibold text-[#1a1a1a] hover:text-[#bc7e57] transition-colors">
+              <button type="button" onClick={() => setView("login")} className="font-semibold text-foreground transition-colors hover:text-primary">
                 Back to sign in
               </button>
             </p>
@@ -408,13 +432,13 @@ const Auth = () => {
         {isRecoveryFlow && (
           <form onSubmit={handleUpdatePassword} className="space-y-6">
             <div>
-              <h1 className="text-[28px] font-bold text-[#1a1a1a] tracking-tight">Set New Password</h1>
-              <p className="text-sm text-[#888] mt-1.5">Choose a strong password for your account.</p>
+              <h1 className="text-[28px] font-bold text-foreground tracking-tight">Set New Password</h1>
+              <p className="mt-1.5 text-sm text-muted-foreground">Choose a strong password for your account.</p>
             </div>
 
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="new-password" className="text-sm font-semibold text-[#1a1a1a]">
+                <Label htmlFor="new-password" className="text-sm font-semibold text-foreground">
                   New Password <span className="text-red-400">*</span>
                 </Label>
                 <div className="relative">
@@ -424,12 +448,12 @@ const Auth = () => {
                     placeholder="Min. 6 characters"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="h-12 border-[#e5e5e5] bg-white rounded-xl text-sm placeholder:text-[#bbb] focus:border-[#bc7e57] focus:ring-[#bc7e57]/20 pr-11 transition-colors"
+                    className="h-12 rounded-xl border-border bg-background pr-11 text-sm placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:ring-primary/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#bbb] hover:text-[#888] transition-colors"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition-colors hover:text-foreground"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -440,7 +464,7 @@ const Auth = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-[#1a1a1a] hover:bg-[#333] text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-none"
+              className="h-12 w-full rounded-xl bg-foreground text-sm font-semibold text-background shadow-none transition-all duration-200 hover:bg-foreground/90"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Password"}
             </Button>
@@ -449,17 +473,17 @@ const Auth = () => {
 
         {/* Footer */}
         <div className="mt-auto pt-12">
-          <p className="text-xs text-[#ccc]">
+          <p className="text-xs text-muted-foreground/80">
             © {new Date().getFullYear()}{" "}
-            <a href="https://redtechafrica.com" target="_blank" rel="noopener noreferrer" className="text-[#999] hover:text-[#bc7e57] transition-colors">
+            <a href="https://redtechafrica.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition-colors hover:text-primary">
               REDtech Africa Consulting
             </a>
             . Built by{" "}
-            <a href="https://www.linkedin.com/in/davidogundepo/" target="_blank" rel="noopener noreferrer" className="text-[#999] hover:text-[#bc7e57] transition-colors">
+            <a href="https://www.linkedin.com/in/davidogundepo/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition-colors hover:text-primary">
               David
             </a>{" "}
             &{" "}
-            <a href="https://www.linkedin.com/in/olu-sowunmi/" target="_blank" rel="noopener noreferrer" className="text-[#999] hover:text-[#bc7e57] transition-colors">
+            <a href="https://www.linkedin.com/in/olu-sowunmi/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition-colors hover:text-primary">
               Dolamu
             </a>
           </p>

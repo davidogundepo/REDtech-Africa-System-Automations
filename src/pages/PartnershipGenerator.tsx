@@ -124,7 +124,7 @@ function Section({ title, icon: Icon, children, defaultOpen = true }: {
         className="w-full flex items-center justify-between px-5 py-3.5 bg-muted/30 hover:bg-muted/50 transition-colors text-left group"
       >
         <span className="text-sm font-bold text-foreground flex items-center gap-2.5">
-          {Icon && <Icon className="h-4 w-4 text-[#bc7e57]" />}
+          {Icon && <Icon className="h-4 w-4 text-primary" />}
           {title}
         </span>
         {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
@@ -166,7 +166,7 @@ function ListField({ items, onChange, placeholder }: { items: string[]; onChange
           </Button>
         </div>
       ))}
-      <Button variant="ghost" size="sm" className="text-[#bc7e57] hover:text-[#a66c4a] hover:bg-[#bc7e57]/10 h-8 text-xs font-semibold"
+      <Button variant="ghost" size="sm" className="text-primary hover:text-[#a66c4a] hover:bg-primary/10 h-8 text-xs font-semibold"
         onClick={() => onChange([...items, ""])}>
         <Plus className="h-3 w-3 mr-1.5" /> Add item
       </Button>
@@ -269,7 +269,7 @@ function PartnershipForm({ data, onChange }: { data: PartnershipData; onChange: 
               </Button>
             </div>
           ))}
-          <Button variant="ghost" size="sm" className="text-[#bc7e57] hover:bg-[#bc7e57]/10 h-8 text-xs font-semibold" onClick={addService}>
+          <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10 h-8 text-xs font-semibold" onClick={addService}>
             <Plus className="h-3 w-3 mr-1.5" /> Add Service
           </Button>
         </div>
@@ -315,7 +315,7 @@ function PartnershipForm({ data, onChange }: { data: PartnershipData; onChange: 
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 shrink-0" onClick={() => removeTier(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             ))}
-            <Button variant="ghost" size="sm" className="text-[#bc7e57] hover:bg-[#bc7e57]/10 h-8 text-xs font-semibold" onClick={addTier}>
+            <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10 h-8 text-xs font-semibold" onClick={addTier}>
               <Plus className="h-3 w-3 mr-1.5" /> Add Tier
             </Button>
           </div>
@@ -385,7 +385,7 @@ function PartnershipForm({ data, onChange }: { data: PartnershipData; onChange: 
       <Section title="Governing Law & Disputes" icon={Scale} defaultOpen={false}>
         <Field label="Governing Law"><Input className={inputCls} value={data.governingLaw} onChange={e => set("governingLaw", e.target.value)} /></Field>
         <Field label="Dispute Resolution">
-          <textarea className="w-full border border-border/50 rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-[#bc7e57]/50 min-h-[72px] resize-y"
+          <textarea className="w-full border border-border/50 rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[72px] resize-y"
             value={data.disputeResolution} onChange={e => set("disputeResolution", e.target.value)} />
         </Field>
       </Section>
@@ -410,7 +410,7 @@ import { forwardRef } from "react";
 
 const PartnershipPreview = forwardRef<HTMLDivElement, { data: PartnershipData }>(
   ({ data }, ref) => {
-    const accent = data.accentColor || "#bc7e57";
+    const accent = data.accentColor || "hsl(var(--primary))";
     const accentBg = `${accent}10`;
     const accentBorder = `${accent}35`;
     const agreementLabel = AGREEMENT_LABELS[data.agreementType] || "Partnership Agreement";
@@ -658,14 +658,42 @@ export default function PartnershipGenerator() {
   const { profile } = useAuth();
   const [data, setData] = useState<PartnershipData>(() => createDefaultData(profile));
   const [activeView, setActiveView] = useState<"form" | "preview">("form");
+  const [exporting, setExporting] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `Partnership-Agreement-${data.partnerName || "Partner"}-${data.agreementNumber}`,
+    onAfterPrint: () => setExporting(false),
   });
 
+  const validateBeforeExport = (): string | null => {
+    if (!data.partnerName?.trim()) return "Partner representative name is required";
+    if (!data.partnerCompany?.trim()) return "Partner company is required";
+    if (!data.agreementNumber?.trim()) return "Agreement number is required";
+    if (!data.effectiveDate) return "Effective date is required";
+    if (!data.expiryDate) return "Expiry date is required";
+    if (new Date(data.expiryDate) <= new Date(data.effectiveDate)) return "Expiry date must be after effective date";
+    if (data.partnerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.partnerEmail)) return "Partner email is not valid";
+    if (!data.coveredServices?.length) return "Add at least one covered service";
+    return null;
+  };
+
+  const handleExport = () => {
+    if (exporting) return;
+    const err = validateBeforeExport();
+    if (err) { toast.error(err); return; }
+    setExporting(true);
+    try {
+      handlePrint();
+    } catch (e: any) {
+      setExporting(false);
+      toast.error(e?.message || "Failed to export PDF");
+    }
+  };
+
   const handleReset = () => {
+    if (exporting) return;
     if (confirm("Reset all fields to defaults?")) {
       setData(createDefaultData(profile));
       toast.success("All fields reset to defaults");
@@ -677,11 +705,11 @@ export default function PartnershipGenerator() {
       {/* Hero Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6">
         <div>
-          <div className="inline-flex items-center space-x-2 text-xs font-semibold text-[#bc7e57] uppercase tracking-wider mb-2">
-            <span className="w-2 h-2 rounded-full bg-[#bc7e57]" />
+          <div className="inline-flex items-center space-x-2 text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+            <span className="w-2 h-2 rounded-full bg-primary" />
             <span>Legal Document Generator</span>
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight">Partnership <span className="text-[#bc7e57]">Agreement</span></h1>
+          <h1 className="text-4xl font-extrabold tracking-tight">Partnership <span className="text-primary">Agreement</span></h1>
           <p className="text-muted-foreground mt-2 max-w-xl leading-relaxed">
             Generate professional partnership agreements with live preview and PDF export. Fill in the form, preview the document, and download.
           </p>
@@ -693,16 +721,16 @@ export default function PartnershipGenerator() {
           </Button>
           <div className="flex border border-border/50 rounded-xl overflow-hidden shadow-sm lg:hidden">
             <button onClick={() => setActiveView("form")}
-              className={`h-10 px-4 text-xs font-bold tracking-wide transition-all ${activeView === "form" ? "bg-[#bc7e57] text-white" : "bg-card text-muted-foreground hover:bg-muted/60"}`}>
+              className={`h-10 px-4 text-xs font-bold tracking-wide transition-all ${activeView === "form" ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-muted/60"}`}>
               <Edit className="h-3.5 w-3.5 inline mr-1.5" />Edit
             </button>
             <button onClick={() => setActiveView("preview")}
-              className={`h-10 px-4 text-xs font-bold tracking-wide transition-all ${activeView === "preview" ? "bg-[#bc7e57] text-white" : "bg-card text-muted-foreground hover:bg-muted/60"}`}>
+              className={`h-10 px-4 text-xs font-bold tracking-wide transition-all ${activeView === "preview" ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-muted/60"}`}>
               <Eye className="h-3.5 w-3.5 inline mr-1.5" />Preview
             </button>
           </div>
-          <Button onClick={() => handlePrint()} className="bg-[#bc7e57] hover:bg-[#a66c4a] h-10 px-5 rounded-2xl font-bold shadow-lg">
-            <Download className="h-4 w-4 mr-2" /> Export PDF
+          <Button onClick={handleExport} disabled={exporting} className="bg-primary hover:bg-[#a66c4a] h-10 px-5 rounded-2xl font-bold shadow-lg disabled:opacity-60">
+            <Download className="h-4 w-4 mr-2" /> {exporting ? "Exporting…" : "Export PDF"}
           </Button>
         </div>
       </div>
@@ -722,7 +750,7 @@ export default function PartnershipGenerator() {
         <div className={`${activeView === "form" ? "hidden lg:block" : "block"}`}>
           <div className="sticky top-0">
             <h2 className="text-sm font-bold text-muted-foreground flex items-center gap-2 mb-3 uppercase tracking-wider">
-              <Eye className="h-4 w-4 text-[#bc7e57]" /> Live Preview
+              <Eye className="h-4 w-4 text-primary" /> Live Preview
             </h2>
             <div className="bg-muted/30 p-3 rounded-2xl border border-border/50 overflow-auto max-h-[calc(100vh-240px)] shadow-inner">
               <div className="transform origin-top-left scale-[0.52] xl:scale-[0.62]" style={{ width: "210mm" }}>

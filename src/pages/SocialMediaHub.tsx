@@ -75,7 +75,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   draft:     { label: "Draft",     color: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300", icon: <Edit3 className="h-3 w-3"/> },
   scheduled: { label: "Scheduled", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300", icon: <Clock className="h-3 w-3"/> },
   approved:  { label: "Approved",  color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300", icon: <CheckCircle2 className="h-3 w-3"/> },
-  published: { label: "Published", color: "bg-[#bc7e57]/10 text-[#bc7e57]", icon: <CheckCircle2 className="h-3 w-3"/> },
+  published: { label: "Published", color: "bg-primary/10 text-primary", icon: <CheckCircle2 className="h-3 w-3"/> },
   rejected:  { label: "Rejected",  color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300", icon: <AlertCircle className="h-3 w-3"/> },
 };
 
@@ -138,15 +138,15 @@ const UploadZone = ({ onFiles, previews, onClear }: { onFiles: (f: File[]) => vo
 
   const UploadTrigger = ({ compact = false }: { compact?: boolean }) => (
     <div
-      className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${dragging ? "border-[#bc7e57] bg-[#bc7e57]/5" : "border-border hover:border-[#bc7e57]/50 hover:bg-muted/30"} ${compact ? "h-full w-full" : "p-8 min-h-[140px]"}`}
+      className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${dragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/30"} ${compact ? "h-full w-full" : "p-8 min-h-[140px]"}`}
       onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
       onClick={triggerUpload}
     >
       <input ref={ref} type="file" multiple accept="image/*,video/*" className="hidden" onChange={e => { const f = Array.from(e.target.files||[]); if (f.length) onFiles(f); }}/>
-      <div className={`${compact ? "h-7 w-7" : "h-10 w-10"} rounded-xl flex items-center justify-center transition-colors ${dragging ? "bg-[#bc7e57]/20" : "bg-muted"}`}>
-        {compact ? <Plus className="h-4 w-4 text-[#bc7e57]" /> : <Upload className={`h-5 w-5 ${dragging ? "text-[#bc7e57]" : "text-muted-foreground"}`}/>}
+      <div className={`${compact ? "h-7 w-7" : "h-10 w-10"} rounded-xl flex items-center justify-center transition-colors ${dragging ? "bg-primary/20" : "bg-muted"}`}>
+        {compact ? <Plus className="h-4 w-4 text-primary" /> : <Upload className={`h-5 w-5 ${dragging ? "text-primary" : "text-muted-foreground"}`}/>}
       </div>
       {!compact && (
         <div className="text-center">
@@ -299,11 +299,11 @@ const ContentCalendar = ({ posts, onReschedule }: { posts: SocialPost[]; onResch
 
   return (
     <>
-      <Card className="border-[#bc7e57]/20 shadow-sm overflow-hidden">
+      <Card className="border-primary/20 shadow-sm overflow-hidden">
         <CardHeader className="bg-muted/30 border-b border-border/50 pb-4 pt-5">
           <div className="flex items-center justify-between px-2">
             <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
-              <Calendar className="h-5 w-5" style={{ color: "#bc7e57" }}/> Content Calendar
+              <Calendar className="h-5 w-5 text-primary"/> Content Calendar
               <span className="text-xs text-muted-foreground font-normal ml-2">Drag posts to reschedule</span>
             </CardTitle>
             <div className="flex items-center gap-1 bg-background border rounded-lg p-1 shadow-sm">
@@ -330,20 +330,20 @@ const ContentCalendar = ({ posts, onReschedule }: { posts: SocialPost[]; onResch
               return (
                 <div
                   key={day.toISOString()}
-                  className={`min-h-[100px] border-r border-b border-border/30 p-1.5 flex flex-col transition-all ${!isSameMonth(day, currentMonth) ? "opacity-40 bg-muted/5" : ""} ${today ? "bg-[#bc7e57]/5" : ""} ${isDropTarget ? "bg-[#bc7e57]/15 ring-2 ring-inset ring-[#bc7e57]/50 scale-[0.99]" : "hover:bg-muted/40"}`}
+                  className={`min-h-[100px] border-r border-b border-border/30 p-1.5 flex flex-col transition-all ${!isSameMonth(day, currentMonth) ? "opacity-40 bg-muted/5" : ""} ${today ? "bg-primary/5" : ""} ${isDropTarget ? "bg-primary/15 ring-2 ring-inset ring-primary/50 scale-[0.99]" : "hover:bg-muted/40"}`}
                   onDragOver={e => handleDragOver(e, day)}
                   onDragLeave={() => setDropTarget(null)}
                   onDrop={e => handleDrop(e, day)}
                 >
                   <div className="flex justify-between items-start mb-1.5 px-1">
-                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${today ? "bg-[#bc7e57] text-white shadow-md shadow-[#bc7e57]/20" : "text-foreground"}`}>
+                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${today ? "bg-primary text-white shadow-md shadow-primary/20" : "text-foreground"}`}>
                       {format(day, "d")}
                     </span>
                     {dayPosts.length > 0 && (
                       <span className="text-[9px] font-medium text-muted-foreground mt-1">{dayPosts.length} post{dayPosts.length > 1 ? 's' : ''}</span>
                     )}
                     {isDropTarget && (
-                      <span className="text-[9px] font-bold text-[#bc7e57] animate-pulse">Drop here</span>
+                      <span className="text-[9px] font-bold text-primary animate-pulse">Drop here</span>
                     )}
                   </div>
                   <div className="flex-1 space-y-1 overflow-y-auto pr-0.5 custom-scrollbar">
@@ -355,7 +355,7 @@ const ContentCalendar = ({ posts, onReschedule }: { posts: SocialPost[]; onResch
                           draggable
                           onDragStart={e => handleDragStart(e, p)}
                           className="group relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-white border border-white/10 shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md cursor-grab active:cursor-grabbing active:opacity-60 active:scale-95 select-none"
-                          style={{ backgroundColor: plt?.color || "#bc7e57" }}
+                          style={{ backgroundColor: plt?.color || "#C4622D" }}
                           title={`Drag to reschedule: ${p.content?.slice(0, 50)}`}
                         >
                           {plt && <plt.icon className="h-2.5 w-2.5 flex-shrink-0 opacity-90"/>}
@@ -377,14 +377,14 @@ const ContentCalendar = ({ posts, onReschedule }: { posts: SocialPost[]; onResch
         <AlertDialogContent className="rounded-3xl border-border/50 bg-card/95 backdrop-blur-xl max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-black flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-[#bc7e57]" /> Confirm Reschedule
+              <Calendar className="h-5 w-5 text-primary" /> Confirm Reschedule
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium text-muted-foreground mt-2">
               <span className="block mb-3">You're about to move this post to a new date:</span>
               {confirmModal && (
                 <div className="rounded-xl bg-muted/50 border border-border/50 p-3 space-y-2">
                   <p className="text-xs text-foreground font-semibold line-clamp-2">"{confirmModal.post.content.slice(0, 80)}..."</p>
-                  <p className="text-xs font-bold text-[#bc7e57]">📅 New date: {format(confirmModal.newDate, "EEEE, d MMMM yyyy")}</p>
+                  <p className="text-xs font-bold text-primary">📅 New date: {format(confirmModal.newDate, "EEEE, d MMMM yyyy")}</p>
                 </div>
               )}
             </AlertDialogDescription>
@@ -393,7 +393,7 @@ const ContentCalendar = ({ posts, onReschedule }: { posts: SocialPost[]; onResch
             <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmReschedule}
-              className="rounded-xl bg-[#bc7e57] hover:bg-[#a56d49] text-white font-bold shadow-md shadow-[#bc7e57]/20"
+              className="rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-md shadow-primary/20"
             >
               Confirm Reschedule
             </AlertDialogAction>
@@ -417,14 +417,14 @@ const PostCard = ({ post, onPreview, onEdit, onDelete, onStatusChange, isAdmin }
   const Icon = plt?.icon || Megaphone;
 
   return (
-    <Card className="hover:shadow-md transition-all border-border/50 hover:border-[#bc7e57]/30 group overflow-hidden">
+    <Card className="hover:shadow-md transition-all border-border/50 hover:border-primary/30 group overflow-hidden">
       {/* Platform colour strip */}
-      <div className="h-1 w-full" style={{ backgroundColor: plt?.color || "#bc7e57" }}/>
+      <div className="h-1 w-full" style={{ backgroundColor: plt?.color || "#C4622D" }}/>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           {/* Platform icon */}
-          <div className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: (plt?.color || "#bc7e57") + "22" }}>
-            <Icon className="h-5 w-5" style={{ color: plt?.color || "#bc7e57" }}/>
+          <div className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: (plt?.color || "#C4622D") + "22" }}>
+            <Icon className="h-5 w-5" style={{ color: plt?.color || "#C4622D" }}/>
           </div>
 
           <div className="flex-1 min-w-0">
@@ -478,10 +478,10 @@ const PostCard = ({ post, onPreview, onEdit, onDelete, onStatusChange, isAdmin }
 
         {/* Actions */}
         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/40">
-          <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs hover:text-[#bc7e57]" onClick={onPreview}>
+          <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs hover:text-primary" onClick={onPreview}>
             <Eye className="h-3.5 w-3.5"/> Preview
           </Button>
-          <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs hover:text-[#bc7e57]" onClick={onEdit}>
+          <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs hover:text-primary" onClick={onEdit}>
             <Edit3 className="h-3.5 w-3.5"/> Edit
           </Button>
           {isAdmin && post.status === "draft" && (
@@ -562,7 +562,7 @@ const WeeklyCalendar = ({
             ))}
           </div>
           {canEdit && (
-            <Button size="sm" className="gap-1.5 text-xs text-white" style={{ backgroundColor: "#bc7e57" }} onClick={() => openStudio()}>
+            <Button size="sm" className="gap-1.5 text-xs text-white" style={{ backgroundColor: "hsl(var(--primary))" }} onClick={() => openStudio()}>
               <Plus className="h-3.5 w-3.5"/> Add Post
             </Button>
           )}
@@ -579,16 +579,16 @@ const WeeklyCalendar = ({
               const isTodayD = isSameDay(day, new Date());
               const dp = postsForDay(day);
               return (
-                <div key={i} className={`border-r border-border/20 p-2 text-center ${isTodayD ? 'bg-[#bc7e57]/5' : ''}`}>
+                <div key={i} className={`border-r border-border/20 p-2 text-center ${isTodayD ? 'bg-primary/5' : ''}`}>
                   <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wide">{format(day, 'EEE')}</p>
                   <div className={`mx-auto mt-0.5 h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    isTodayD ? 'bg-[#bc7e57] text-white' : 'text-foreground'
+                    isTodayD ? 'bg-primary text-white' : 'text-foreground'
                   }`}>{format(day, 'd')}</div>
                   {dp.length > 0 && (
                     <div className="flex justify-center gap-0.5 mt-1">
                       {dp.slice(0, 5).map((p: SocialPost) => {
                         const plt = PLATFORMS.find(x => x.value === p.platform);
-                        return <div key={p.id} className="h-1.5 w-1.5 rounded-full" style={{ background: plt?.color || '#bc7e57' }}/>;
+                        return <div key={p.id} className="h-1.5 w-1.5 rounded-full" style={{ background: plt?.color || '#C4622D' }}/>;
                       })}
                     </div>
                   )}
@@ -609,8 +609,8 @@ const WeeklyCalendar = ({
                   const isTodayD = isSameDay(day, new Date());
                   return (
                     <div key={di} className={`border-r border-border/10 p-1 space-y-0.5 ${
-                      isTodayD ? 'bg-[#bc7e57]/[0.03]' : 'hover:bg-muted/20'
-                    } ${dragOverSlot === `${di}-${hour}` ? 'ring-2 ring-[#bc7e57]/40 bg-[#bc7e57]/10' : ''} transition-colors`}
+                      isTodayD ? 'bg-primary/[0.03]' : 'hover:bg-muted/20'
+                    } ${dragOverSlot === `${di}-${hour}` ? 'ring-2 ring-primary/40 bg-primary/10' : ''} transition-colors`}
                       onDragOver={(e) => { e.preventDefault(); setDragOverSlot(`${di}-${hour}`); }}
                       onDragLeave={() => setDragOverSlot(null)}
                       onDrop={(e) => {
@@ -637,7 +637,7 @@ const WeeklyCalendar = ({
                             }}
                             onClick={() => setPreviewPost(p)}
                             className={`w-full text-left rounded-md px-1.5 py-1 text-white text-[9px] leading-tight hover:opacity-90 transition-opacity flex items-start gap-1 shadow-sm ${canEdit ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                            style={{ background: plt?.color || '#bc7e57' }}
+                            style={{ background: plt?.color || '#C4622D' }}
                           >
                             <PIcon className="h-2.5 w-2.5 flex-shrink-0 mt-0.5"/>
                             <span className="truncate">{p.content?.slice(0, 28) || 'No caption'}</span>
@@ -670,7 +670,7 @@ const AnalyticsTab = ({
   const statusCounts = Object.entries(STATUS_CONFIG).map(([k, v]) => ({
     name: v.label,
     value: posts.filter((x: SocialPost) => x.status === k).length,
-    color: k==='published'?'#bc7e57':k==='approved'?'#22c55e':k==='scheduled'?'#3b82f6':k==='draft'?'#8b5cf6':'#ef4444',
+    color: k==='published'?'#C4622D':k==='approved'?'#22c55e':k==='scheduled'?'#3b82f6':k==='draft'?'#8b5cf6':'#ef4444',
   }));
   const weeklyData = Array.from({ length: 6 }, (_, i) => {
     const d = new Date();
@@ -693,9 +693,9 @@ const AnalyticsTab = ({
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total Content',   val: String(total),              sub: 'across all platforms',            color: '#bc7e57', icon: Layers },
+          { label: 'Total Content',   val: String(total),              sub: 'across all platforms',            color: 'hsl(var(--primary))', icon: Layers },
           { label: 'Published',       val: String(published),          sub: `${engagePct}% publish rate`,       color: '#22c55e', icon: CheckCircle2 },
-          { label: 'Top Platform',    val: topPlatform?.name || '—',    sub: `${topPlatform?.value||0} posts`,   color: topPlatform?.color||'#bc7e57', icon: TrendingUp },
+          { label: 'Top Platform',    val: topPlatform?.name || '—',    sub: `${topPlatform?.value||0} posts`,   color: topPlatform?.color||'#C4622D', icon: TrendingUp },
           { label: 'Awaiting Action', val: String(approved + drafts),  sub: `${approved} to publish, ${drafts} drafts`, color: '#f59e0b', icon: AlertCircle },
         ].map(({ label, val, sub, color, icon: Icon }) => (
           <Card key={label} className="border-border/50">
@@ -725,14 +725,14 @@ const AnalyticsTab = ({
               <AreaChart data={weeklyData} margin={{ top: 4, right: 8, bottom: 0, left: -24 }}>
                 <defs>
                   <linearGradient id="calGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.35}/>
-                    <stop offset="95%" stopColor="#bc7e57" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.35}/>
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="week" tick={{ fontSize: 9 }} axisLine={false} tickLine={false}/>
                 <YAxis tick={{ fontSize: 9 }} allowDecimals={false} axisLine={false} tickLine={false}/>
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                <Area type="monotone" dataKey="posts" stroke="#bc7e57" strokeWidth={2.5} fill="url(#calGrad)" dot={{ r: 3, fill: '#bc7e57' }}/>
+                <Area type="monotone" dataKey="posts" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#calGrad)" dot={{ r: 3, fill: 'hsl(var(--primary))' }}/>
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
@@ -821,7 +821,7 @@ const StrategyTab = () => {
 
   const contentPillars = [
     { name: "Educational", value: 35, color: "#10b981" },
-    { name: "Promotional", value: 40, color: "#bc7e57" },
+    { name: "Promotional", value: 40, color: "hsl(var(--primary))" },
     { name: "Culture", value: 15, color: "#3b82f6" },
     { name: "Thought Leadership", value: 10, color: "#8b5cf6" },
   ];
@@ -870,7 +870,7 @@ const StrategyTab = () => {
               content: (
                 <div className="p-6 md:p-8 h-full flex flex-col">
                   <div className="flex items-center gap-2 mb-2">
-                    <PieChart className="h-5 w-5 text-[#bc7e57]" />
+                    <PieChart className="h-5 w-5 text-primary" />
                     <h3 className="text-xl font-black">Strategic Content Mix</h3>
                   </div>
                   <p className="text-xs text-muted-foreground font-medium mb-4">Target distribution for maximum algorithm optimization.</p>
@@ -1180,11 +1180,11 @@ const SocialMediaHub = () => {
       <div className="border-b border-border/40 bg-background/95 sticky top-0 z-10 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: "#bc7e57" }}>Social Media Hub</h1>
+            <h1 className="text-2xl font-bold text-primary">Social Media Hub</h1>
             <p className="text-sm text-muted-foreground">Plan · Create · Schedule · Collaborate</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button onClick={() => openStudio()} className="gap-2 text-white shadow-md hover:scale-105 transition-transform" style={{ backgroundColor: "#bc7e57" }}>
+            <Button onClick={() => openStudio()} className="gap-2 text-white shadow-md hover:scale-105 transition-transform" style={{ backgroundColor: "hsl(var(--primary))" }}>
               <Plus className="h-4 w-4"/> Create Post
             </Button>
           </div>
@@ -1196,11 +1196,11 @@ const SocialMediaHub = () => {
         {/* ── Interactive Stat Cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {[
-            { id: "all", label: "Total Posts", value: total, icon: Layers, color: "#bc7e57" },
+            { id: "all", label: "Total Posts", value: total, icon: Layers, color: "hsl(var(--primary))" },
             { id: "draft", label: "Drafts", value: drafts, icon: Edit3, color: "#8b5cf6" },
             { id: "scheduled", label: "Scheduled", value: scheduled, icon: Clock, color: "#3b82f6" },
             { id: "approved", label: "Approved", value: approved, icon: CheckCircle2, color: "#10b981" },
-            { id: "published", label: "Published", value: published, icon: Activity, color: "#bc7e57" },
+            { id: "published", label: "Published", value: published, icon: Activity, color: "hsl(var(--primary))" },
           ].map(({ id, label, value, icon: Icon, color }) => {
             const isActive = filterStatus === id;
             return (
@@ -1248,7 +1248,7 @@ const SocialMediaHub = () => {
                 variant={filterPlatform === "all" ? "default" : "outline"} 
                 size="sm" 
                 onClick={() => setFilterPlatform("all")}
-                className={`h-9 px-4 rounded-full text-xs font-semibold shrink-0 transition-all ${filterPlatform === "all" ? "bg-[#bc7e57] hover:bg-[#bc7e57]/90 shadow-md translate-y-[-1px]" : "border-border/60 hover:border-[#bc7e57]/40"}`}
+                className={`h-9 px-4 rounded-full text-xs font-semibold shrink-0 transition-all ${filterPlatform === "all" ? "bg-primary hover:bg-primary/90 shadow-md translate-y-[-1px]" : "border-border/60 hover:border-primary/40"}`}
               >
                 All Platforms
               </Button>
@@ -1261,7 +1261,7 @@ const SocialMediaHub = () => {
                     variant={active ? "default" : "outline"}
                     size="sm"
                     onClick={() => setFilterPlatform(p.value)}
-                    className={`h-9 px-4 rounded-full text-xs font-semibold shrink-0 gap-2 transition-all ${active ? "shadow-md translate-y-[-1px]" : "border-border/60 hover:border-[#bc7e57]/40"}`}
+                    className={`h-9 px-4 rounded-full text-xs font-semibold shrink-0 gap-2 transition-all ${active ? "shadow-md translate-y-[-1px]" : "border-border/60 hover:border-primary/40"}`}
                     style={active ? { backgroundColor: p.color, border: "none" } : {}}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -1357,7 +1357,7 @@ const SocialMediaHub = () => {
               const statusCounts = Object.entries(STATUS_CONFIG).map(([k, v]) => ({
                 name: v.label,
                 value: posts.filter((x: SocialPost) => x.status === k).length,
-                color: k === 'published' ? '#bc7e57' : k === 'approved' ? '#22c55e' : k === 'scheduled' ? '#3b82f6' : k === 'draft' ? '#8b5cf6' : '#ef4444',
+                color: k === 'published' ? '#C4622D' : k === 'approved' ? '#22c55e' : k === 'scheduled' ? '#3b82f6' : k === 'draft' ? '#8b5cf6' : '#ef4444',
               }));
               // Posts per last 6 weeks
               const weeklyData = Array.from({ length: 6 }, (_, i) => {
@@ -1381,9 +1381,9 @@ const SocialMediaHub = () => {
                   {/* KPI row */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                      { label: 'Total Content', val: total, sub: 'Across all platforms', color: '#bc7e57', icon: Layers },
+                      { label: 'Total Content', val: total, sub: 'Across all platforms', color: 'hsl(var(--primary))', icon: Layers },
                       { label: 'Publish Rate', val: `${engagePct}%`, sub: `${published} published posts`, color: '#22c55e', icon: CheckCircle2 },
-                      { label: 'Top Platform', val: topPlatform?.name || '—', sub: `${topPlatform?.value || 0} posts`, color: topPlatform?.color || '#bc7e57', icon: TrendingUp },
+                      { label: 'Top Platform', val: topPlatform?.name || '—', sub: `${topPlatform?.value || 0} posts`, color: topPlatform?.color || '#C4622D', icon: TrendingUp },
                       { label: 'Pending Action', val: approved + drafts, sub: `${approved} approved, ${drafts} drafts`, color: '#f59e0b', icon: AlertCircle },
                     ].map(({ label, val, sub, color, icon: Icon }) => (
                       <Card key={label} className="border-border/50 hover:shadow-md transition-shadow relative overflow-hidden group">
@@ -1406,7 +1406,7 @@ const SocialMediaHub = () => {
                     {/* Posts per week trend */}
                     <Card className="lg:col-span-2 border-border/50 shadow-sm">
                       <CardHeader className="pb-4 border-b border-border/30">
-                        <CardTitle className="text-base font-bold flex items-center gap-2"><BarChart3 className="h-4 w-4 text-[#bc7e57]"/> Content Volume Trend</CardTitle>
+                        <CardTitle className="text-base font-bold flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary"/> Content Volume Trend</CardTitle>
                         <CardDescription className="text-xs">Posts created over the last 6 weeks across all platforms</CardDescription>
                       </CardHeader>
                       <CardContent className="pt-6">
@@ -1414,14 +1414,14 @@ const SocialMediaHub = () => {
                           <AreaChart data={weeklyData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
                             <defs>
                               <linearGradient id="aGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#bc7e57" stopOpacity={0.4}/>
-                                <stop offset="95%" stopColor="#bc7e57" stopOpacity={0.0}/>
+                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
+                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.0}/>
                               </linearGradient>
                             </defs>
                             <XAxis dataKey="week" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} dy={10}/>
                             <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} axisLine={false} tickLine={false}/>
                             <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(188,126,87,0.2)', strokeWidth: 2, strokeDasharray: "4 4" }} />
-                            <Area type="monotone" dataKey="posts" stroke="#bc7e57" strokeWidth={3} fill="url(#aGrad)" activeDot={{ r: 6, fill: '#bc7e57', stroke: '#fff', strokeWidth: 2 }}/>
+                            <Area type="monotone" dataKey="posts" stroke="hsl(var(--primary))" strokeWidth={3} fill="url(#aGrad)" activeDot={{ r: 6, fill: 'hsl(var(--primary))', stroke: '#fff', strokeWidth: 2 }}/>
                           </AreaChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -1430,7 +1430,7 @@ const SocialMediaHub = () => {
                     {/* Posts by platform */}
                     <Card className="border-border/50 shadow-sm">
                       <CardHeader className="pb-4 border-b border-border/30">
-                        <CardTitle className="text-base font-bold flex items-center gap-2"><Layers className="h-4 w-4 text-[#bc7e57]"/> Platform Distribution</CardTitle>
+                        <CardTitle className="text-base font-bold flex items-center gap-2"><Layers className="h-4 w-4 text-primary"/> Platform Distribution</CardTitle>
                         <CardDescription className="text-xs">Content breakdown by channel</CardDescription>
                       </CardHeader>
                       <CardContent className="pt-6">
@@ -1459,7 +1459,7 @@ const SocialMediaHub = () => {
                   {/* Status breakdown */}
                   <Card className="border-border/50 shadow-sm">
                     <CardHeader className="pb-4 border-b border-border/30">
-                      <CardTitle className="text-base font-bold flex items-center gap-2"><Activity className="h-4 w-4 text-[#bc7e57]"/> Content Pipeline Pipeline</CardTitle>
+                      <CardTitle className="text-base font-bold flex items-center gap-2"><Activity className="h-4 w-4 text-primary"/> Content Pipeline Pipeline</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -1496,10 +1496,10 @@ const SocialMediaHub = () => {
 
           {/* ── TEAM ACTIVITY TAB ── */}
           <TabsContent value="activity" className="space-y-4">
-            <Card className="border-[#bc7e57]/20">
+            <Card className="border-primary/20">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Users className="h-4 w-4" style={{ color: "#bc7e57" }}/> Team Activity Feed
+                  <Users className="h-4 w-4 text-primary"/> Team Activity Feed
                 </CardTitle>
                 <CardDescription>Track who created, updated, or tagged what — in real time.</CardDescription>
               </CardHeader>
@@ -1516,7 +1516,7 @@ const SocialMediaHub = () => {
                         return (
                           <div key={post.id} className="relative pl-6 sm:pl-8 group">
                             {/* Timeline node */}
-                            <div className={`absolute -left-[17px] top-1.5 h-8 w-8 rounded-full border-4 border-background flex items-center justify-center text-[10px] font-bold shadow-sm transition-transform group-hover:scale-110 ${isLatest ? "bg-[#bc7e57] text-white ring-2 ring-[#bc7e57]/20" : "bg-muted text-muted-foreground"}`}>
+                            <div className={`absolute -left-[17px] top-1.5 h-8 w-8 rounded-full border-4 border-background flex items-center justify-center text-[10px] font-bold shadow-sm transition-transform group-hover:scale-110 ${isLatest ? "bg-primary text-white ring-2 ring-primary/20" : "bg-muted text-muted-foreground"}`}>
                               {initials}
                             </div>
                             
@@ -1597,7 +1597,7 @@ const SocialMediaHub = () => {
                             key={p.value}
                             type="button"
                             onClick={() => setForm(f => ({ ...f, platform: p.value, post_type: Object.entries(POST_TYPES).find(([, v]) => v.platforms.includes(p.value))?.[0] || "post" }))}
-                            className={`flex flex-col items-center gap-1 py-2 rounded-xl border-2 transition-all text-[10px] font-medium ${active ? "text-white border-transparent" : "border-border hover:border-[#bc7e57]/40 text-muted-foreground bg-background"}`}
+                            className={`flex flex-col items-center gap-1 py-2 rounded-xl border-2 transition-all text-[10px] font-medium ${active ? "text-white border-transparent" : "border-border hover:border-primary/40 text-muted-foreground bg-background"}`}
                             style={active ? { backgroundColor: p.color, borderColor: p.color } : {}}
                           >
                             <Icon className="h-4 w-4"/>
@@ -1618,7 +1618,7 @@ const SocialMediaHub = () => {
                             key={k}
                             type="button"
                             onClick={() => setForm(f => ({ ...f, post_type: k }))}
-                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-all ${active ? "border-[#bc7e57] bg-[#bc7e57]/10 text-[#bc7e57]" : "border-border hover:border-[#bc7e57]/40 text-muted-foreground"}`}
+                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-all ${active ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40 text-muted-foreground"}`}
                           >
                             {t.icon}{t.label}
                           </button>
@@ -1697,7 +1697,7 @@ const SocialMediaHub = () => {
                   <Label className="text-xs flex items-center gap-1"><Tag className="h-3 w-3"/> Tag Teammates</Label>
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {(form.tagged_users || []).map(name => (
-                      <span key={name} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#bc7e57]/15 text-[#bc7e57] text-xs font-medium">
+                      <span key={name} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 text-primary text-xs font-medium">
                         {name}
                         <button onClick={() => setForm(f => ({ ...f, tagged_users: (f.tagged_users || []).filter(n => n !== name) }))} className="ml-0.5 hover:text-red-500 transition-colors">
                           <X className="h-2.5 w-2.5"/>
@@ -1730,7 +1730,7 @@ const SocialMediaHub = () => {
                 <Button variant="outline" className="flex-1" onClick={() => { setIsStudioOpen(false); setEditingPost(null); }}>Cancel</Button>
                 <Button
                   className="flex-1 gap-2 text-white"
-                  style={{ backgroundColor: "#bc7e57" }}
+                  style={{ backgroundColor: "hsl(var(--primary))" }}
                   onClick={handleSave}
                   disabled={saveMutation.isPending || uploading}
                 >
@@ -1774,9 +1774,9 @@ const SocialMediaHub = () => {
                       </div>
                       {/* Dimension card */}
                       <div className="rounded-xl border border-border/60 overflow-hidden">
-                        <div className="flex items-center gap-3 p-2.5" style={{ background: (plt?.color || "#bc7e57") + "18" }}>
-                          <div className="rounded-lg flex items-center justify-center flex-shrink-0" style={{ width: 36, height: 36, background: (plt?.color || "#bc7e57") + "30" }}>
-                            {pt?.icon && React.cloneElement(pt.icon as React.ReactElement, { className: "h-4 w-4", style: { color: plt?.color || "#bc7e57" } })}
+                        <div className="flex items-center gap-3 p-2.5" style={{ background: (plt?.color || "#C4622D") + "18" }}>
+                          <div className="rounded-lg flex items-center justify-center flex-shrink-0" style={{ width: 36, height: 36, background: (plt?.color || "#C4622D") + "30" }}>
+                            {pt?.icon && React.cloneElement(pt.icon as React.ReactElement, { className: "h-4 w-4", style: { color: plt?.color || "#C4622D" } })}
                           </div>
                           <div>
                             <p className="text-xs font-bold">{pt?.label || "Post"}</p>
@@ -1855,7 +1855,7 @@ const SocialMediaHub = () => {
                 {(previewPost.tagged_users||[]).length > 0 && (
                   <div>
                     <p className="text-xs font-bold mb-1">Tagged</p>
-                    <div className="flex flex-wrap gap-1">{(previewPost.tagged_users||[]).map(n=><span key={n} className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#bc7e57]/15 text-[#bc7e57] font-medium">{n}</span>)}</div>
+                    <div className="flex flex-wrap gap-1">{(previewPost.tagged_users||[]).map(n=><span key={n} className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">{n}</span>)}</div>
                   </div>
                 )}
                 <div className="mt-auto">
@@ -1888,7 +1888,7 @@ const SocialMediaHub = () => {
       <button
         onClick={() => openStudio()}
         className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 transition-transform"
-        style={{ backgroundColor: "#bc7e57" }}
+        style={{ backgroundColor: "hsl(var(--primary))" }}
         title="Create Post"
       >
         <Plus className="h-6 w-6" />

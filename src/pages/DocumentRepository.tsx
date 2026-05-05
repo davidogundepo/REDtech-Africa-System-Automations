@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -32,6 +33,24 @@ const TypeIcon = ({ type, className }: { type: string, className?: string }) => 
     case "link": return <LinkIcon className={`text-info ${className}`} />;
     default: return <FileIcon className={`text-muted-foreground ${className}`} />;
   }
+};
+
+const formatFileSize = (bytes?: number | null) => {
+  const value = bytes || 0;
+  if (value >= 1024 * 1024 * 1024) return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return value ? `${value} B` : "External";
+};
+
+const inferDocumentType = (name: string, mimeType?: string | null) => {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  if (mimeType === 'text/uri-list') return 'link';
+  if (mimeType?.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) return 'image';
+  if (mimeType === 'application/pdf' || ext === 'pdf') return 'pdf';
+  if (['doc', 'docx'].includes(ext)) return 'word';
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'excel';
+  return 'unknown';
 };
 
 const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
@@ -81,12 +100,7 @@ const DocumentCard = ({ file, onPreview, onDelete, canEdit }: any) => {
                  <ExternalLink className="h-4 w-4 mr-2" /> Open External
                </DropdownMenuItem>
                {canEdit && (
-                 <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={(e) => {
-                   e.stopPropagation();
-                   if (window.confirm("Are you sure you want to delete this document?")) {
-                     onDelete(file.id);
-                   }
-                 }}>
+                  <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(file); }}>
                    <Trash2 className="h-4 w-4 mr-2" /> Delete Document
                  </DropdownMenuItem>
                )}
@@ -161,6 +175,7 @@ const DocumentRepository = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [uploadMode, setUploadMode] = useState<"file" | "link">("file");
@@ -200,22 +215,39 @@ const DocumentRepository = () => {
            doc.department?.toLowerCase() === userDept
          );
       }
-      return filteredDb;
+      return Promise.all(filteredDb.map(async (doc: any) => {
+        const type = inferDocumentType(doc.name, doc.mime_type);
+        let url = doc.file_path;
+        if (type !== 'link') {
+          const { data: signed } = await supabase.storage.from('documents').createSignedUrl(doc.file_path, 60 * 60);
+          url = signed?.signedUrl || doc.file_path;
+        }
+        return {
+          ...doc,
+          type,
+          url,
+          size: formatFileSize(doc.file_size),
+          created_by: doc.uploaded_by ? 'Team member' : 'System',
+        };
+      }));
     }
   });
 
   const uploadDocMutation = useMutation({
-    mutationFn: async (uploadData: { file: File, name: string, type: string, size: string, department: string | null, created_by: string }) => {
-      const { file, ...dbData } = uploadData;
+    mutationFn: async (uploadData: { file: File, department: string | null }) => {
+      const { file, department } = uploadData;
       const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
       const { error: uploadError } = await supabase.storage.from('documents').upload(fileName, file);
       if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
 
-      const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(fileName);
-
       const { error: dbError } = await supabase.from('documents').insert([{
-        ...dbData,
-        url: publicUrlData.publicUrl
+        name: file.name,
+        file_path: fileName,
+        file_size: file.size,
+        mime_type: file.type || null,
+        category: inferDocumentType(file.name, file.type),
+        department,
+        uploaded_by: profile?.id || null,
       }]);
       if (dbError) throw dbError;
     },
@@ -231,11 +263,12 @@ const DocumentRepository = () => {
     mutationFn: async (linkData: { name: string, url: string, department: string | null, created_by: string }) => {
       const { error } = await supabase.from('documents').insert([{
         name: linkData.name,
-        type: 'link',
-        size: 'External',
-        url: linkData.url,
+        file_path: linkData.url,
+        file_size: 0,
+        mime_type: 'text/uri-list',
+        category: 'link',
         department: linkData.department,
-        created_by: linkData.created_by
+        uploaded_by: profile?.id || null,
       }]);
       if (error) throw error;
     },
@@ -261,42 +294,64 @@ const DocumentRepository = () => {
     onError: (error: any) => toast.error("Failed to delete document: " + error.message)
   });
 
+  const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB cap
+  const ALLOWED_EXT = ['pdf','doc','docx','xls','xlsx','csv','jpg','jpeg','png','gif','webp','txt','ppt','pptx'];
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!profile) return toast.error("You must be logged in to upload");
+    if (!profile) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return toast.error("You must be logged in to upload");
+    }
+    if (uploadDocMutation.isPending) return; // prevent double submit
 
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'unknown';
-    const sizeInMB = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-    
-    let type = 'unknown';
-    if (['pdf'].includes(ext)) type = 'pdf';
-    else if (['doc', 'docx'].includes(ext)) type = 'word';
-    else if (['xls', 'xlsx', 'csv'].includes(ext)) type = 'excel';
-    else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) type = 'image';
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    if (!ALLOWED_EXT.includes(ext)) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return toast.error(`Unsupported file type ".${ext}". Allowed: ${ALLOWED_EXT.join(', ')}`);
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return toast.error(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 25 MB.`);
+    }
+    if (file.size === 0) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return toast.error("File is empty.");
+    }
 
     uploadDocMutation.mutate({
-      file: file, name: file.name, type: type, size: sizeInMB,
+      file,
       department: uploadDepartment === "all" ? null : uploadDepartment,
-      created_by: profile.full_name
     });
-    
+
     if (fileInputRef.current) fileInputRef.current.value = "";
     setUploadDepartment("all");
   };
 
   const handleLinkSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLink.name || !newLink.url) return toast.error("Name and URL are required");
+    if (addLinkMutation.isPending) return;
+    const name = newLink.name.trim();
+    const rawUrl = newLink.url.trim();
+    if (!name || !rawUrl) return toast.error("Name and URL are required");
+    if (name.length > 200) return toast.error("Name must be under 200 characters");
     if (!profile) return toast.error("Not logged in");
 
-    let finalUrl = newLink.url;
+    let finalUrl = rawUrl;
     if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
       finalUrl = 'https://' + finalUrl;
     }
+    try {
+      // Validate URL format
+      // eslint-disable-next-line no-new
+      new URL(finalUrl);
+    } catch {
+      return toast.error("Please enter a valid URL");
+    }
 
     addLinkMutation.mutate({
-      name: newLink.name, url: finalUrl,
+      name, url: finalUrl,
       department: newLink.department === "all" ? null : newLink.department,
       created_by: profile.full_name
     });
@@ -409,7 +464,7 @@ const DocumentRepository = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl p-0 overflow-hidden border-0 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 shadow-2xl">
-                <div className="grid grid-cols-1 md:grid-cols-5 h-[500px]">
+                <div className="grid grid-cols-1 md:grid-cols-5 max-h-[80vh] md:h-[500px] overflow-y-auto md:overflow-visible">
                   {/* Left Pane: Branding / Mode Switcher */}
                   <div className="md:col-span-2 premium-hero-gradient p-8 text-white flex flex-col relative overflow-hidden border-r border-white/5 hidden md:flex">
                     <div className="absolute -bottom-20 -right-16 w-64 h-64 rounded-full bg-primary/30 blur-3xl pointer-events-none" />
@@ -645,11 +700,11 @@ const DocumentRepository = () => {
       {/* Document State Filters & View Toggles */}
       <div className="flex flex-col sm:flex-row justify-between items-center bg-card border border-border/60 p-2 rounded-2xl shadow-sm mb-6">
         <Tabs value={docState} onValueChange={setDocState} className="w-full sm:w-auto">
-          <TabsList className="bg-transparent h-10">
-             <TabsTrigger value="all" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-xl px-4 font-medium">All States</TabsTrigger>
-             <TabsTrigger value="approved" className="data-[state=active]:bg-success/10 data-[state=active]:text-success rounded-xl px-4 font-medium"><CheckCircle2 className="w-3.5 h-3.5 mr-1.5"/> Approved</TabsTrigger>
-             <TabsTrigger value="waiting" className="data-[state=active]:bg-warning/10 data-[state=active]:text-warning rounded-xl px-4 font-medium"><Clock3 className="w-3.5 h-3.5 mr-1.5"/> Waiting Auth</TabsTrigger>
-             <TabsTrigger value="draft" className="data-[state=active]:bg-muted data-[state=active]:text-muted-foreground rounded-xl px-4 font-medium"><Edit3 className="w-3.5 h-3.5 mr-1.5"/> Drafts</TabsTrigger>
+          <TabsList className="bg-transparent h-auto flex flex-wrap gap-1">
+             <TabsTrigger value="all" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-xl px-3 sm:px-4 font-medium text-xs sm:text-sm">All States</TabsTrigger>
+             <TabsTrigger value="approved" className="data-[state=active]:bg-success/10 data-[state=active]:text-success rounded-xl px-3 sm:px-4 font-medium text-xs sm:text-sm"><CheckCircle2 className="w-3.5 h-3.5 mr-1.5"/> Approved</TabsTrigger>
+             <TabsTrigger value="waiting" className="data-[state=active]:bg-warning/10 data-[state=active]:text-warning rounded-xl px-3 sm:px-4 font-medium text-xs sm:text-sm"><Clock3 className="w-3.5 h-3.5 mr-1.5"/> <span className="hidden sm:inline">Waiting Auth</span><span className="sm:hidden">Pending</span></TabsTrigger>
+             <TabsTrigger value="draft" className="data-[state=active]:bg-muted data-[state=active]:text-muted-foreground rounded-xl px-3 sm:px-4 font-medium text-xs sm:text-sm"><Edit3 className="w-3.5 h-3.5 mr-1.5"/> Drafts</TabsTrigger>
           </TabsList>
         </Tabs>
         
@@ -665,7 +720,7 @@ const DocumentRepository = () => {
 
       {/* Type Tabs Layout */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col space-y-8">
-        <TabsList className="bg-transparent border-b border-border w-full flex justify-start rounded-none h-auto p-0 gap-8">
+        <TabsList className="bg-transparent border-b border-border w-full flex justify-start rounded-none h-auto p-0 gap-4 sm:gap-8 overflow-x-auto">
           <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-4 text-sm font-medium transition-all text-muted-foreground data-[state=active]:text-foreground">
             All Documents
           </TabsTrigger>
@@ -696,7 +751,7 @@ const DocumentRepository = () => {
                   key={file.id} 
                   file={file} 
                   onPreview={setPreviewDoc} 
-                  onDelete={(id: string) => deleteDocMutation.mutate(id)}
+                  onDelete={setDeleteTarget}
                   canEdit={canEdit} 
                 />
               ))}
@@ -763,7 +818,7 @@ const DocumentRepository = () => {
                                        <AlertCircle className="h-4 w-4 mr-2 text-warning" /> Flag Visibility
                                      </DropdownMenuItem>
                                   )}
-                                  <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); deleteDocMutation.mutate(file.id); }}>
+                                  <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteTarget(file); }}>
                                     <Trash2 className="h-4 w-4 mr-2" /> Delete
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -909,7 +964,7 @@ const DocumentRepository = () => {
                         <Input
                           defaultValue={folder.title}
                           autoFocus
-                          className="h-10 rounded-xl font-bold text-sm bg-background border-[#bc7e57]/30 focus:ring-[#bc7e57]"
+                          className="h-10 rounded-xl font-bold text-sm bg-background border-primary/30 focus:ring-primary"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               toast.success(`Folder renamed to "${(e.target as HTMLInputElement).value}"`);
@@ -929,14 +984,14 @@ const DocumentRepository = () => {
                     <div className="flex items-center gap-1.5 shrink-0 ml-3">
                       <Button
                         variant="ghost" size="icon"
-                        className="h-8 w-8 rounded-xl text-muted-foreground hover:text-[#bc7e57] hover:bg-[#bc7e57]/10"
+                        className="h-8 w-8 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10"
                         onClick={() => setEditingFolderIdx(editingFolderIdx === idx ? null : idx)}
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </Button>
                       <Button
                         variant="ghost" size="icon"
-                        className="h-8 w-8 rounded-xl text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                        className="h-8 w-8 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                         onClick={() => toast.info(`"${folder.title}" removal queued. This folder and all contents will be archived.`)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -965,7 +1020,7 @@ const DocumentRepository = () => {
                   <div className="flex flex-wrap gap-1.5">
                     {folder.docs.map((doc, di) => (
                       <span key={di} className="inline-flex items-center text-[10px] font-medium text-muted-foreground bg-muted/40 px-2 py-1 rounded-lg border border-border/30 hover:bg-muted/70 hover:text-foreground transition-colors cursor-default">
-                        <FileText className="w-2.5 h-2.5 mr-1 text-[#bc7e57]" />
+                        <FileText className="w-2.5 h-2.5 mr-1 text-primary" />
                         {doc.length > 25 ? doc.slice(0, 22) + '…' : doc}
                       </span>
                     ))}
@@ -975,7 +1030,7 @@ const DocumentRepository = () => {
             ))}
 
             {/* Add New Folder Section */}
-            <div className="rounded-2xl border-2 border-dashed border-border/50 bg-muted/10 p-5 hover:border-[#bc7e57]/40 hover:bg-[#bc7e57]/[0.02] transition-all">
+            <div className="rounded-2xl border-2 border-dashed border-border/50 bg-muted/10 p-5 hover:border-primary/40 hover:bg-primary/[0.02] transition-all">
               <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
                 <Plus className="w-3.5 h-3.5" /> Create New Hub
               </h4>
@@ -1002,7 +1057,7 @@ const DocumentRepository = () => {
                   </div>
                 </div>
                 <Button
-                  className="h-11 px-5 rounded-xl font-bold bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-lg shadow-[#bc7e57]/20"
+                  className="h-11 px-5 rounded-xl font-bold bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
                   disabled={!newFolderName.trim()}
                   onClick={() => {
                     toast.success(`"${newFolderName}" hub created! Assign documents to populate it.`);
@@ -1024,7 +1079,7 @@ const DocumentRepository = () => {
               <Button variant="outline" onClick={() => setManageFoldersOpen(false)} className="rounded-xl h-10 font-bold">
                 Cancel
               </Button>
-              <Button className="rounded-xl h-10 font-bold bg-[#bc7e57] hover:bg-[#a56d49] text-white shadow-md shadow-[#bc7e57]/20" onClick={() => {
+              <Button className="rounded-xl h-10 font-bold bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20" onClick={() => {
                 toast.success("Folder configuration saved!");
                 setManageFoldersOpen(false);
               }}>
@@ -1034,6 +1089,32 @@ const DocumentRepository = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="max-w-md rounded-2xl border-border/60 bg-card shadow-lvl-3">
+          <AlertDialogHeader>
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Trash2 className="h-5 w-5" />
+            </div>
+            <AlertDialogTitle>Delete this document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.name ? `“${deleteTarget.name}” will be removed from the repository. This action cannot be undone.` : "This document will be removed from the repository."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget?.id) deleteDocMutation.mutate(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </MotionPage>
   );

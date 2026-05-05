@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -24,6 +23,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { SkeletonCardList, SkeletonTable } from "@/components/shared/SkeletonCard";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const ANNUAL_LEAVE_DAYS = 14;
@@ -67,6 +67,7 @@ const Leave = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState(emptyForm);
+  const [submitting, setSubmitting] = useState(false);
   const [showMyLeave, setShowMyLeave] = useState(true);
   const [balances, setBalances] = useState<any[]>([]);
   const [teamProfiles, setTeamProfiles] = useState<any[]>([]);
@@ -85,16 +86,16 @@ const Leave = () => {
     if (!formData.leave_type) return toast.error("Select a leave type first");
     setAiGenerating(true);
     try {
-      const ai = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
-      const model = ai.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
       const leaveLabel = leaveTypes.find(t => t.value === formData.leave_type)?.label || formData.leave_type;
       const dateCtx = formData.start_date && formData.end_date
         ? ` from ${formData.start_date} to ${formData.end_date}`
         : "";
-      const result = await model.generateContent(
-        `Write a concise, professional leave request reason for a ${leaveLabel}${dateCtx}. It should be 2-3 sentences, warm but formal in tone, suitable for a Nigerian tech company setting. Return ONLY the reason text, no preamble.`
-      );
-      const text = result.response.text().trim();
+      const prompt = `Write a concise, professional leave request reason for a ${leaveLabel}${dateCtx}. It should be 2-3 sentences, warm but formal in tone, suitable for a Nigerian tech company setting. Return ONLY the reason text, no preamble.`;
+      const { data, error } = await supabase.functions.invoke('ai-assistant', {
+        body: { messages: [{ role: 'user', content: prompt }] },
+      });
+      if (error) throw error;
+      const text = (data?.content || '').trim();
       setFormData(prev => ({ ...prev, reason: text }));
       toast.success("AI generated your leave reason ✨");
     } catch (e: any) {
@@ -220,48 +221,82 @@ const Leave = () => {
   }).sort((a: any, b: any) => b.daysUsed - a.daysUsed);
 
   const handleSubmit = async () => {
+    if (submitting) return;
+
+    // ── Validation (Fortune-500 hardening) ─────────────────
     if (!formData.start_date || !formData.end_date) {
       toast.error("Start and end dates are required");
       return;
     }
+    const start = new Date(formData.start_date);
+    const end = new Date(formData.end_date);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      toast.error("Invalid date format");
+      return;
+    }
+    if (end < start) {
+      toast.error("End date cannot be before start date");
+      return;
+    }
+    const validTypes = leaveTypes.map(t => t.value);
+    if (!validTypes.includes(formData.leave_type)) {
+      toast.error("Please pick a valid leave type");
+      return;
+    }
+    if ((formData.reason || "").length > 1000) {
+      toast.error("Reason must be under 1000 characters");
+      return;
+    }
 
     const days = getDaysCount(formData.start_date, formData.end_date);
+    if (days > 90) {
+      toast.error("Leave requests cannot exceed 90 days");
+      return;
+    }
 
-    const { error } = await (supabase as any).from("leave_requests").insert([{
-      employee_id: profile?.full_name || "Unknown",
-      user_id: profile?.id || null,
-      leave_type: formData.leave_type,
-      start_date: formData.start_date,
-      end_date: formData.end_date,
-      reason: formData.reason || null,
-      status: "pending",
-    }]);
+    setSubmitting(true);
+    try {
+      const { error } = await (supabase as any).from("leave_requests").insert([{
+        employee_id: profile?.full_name || "Unknown",
+        user_id: profile?.id || null,
+        leave_type: formData.leave_type,
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        reason: (formData.reason || "").trim() || null,
+        status: "pending",
+      }]);
+      if (error) throw error;
 
-    if (error) { toast.error("Failed to submit request"); return; }
-    toast.success(`Leave request submitted, ${(profile?.full_name || "").split(" ")[0]}! (${days} days) We'll keep you posted 📩`);
+      toast.success(`Leave request submitted, ${(profile?.full_name || "").split(" ")[0]}! (${days} days) We'll keep you posted 📩`);
 
-    sendNotificationEmail({
-      to: "management@redtechafrica.com",
-      subject: `Leave Request: ${profile?.full_name} — ${formData.leave_type}`,
-      html: brandedEmailTemplate({
-        heading: "New Leave Request Submitted",
-        body: `
-          <table style="width:100%; border-collapse:collapse; margin:16px 0;">
-            <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Employee</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${profile?.full_name}</td></tr>
-            <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Leave Type</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${leaveTypes.find(t => t.value === formData.leave_type)?.label}</td></tr>
-            <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Period</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${formData.start_date} to ${formData.end_date} (${days} days)</td></tr>
-            <tr><td style="padding:10px 14px; font-weight:600; color:#1a1a2e;">Reason</td><td style="padding:10px 14px;">${formData.reason || 'Not specified'}</td></tr>
-          </table>
-          <p>Please review and approve or reject this request.</p>
-        `,
-        ctaText: "Review Request",
-        ctaUrl: "https://ractools.vercel.app/leave",
-      })
-    });
+      sendNotificationEmail({
+        to: "management@redtechafrica.com",
+        subject: `Leave Request: ${profile?.full_name} — ${formData.leave_type}`,
+        html: brandedEmailTemplate({
+          heading: "New Leave Request Submitted",
+          body: `
+            <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+              <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Employee</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${profile?.full_name}</td></tr>
+              <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Leave Type</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${leaveTypes.find(t => t.value === formData.leave_type)?.label}</td></tr>
+              <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Period</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${formData.start_date} to ${formData.end_date} (${days} days)</td></tr>
+              <tr><td style="padding:10px 14px; font-weight:600; color:#1a1a2e;">Reason</td><td style="padding:10px 14px;">${formData.reason || 'Not specified'}</td></tr>
+            </table>
+            <p>Please review and approve or reject this request.</p>
+          `,
+          ctaText: "Review Request",
+          ctaUrl: "https://ractools.vercel.app/leave",
+        })
+      }).catch((e) => console.warn("leave email failed", e));
 
-    setFormData(emptyForm);
-    setDialogOpen(false);
-    fetchRequests();
+      setFormData(emptyForm);
+      setDialogOpen(false);
+      fetchRequests();
+    } catch (err: any) {
+      console.error("Leave submit failed:", err);
+      toast.error(err?.message || "Failed to submit request. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleCreditDays = async () => {
@@ -457,7 +492,7 @@ const Leave = () => {
           </h1>
           <p className="text-muted-foreground mt-2 text-sm font-medium">Request time off, view team availability, and manage balances</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {(isAdmin || isSuperAdmin) && (
             <div className="flex border border-border/50 rounded-xl overflow-hidden shadow-sm">
               <button 
@@ -529,7 +564,7 @@ const Leave = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Start Date</Label>
                     <Input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} className="h-12 bg-background rounded-xl font-medium" />
@@ -583,8 +618,8 @@ const Leave = () => {
                     className="resize-none bg-background rounded-xl px-4 py-3 placeholder:font-medium font-medium"
                   />
                 </div>
-                <Button type="submit" disabled={formExceedsBalance} className="w-full h-12 rounded-xl text-base font-bold bg-[hsl(var(--primary))] hover:bg-primary/90 text-white shadow-lg shadow-[hsl(var(--primary))]/20 disabled:opacity-50 disabled:shadow-none transition-all">
-                  Submit Request
+                <Button type="submit" disabled={formExceedsBalance || submitting} className="w-full h-12 rounded-xl text-base font-bold bg-[hsl(var(--primary))] hover:bg-primary/90 text-white shadow-lg shadow-[hsl(var(--primary))]/20 disabled:opacity-50 disabled:shadow-none transition-all">
+                  {submitting ? "Submitting…" : "Submit Request"}
                 </Button>
               </form>
             </DialogContent>
@@ -666,8 +701,14 @@ const Leave = () => {
               content: (
                  <div className="p-6">
                    <h3 className="text-lg font-black mb-6">Upcoming Leaves Feed</h3>
-                   {filteredRequests.filter(r => r.status === 'approved' && r.start_date > today).length === 0 ? (
-                     <div className="py-10 text-center text-muted-foreground"><p>No upcoming approved leaves mapped.</p></div>
+                   {loading ? (
+                     <SkeletonCardList count={4} />
+                   ) : filteredRequests.filter(r => r.status === 'approved' && r.start_date > today).length === 0 ? (
+                     <EmptyState
+                       illustration="leave"
+                       heading="No upcoming leaves"
+                       subtext="Once leave is approved, it will appear here so the team can plan around it."
+                     />
                    ) : (
                      <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
                        {filteredRequests.filter(r => r.status === 'approved' && r.start_date > today).sort((a,b) => a.start_date.localeCompare(b.start_date)).map((req, i) => (
@@ -693,33 +734,43 @@ const Leave = () => {
                label: "Complete Ledger",
                content: (
                  <div className="p-6 overflow-x-auto">
-                   <Table>
-                     <TableHeader>
-                       <TableRow>
-                         <TableHead>Employee</TableHead>
-                         <TableHead>Type</TableHead>
-                         <TableHead>Duration</TableHead>
-                         <TableHead>Status</TableHead>
-                       </TableRow>
-                     </TableHeader>
-                     <TableBody>
-                       {filteredRequests.map(req => {
-                         const sc = statusConfig[req.status] || statusConfig.cancelled;
-                         return (
-                           <TableRow key={req.id}>
-                             <TableCell className="font-bold text-xs">{req.employee_id}</TableCell>
-                             <TableCell className="text-xs text-muted-foreground">{leaveTypes.find(t=>t.value===req.leave_type)?.label || req.leave_type}</TableCell>
-                             <TableCell className="text-xs font-medium">{formatDate(req.start_date)} — {formatDate(req.end_date)}</TableCell>
-                             <TableCell>
-                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${sc.bg} ${sc.text}`}>
-                                  {req.status}
-                               </span>
-                             </TableCell>
-                           </TableRow>
-                         )
-                       })}
-                     </TableBody>
-                   </Table>
+                   {loading ? (
+                     <SkeletonTable rows={6} cols={4} />
+                   ) : filteredRequests.length === 0 ? (
+                     <EmptyState
+                       illustration="leave"
+                       heading="No leave requests yet"
+                       subtext="As soon as the team submits leave, the full ledger will populate here."
+                     />
+                   ) : (
+                     <Table>
+                       <TableHeader>
+                         <TableRow>
+                           <TableHead>Employee</TableHead>
+                           <TableHead>Type</TableHead>
+                           <TableHead>Duration</TableHead>
+                           <TableHead>Status</TableHead>
+                         </TableRow>
+                       </TableHeader>
+                       <TableBody>
+                         {filteredRequests.map(req => {
+                           const sc = statusConfig[req.status] || statusConfig.cancelled;
+                           return (
+                             <TableRow key={req.id}>
+                               <TableCell className="font-bold text-xs">{req.employee_id}</TableCell>
+                               <TableCell className="text-xs text-muted-foreground">{leaveTypes.find(t=>t.value===req.leave_type)?.label || req.leave_type}</TableCell>
+                               <TableCell className="text-xs font-medium">{formatDate(req.start_date)} — {formatDate(req.end_date)}</TableCell>
+                               <TableCell>
+                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${sc.bg} ${sc.text}`}>
+                                    {req.status}
+                                 </span>
+                               </TableCell>
+                             </TableRow>
+                           )
+                         })}
+                       </TableBody>
+                     </Table>
+                   )}
                  </div>
                )
             },

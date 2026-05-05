@@ -32,12 +32,12 @@ const SUPABASE_KEY = 'platform_departments';
 
 // 10 preset department colors cycling through warm neutrals + accent
 const DEPT_COLORS = [
-  '#bc7e57', '#6366f1', '#10b981', '#f59e0b', '#ec4899',
+  '#C4622D', '#6366f1', '#10b981', '#f59e0b', '#ec4899',
   '#3b82f6', '#8b5cf6', '#ef4444', '#14b8a6', '#f97316',
 ];
 
 const DEFAULT_DEPARTMENTS: Department[] = [
-  { id: 'dept-finance',    name: 'Finance',        color: '#bc7e57', isActive: true, createdAt: new Date().toISOString() },
+  { id: 'dept-finance',    name: 'Finance',        color: 'hsl(var(--primary))', isActive: true, createdAt: new Date().toISOString() },
   { id: 'dept-ops',        name: 'Operations',     color: '#6366f1', isActive: true, createdAt: new Date().toISOString() },
   { id: 'dept-devops',     name: 'Delivery Ops',   color: '#10b981', isActive: true, createdAt: new Date().toISOString() },
   { id: 'dept-resourcing', name: 'Resourcing',     color: '#f59e0b', isActive: true, createdAt: new Date().toISOString() },

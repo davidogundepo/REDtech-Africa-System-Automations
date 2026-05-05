@@ -29,6 +29,8 @@ import { Columns3 } from "lucide-react";
 import { TaskBoard } from "@/components/tasks/TaskBoard";
 import { TaskFormModal } from "@/components/tasks/TaskFormModal";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { SkeletonCardList, SkeletonTable } from "@/components/shared/SkeletonCard";
 
 interface Task {
   id: string;
@@ -71,6 +73,8 @@ const Tasks = () => {
   const departments = useDepartmentNames(); // dynamic from DepartmentProvider
   const [tasks, setTasks] = useState<Task[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterDept, setFilterDept] = useState<string>("all");
@@ -85,11 +89,19 @@ const Tasks = () => {
   const [newBlockerNote, setNewBlockerNote] = useState("");
   const [subtaskDialogOpen, setSubtaskDialogOpen] = useState<Task | null>(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchTasks = async () => {
+    setLoadError(null);
     const { data, error } = await (supabase as any).from("tasks").select("*").order("created_at", { ascending: false }).limit(500);
-    if (error) { toast.error("Failed to load tasks"); return; }
+    if (error) {
+      setLoadError(error.message || "Failed to load tasks");
+      toast.error("Failed to load tasks");
+      setLoading(false);
+      return;
+    }
     setTasks((data || []) as Task[]);
+    setLoading(false);
   };
 
   const fetchProfiles = async () => {
@@ -142,13 +154,26 @@ const Tasks = () => {
   };
 
   const handleSubmit = async () => {
-    if (!formData.title.trim()) { toast.error("Task title is required"); return; }
+    if (submitting) return;
 
+    // ── Client-side validation (Fortune-500 hardening) ─────────────────
+    const title = (formData.title || "").trim();
+    if (!title) { toast.error("Task title is required"); return; }
+    if (title.length > 200) { toast.error("Title must be under 200 characters"); return; }
+    if ((formData.description || "").length > 5000) { toast.error("Description must be under 5000 characters"); return; }
+    if (formData.due_date) {
+      const d = new Date(formData.due_date);
+      if (isNaN(d.getTime())) { toast.error("Invalid due date"); return; }
+    }
+    const validPriorities = ["low", "medium", "high", "urgent"];
+    if (!validPriorities.includes(formData.priority)) { toast.error("Invalid priority"); return; }
+
+    setSubmitting(true);
     const assignedProfile = profiles.find(p => p.id === formData.assigned_to_user_id);
 
     const payload: any = {
-      title: formData.title,
-      description: formData.description || null,
+      title,
+      description: (formData.description || "").trim() || null,
       due_date: formData.due_date || null,
       priority: formData.priority,
       department: formData.department || null,
@@ -158,58 +183,65 @@ const Tasks = () => {
       subtasks: formData.subtasks || [],
     };
 
-    if (editingId) {
-      const { error } = await (supabase as any).from("tasks").update(payload).eq("id", editingId);
-      if (error) { toast.error("Failed to update task"); return; }
-      toast.success(`Task updated, ${(profile?.full_name || "").split(" ")[0]}!`);
-    } else {
-      if (formData.blocker_note) {
-        payload.blocker_notes = [{
-          note: formData.blocker_note,
-          by: profile?.full_name || "System",
-          at: new Date().toISOString(),
-        }];
+    try {
+      if (editingId) {
+        const { error } = await (supabase as any).from("tasks").update(payload).eq("id", editingId);
+        if (error) throw error;
+        toast.success(`Task updated, ${(profile?.full_name || "").split(" ")[0]}!`);
+      } else {
+        if (formData.blocker_note) {
+          payload.blocker_notes = [{
+            note: formData.blocker_note,
+            by: profile?.full_name || "System",
+            at: new Date().toISOString(),
+          }];
+        }
+
+        const { error } = await (supabase as any).from("tasks").insert(payload);
+        if (error) throw error;
+        toast.success(`Task created! You're on it, ${(profile?.full_name || "").split(" ")[0]} 💪`);
+
+        if (assignedProfile) {
+          (supabase as any).from("notifications").insert({
+            user_id: assignedProfile.id,
+            title: "New Task Assigned",
+            message: title,
+            type: "info",
+            link: "/tasks"
+          }).then();
+
+          sendNotificationEmail({
+            to: assignedProfile.email,
+            subject: `New Task Assigned: ${title}`,
+            html: brandedEmailTemplate({
+              recipientName: assignedProfile.full_name,
+              heading: "You've Been Assigned a New Task",
+              body: `
+                <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+                  <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Task</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${title}</td></tr>
+                  <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Priority</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;"><span style="color:${formData.priority === 'urgent' || formData.priority === 'high' ? '#dc2626' : formData.priority === 'medium' ? '#f59e0b' : '#64748b'}; font-weight:600;">${formData.priority.toUpperCase()}</span></td></tr>
+                  <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Department</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${formData.department || 'General'}</td></tr>
+                  <tr><td style="padding:10px 14px; font-weight:600; color:#1a1a2e;">Due Date</td><td style="padding:10px 14px;">${formData.due_date || 'No deadline'}</td></tr>
+                </table>
+                <p>Log in to view details and get started.</p>
+              `,
+              ctaText: "View Task",
+              ctaUrl: "https://ractools.vercel.app/tasks",
+            })
+          }).catch((e) => console.warn("notify email failed", e));
+        }
       }
 
-      const { error } = await (supabase as any).from("tasks").insert(payload);
-      if (error) { toast.error("Failed to create task"); return; }
-      toast.success(`Task created! You're on it, ${(profile?.full_name || "").split(" ")[0]} 💪`);
-
-      if (assignedProfile) {
-        (supabase as any).from("notifications").insert({
-          user_id: assignedProfile.id,
-          title: "New Task Assigned",
-          message: formData.title,
-          type: "info",
-          link: "/tasks"
-        }).then();
-
-        sendNotificationEmail({
-          to: assignedProfile.email,
-          subject: `New Task Assigned: ${formData.title}`,
-          html: brandedEmailTemplate({
-            recipientName: assignedProfile.full_name,
-            heading: "You've Been Assigned a New Task",
-            body: `
-              <table style="width:100%; border-collapse:collapse; margin:16px 0;">
-                <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Task</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${formData.title}</td></tr>
-                <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Priority</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;"><span style="color:${formData.priority === 'urgent' || formData.priority === 'high' ? '#dc2626' : formData.priority === 'medium' ? '#f59e0b' : '#64748b'}; font-weight:600;">${formData.priority.toUpperCase()}</span></td></tr>
-                <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Department</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${formData.department || 'General'}</td></tr>
-                <tr><td style="padding:10px 14px; font-weight:600; color:#1a1a2e;">Due Date</td><td style="padding:10px 14px;">${formData.due_date || 'No deadline'}</td></tr>
-              </table>
-              <p>Log in to view details and get started.</p>
-            `,
-            ctaText: "View Task",
-            ctaUrl: "https://ractools.vercel.app/tasks",
-          })
-        });
-      }
+      setFormData(emptyTask);
+      setEditingId(null);
+      setDialogOpen(false);
+      fetchTasks();
+    } catch (err: any) {
+      console.error("Task submit failed:", err);
+      toast.error(err?.message || "Failed to save task. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-
-    setFormData(emptyTask);
-    setEditingId(null);
-    setDialogOpen(false);
-    fetchTasks();
   };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
@@ -336,9 +368,9 @@ const Tasks = () => {
             <h1 className="text-3xl font-black tracking-tight text-foreground">Mission Control</h1>
             <p className="text-muted-foreground mt-1 text-sm font-medium">Coordinate project tasks, track milestones, and manage blockers</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleExportTasks} className="border-border/50 text-muted-foreground font-bold">
-              <Download className="h-3.5 w-3.5 mr-1.5" /> Export Report
+              <Download className="h-3.5 w-3.5 mr-1.5" /> <span className="hidden sm:inline">Export Report</span><span className="sm:hidden">Export</span>
             </Button>
             <div className="flex border border-border/50 rounded-xl overflow-hidden">
               <button onClick={() => setViewMode('board')} className={`px-3 py-2 text-xs font-bold transition-colors ${viewMode === 'board' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/60'}`} title="Board">
@@ -363,9 +395,9 @@ const Tasks = () => {
         </div>
 
         <Tabs defaultValue="all-tasks" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50 p-1 rounded-xl shrink-0">
-            <TabsTrigger value="all-tasks" className="rounded-lg font-bold py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">Task Explorer</TabsTrigger>
-            <TabsTrigger value="analytics" className="rounded-lg font-bold py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">Performance Data</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50 p-1 rounded-xl shrink-0 h-auto">
+            <TabsTrigger value="all-tasks" className="rounded-lg font-bold py-2 text-xs sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">Task Explorer</TabsTrigger>
+            <TabsTrigger value="analytics" className="rounded-lg font-bold py-2 text-xs sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">Performance Data</TabsTrigger>
           </TabsList>
 
           <div className="flex-1 min-h-0">
@@ -419,7 +451,28 @@ const Tasks = () => {
                   </CardContent>
                 </Card>
 
-                {viewMode === 'board' ? (
+                {loading ? (
+                  viewMode === 'list'
+                    ? <SkeletonTable rows={6} cols={6} />
+                    : <SkeletonCardList count={6} />
+                ) : loadError ? (
+                  <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
+                    <AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-3" />
+                    <p className="text-sm font-semibold text-foreground mb-1">Couldn't load tasks</p>
+                    <p className="text-xs text-muted-foreground mb-4">{loadError}</p>
+                    <Button size="sm" variant="outline" onClick={() => { setLoading(true); fetchTasks(); }}>Try again</Button>
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <EmptyState
+                    illustration="tasks"
+                    heading={tasks.length === 0 ? "No missions yet" : "No tasks match your filters"}
+                    subtext={tasks.length === 0
+                      ? "Create the first task to start tracking work across your team."
+                      : "Try clearing a filter or searching for a different keyword."}
+                    ctaText={tasks.length === 0 && canEdit ? "New task" : undefined}
+                    onCta={tasks.length === 0 && canEdit ? () => { setFormData(emptyTask); setEditingId(null); setDialogOpen(true); } : undefined}
+                  />
+                ) : viewMode === 'board' ? (
                   <TaskBoard
                     tasks={filtered}
                     onCardClick={(t) => setDetailTask(t as Task)}
@@ -691,7 +744,7 @@ const Tasks = () => {
       {/* Premium New / Edit Task split modal */}
       <TaskFormModal
         open={dialogOpen}
-        onOpenChange={(o) => { setDialogOpen(o); if (!o) { setFormData(emptyTask); setEditingId(null); } }}
+        onOpenChange={(o) => { if (submitting) return; setDialogOpen(o); if (!o) { setFormData(emptyTask); setEditingId(null); } }}
         formData={formData}
         setFormData={setFormData}
         onSubmit={handleSubmit}
@@ -700,6 +753,7 @@ const Tasks = () => {
         departments={departments}
         priorities={priorities}
         statuses={statuses}
+        submitting={submitting}
       />
 
       {/* 960px Task Detail split modal */}

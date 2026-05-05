@@ -109,7 +109,7 @@ const StaffUtilisation = () => {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 rounded-full border-2 border-[#bc7e57] border-t-transparent animate-spin" />
+          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
           <p className="text-sm text-muted-foreground">Loading workforce data…</p>
         </div>
       </div>
@@ -194,16 +194,6 @@ const StaffUtilisation = () => {
     const generateAIInsight = async () => {
        setIsGeneratingAI(true);
        try {
-         const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-         if (!apiKey) {
-           setAiSummary("Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file.");
-           return;
-         }
-
-         const { GoogleGenerativeAI } = await import("@google/generative-ai");
-         const genAI = new GoogleGenerativeAI(apiKey);
-         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-         
          const dataPayload = {
            totalStaff: userMetrics.length,
            averageCompletion: avgCompletion,
@@ -218,8 +208,11 @@ const StaffUtilisation = () => {
 
 Write a sophisticated, 2-2 sentence executive brief analyzing this performance. Keep it strictly professional, highly analytical, and immediately actionable. Focus on efficiency, burnout risk, and top performance. Do not use any markdown formatting like bolding or asterisks. Make it sound like an elite management consultant report. Ensure the response is no more than 280 characters.`;
 
-         const result = await model.generateContent(prompt);
-         const cleanedText = (result.response.text() || "Insight generation failed.").replace(/\*\*/g, '').replace(/\*/g, '');
+          const { data, error } = await supabase.functions.invoke('ai-assistant', {
+            body: { messages: [{ role: 'user', content: prompt }] },
+          });
+          if (error) throw error;
+          const cleanedText = (data?.content || "Insight generation failed.").replace(/\*\*/g, '').replace(/\*/g, '');
          setAiSummary(cleanedText);
        } catch (error: any) {
          console.error("AI Generation Error:", error);
@@ -238,8 +231,8 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
     <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background/50 p-4 md:p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
-          <div className="inline-flex items-center space-x-2 text-xs font-semibold text-[#bc7e57] uppercase tracking-wider mb-2">
-            <span className="w-2 h-2 rounded-full bg-[#bc7e57]" />
+          <div className="inline-flex items-center space-x-2 text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+            <span className="w-2 h-2 rounded-full bg-primary" />
             <span>Workforce Analytics</span>
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight">Staff Utilisation</h1>
@@ -264,11 +257,11 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
         </div>
         <CardContent className="p-8 relative z-10 flex flex-col md:flex-row items-center gap-8">
           <div className="h-16 w-16 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20 shadow-inner">
-            <BrainCircuit className="h-8 w-8 text-[#bc7e57]" />
+            <BrainCircuit className="h-8 w-8 text-primary" />
           </div>
           <div className="flex-1">
             <h3 className="text-lg font-bold mb-2 flex items-center gap-2 text-white/90">
-              Executive AI Brief <Badge className="bg-[#bc7e57] text-white hover:bg-[#a66c4a] border-none scale-90">GEMINI 2.5 LIVE</Badge>
+              Executive AI Brief <Badge className="bg-primary text-white hover:bg-[#a66c4a] border-none scale-90">GEMINI 2.5 LIVE</Badge>
             </h3>
             <p className="text-white/80 leading-relaxed text-sm md:text-base max-w-4xl font-medium">
               {isGeneratingAI ? (
@@ -291,7 +284,7 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Active Tasks</p>
                 <p className="text-3xl font-bold mt-2">{totalTasks}</p>
               </div>
-              <div className="p-2 bg-muted rounded-lg"><Activity className="h-4 w-4 text-[#bc7e57]" /></div>
+              <div className="p-2 bg-muted rounded-lg"><Activity className="h-4 w-4 text-primary" /></div>
             </div>
           </CardContent>
         </Card>
@@ -493,15 +486,15 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
           <div className="space-y-4 mb-8">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold flex items-center gap-2">
-                <Layers className="h-5 w-5 text-[#bc7e57]" /> Staff Reallocation Board
+                <Layers className="h-5 w-5 text-primary" /> Staff Reallocation Board
                 <span className="text-xs font-normal text-muted-foreground ml-1">Drag staff between departments</span>
               </h2>
               {pendingRealloc && (
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-muted-foreground">
-                    {pendingRealloc.name}: <strong>{pendingRealloc.from}</strong> → <strong className="text-[#bc7e57]">{pendingRealloc.to}</strong>
+                    {pendingRealloc.name}: <strong>{pendingRealloc.from}</strong> → <strong className="text-primary">{pendingRealloc.to}</strong>
                   </span>
-                  <Button size="sm" className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white text-xs h-7 px-3 font-bold" onClick={confirmRealloc}>
+                  <Button size="sm" className="bg-primary hover:bg-[#a66c4a] text-white text-xs h-7 px-3 font-bold" onClick={confirmRealloc}>
                     Confirm
                   </Button>
                   <Button size="sm" variant="ghost" className="text-xs h-7 px-2" onClick={() => { setPendingRealloc(null); setDeptGroups({}); }}>
@@ -520,12 +513,12 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
                         {...provided.droppableProps}
                         className={`flex-shrink-0 w-52 rounded-xl border p-3 space-y-2 min-h-[120px] transition-colors ${
                           snapshot.isDraggingOver
-                            ? "bg-[#bc7e57]/10 border-[#bc7e57]/40"
+                            ? "bg-primary/10 border-primary/40"
                             : "bg-muted/20 border-border/40"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-bold text-[#bc7e57] truncate">{dept}</p>
+                          <p className="text-xs font-bold text-primary truncate">{dept}</p>
                           <span className="text-[10px] font-semibold bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{boardGroups[dept]?.length || 0}</span>
                         </div>
                         {(boardGroups[dept] || []).map((person: any, index: number) => (
@@ -537,22 +530,22 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
                                 {...prov.dragHandleProps}
                                 className={`px-3 py-2.5 rounded-xl bg-card border text-xs font-medium flex items-center gap-2.5 shadow-sm cursor-grab select-none transition-all ${
                                   snap.isDragging
-                                    ? "shadow-xl border-[#bc7e57]/50 scale-105 opacity-90"
-                                    : "border-border/40 hover:border-[#bc7e57]/30 hover:bg-muted/40"
+                                    ? "shadow-xl border-primary/50 scale-105 opacity-90"
+                                    : "border-border/40 hover:border-primary/30 hover:bg-muted/40"
                                 }`}
                               >
-                                <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#bc7e57]/30 to-transparent flex items-center justify-center font-bold text-[#bc7e57] text-[10px] shrink-0">
+                                <div className="h-6 w-6 rounded-full bg-gradient-to-br from-primary/30 to-transparent flex items-center justify-center font-bold text-primary text-[10px] shrink-0">
                                   {(person.full_name || "?").substring(0, 2).toUpperCase()}
                                 </div>
                                 <span className="truncate text-foreground">{person.full_name?.split(" ")[0]}</span>
-                                {snap.isDragging && <span className="ml-auto text-[9px] text-[#bc7e57] font-bold">✦</span>}
+                                {snap.isDragging && <span className="ml-auto text-[9px] text-primary font-bold">✦</span>}
                               </div>
                             )}
                           </Draggable>
                         ))}
                         {provided.placeholder}
                         {snapshot.isDraggingOver && boardGroups[dept]?.length === 0 && (
-                          <div className="text-[10px] text-center text-[#bc7e57] font-medium py-2 border-2 border-dashed border-[#bc7e57]/30 rounded-lg">Drop here</div>
+                          <div className="text-[10px] text-center text-primary font-medium py-2 border-2 border-dashed border-primary/30 rounded-lg">Drop here</div>
                         )}
                       </div>
                     )}
@@ -567,10 +560,10 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
       {/* 🚀 INDIVIDUAL PERFORMANCE MASONRY GRID */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold flex items-center gap-2"><Users className="h-5 w-5 text-[#bc7e57]" /> Workforce Directory</h2>
+          <h2 className="text-xl font-bold flex items-center gap-2"><Users className="h-5 w-5 text-primary" /> Workforce Directory</h2>
 
           {isSuperAdmin && (
-            <Button size="sm" variant="outline" className="gap-2 border-[#bc7e57]/40 text-[#bc7e57] hover:bg-[#bc7e57]/10" onClick={handleManualEngine} disabled={engineRunning}>
+            <Button size="sm" variant="outline" className="gap-2 border-primary/40 text-primary hover:bg-primary/10" onClick={handleManualEngine} disabled={engineRunning}>
               <RefreshCw className={`h-3.5 w-3.5 ${engineRunning ? 'animate-spin' : ''}`}/>
               {engineRunning ? 'Crunching...' : 'Run Perf Engine'}
             </Button>
@@ -578,48 +571,50 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {userMetrics.map((user: any) => (
-            <div key={user.id} onClick={() => setSelectedUser(user)} className="group cursor-pointer bg-card hover:bg-muted/30 border border-border/60 hover:border-[#bc7e57]/40 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden">
+          {userMetrics.map((user: any) => {
+            const eff = user.completionRate || 0;
+            const effTone = eff >= 70 ? 'success' : eff >= 40 ? 'warning' : 'destructive';
+            return (
+            <div key={user.id} onClick={() => setSelectedUser(user)} className="group cursor-pointer surface-bevel p-5 relative overflow-hidden">
                <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                 <ChevronRight className="h-4 w-4 text-[#bc7e57]" />
+                 <ChevronRight className="h-4 w-4 text-primary" />
                </div>
-               
+
                <div className="flex items-center gap-3 mb-4">
-                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#bc7e57]/20 to-transparent flex items-center justify-center font-bold text-[#bc7e57] border border-[#bc7e57]/20 group-hover:scale-105 transition-transform">
+                 <div className="h-11 w-11 rounded-full bg-gradient-to-br from-primary/20 to-transparent flex items-center justify-center font-bold text-primary border border-primary/20 group-hover:scale-105 transition-transform">
                     {(user.full_name||'').substring(0,2).toUpperCase()}
                  </div>
                  <div className="flex-1 min-w-0">
                    <p className="font-semibold text-sm truncate">{user.full_name}</p>
                    <p className="text-xs text-muted-foreground truncate">{user.department || '—'}</p>
                  </div>
+                 <span className={`text-xl font-black tabular-nums text-${effTone}`}>{eff}%</span>
                </div>
 
                <div className="space-y-3">
-                 <div className="flex justify-between items-center text-xs">
-                   <span className="text-muted-foreground">Overall Efficiency</span>
-                   <span className="font-bold">{user.completionRate}%</span>
+                 <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                   <div className={`h-full rounded-full bg-${effTone} transition-all`} style={{ width: `${eff}%` }} />
                  </div>
-                 <Progress value={user.completionRate} className="h-1.5" />
-                 
-                 <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/50 text-center">
+
+                 <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/50 text-center">
                    <div>
-                     <p className="text-lg font-bold">{user.totalTasks}</p>
-                     <p className="text-[10px] text-muted-foreground uppercase">Tasks</p>
+                     <p className="text-lg font-bold text-info tabular-nums">{user.totalTasks}</p>
+                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Tasks</p>
                    </div>
                    <div>
-                     <p className="text-lg font-bold text-green-600">{user.completed}</p>
-                     <p className="text-[10px] text-muted-foreground uppercase">Done</p>
+                     <p className="text-lg font-bold text-success tabular-nums">{user.completed}</p>
+                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Done</p>
                    </div>
                    <div>
-                     <p className={`text-lg font-bold ${user.overdue > 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                     <p className={`text-lg font-bold tabular-nums ${user.overdue > 0 ? 'text-destructive' : 'text-warning'}`}>
                        {user.overdue > 0 ? user.overdue : user.inProgress}
                      </p>
-                     <p className="text-[10px] text-muted-foreground uppercase">{user.overdue > 0 ? 'Overdue' : 'Active'}</p>
+                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{user.overdue > 0 ? 'Overdue' : 'Active'}</p>
                    </div>
                  </div>
                </div>
             </div>
-          ))}
+          );})}
           {userMetrics.length === 0 && (
             <div className="col-span-full py-12">
                <EmptyState illustration="staff" heading="No workforce data available" subtext="No active user metrics aligned with current filters." />
@@ -635,7 +630,7 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
             content: (
               <div className="animate-in fade-in duration-500 h-[700px] flex flex-col p-2">
                 <div className="flex items-center gap-3 mb-6">
-                  <BarChart3 className="h-6 w-6 text-[#bc7e57]" />
+                  <BarChart3 className="h-6 w-6 text-primary" />
                   <h2 className="text-2xl font-black">Inter-Departmental Efficiency Index</h2>
                 </div>
                 <div className="flex-1 min-h-0 bg-card rounded-2xl border border-border/50 p-6 shadow-sm">
@@ -648,9 +643,9 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
                         cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }}
                         contentStyle={{ backgroundColor: "hsl(var(--card))", borderRadius: "12px", border: "1px solid hsl(var(--border))" }}
                       />
-                      <Bar dataKey="completionRate" name="Efficiency %" radius={[6, 6, 0, 0]} barSize={48}>
+                       <Bar dataKey="completionRate" name="Efficiency %" radius={[6, 6, 0, 0]} barSize={48}>
                         {departmentMetrics.map((entry, index) => (
-                           <Cell key={`cell-${index}`} fill={entry.completionRate >= 80 ? '#22c55e' : entry.completionRate >= 50 ? '#f59e0b' : '#ef4444'} />
+                           <Cell key={`cell-${index}`} fill={entry.completionRate >= 70 ? 'hsl(var(--success))' : entry.completionRate >= 40 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))'} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -665,11 +660,11 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
               <div className="animate-in fade-in duration-500 p-2 h-[750px] flex flex-col">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
-                    <Layers className="h-6 w-6 text-blue-500" />
+                    <Layers className="h-6 w-6 text-info" />
                     <h2 className="text-2xl font-black">Staff Matrix Reallocation</h2>
                   </div>
                   <p className="text-sm text-muted-foreground font-medium bg-muted/50 px-3 py-1.5 rounded-full inline-flex items-center gap-2 border border-border/50">
-                    <Shield className="w-4 h-4 text-[#bc7e57]" /> SuperAdmin Auth Active
+                    <Shield className="w-4 h-4 text-primary" /> SuperAdmin Auth Active
                   </p>
                 </div>
                 <div className="flex-1 min-h-0">
@@ -683,7 +678,7 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
             content: (
               <div className="animate-in fade-in duration-500 p-2">
                 <div className="flex items-center gap-3 mb-6">
-                  <Award className="h-6 w-6 text-amber-500" />
+                  <Award className="h-6 w-6 text-[hsl(var(--accent-gold))]" />
                   <h2 className="text-2xl font-black">Performance Leaderboard</h2>
                 </div>
                 <div className="space-y-2">
@@ -698,7 +693,7 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
                           <div className="w-8 text-center shrink-0">
                             {medal ? <span className="text-xl">{medal}</span> : <span className="text-sm font-bold text-muted-foreground">#{i + 1}</span>}
                           </div>
-                          <div className="h-10 w-10 rounded-xl bg-[#bc7e57]/10 flex items-center justify-center text-sm font-bold shrink-0" style={{ color: '#bc7e57' }}>
+                          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-sm font-bold shrink-0" style={{ color: 'hsl(var(--primary))' }}>
                             {(user.full_name || '').substring(0, 2).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -734,9 +729,9 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
             <div className="flex flex-col h-full bg-background">
               {/* Header Header */}
               <div className="bg-muted/30 p-6 border-b border-border/50 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#bc7e57]/20 to-transparent rounded-bl-full opacity-50 pointer-events-none" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-primary/20 to-transparent rounded-bl-full opacity-50 pointer-events-none" />
                 <div className="flex items-start gap-4 relative z-10">
-                  <div className="h-16 w-16 rounded-2xl bg-background shadow-md border border-border flex items-center justify-center text-xl font-bold text-[#bc7e57]">
+                  <div className="h-16 w-16 rounded-2xl bg-background shadow-md border border-border flex items-center justify-center text-xl font-bold text-primary">
                     {(selectedUser.full_name||'').substring(0,2).toUpperCase()}
                   </div>
                   <div>
@@ -744,7 +739,7 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
                     <p className="text-muted-foreground">{selectedUser.role?.replace('_', ' ').toUpperCase()} • {selectedUser.department || 'General'}</p>
                     <div className="flex items-center gap-2 mt-2">
                        <Badge variant="outline" className="bg-background text-xs"><Clock className="w-3 h-3 mr-1"/> Last Active: Today</Badge>
-                       <Badge variant="outline" className="bg-background text-xs border-[#bc7e57]/40 text-[#bc7e57]">Score: {selectedUser.performance_score ?? 100}</Badge>
+                       <Badge variant="outline" className="bg-background text-xs border-primary/40 text-primary">Score: {selectedUser.performance_score ?? 100}</Badge>
                     </div>
                   </div>
                 </div>
@@ -776,11 +771,11 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
                 {/* Performance Trend */}
                 {selectedUser.score_history && selectedUser.score_history.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-[#bc7e57]" /> 14-Day Performance Trend</h3>
+                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-primary" /> 14-Day Performance Trend</h3>
                     <div className="h-40 border border-border/50 rounded-xl p-4 bg-muted/10">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={selectedUser.score_history.slice(-14).map((h:any)=>({ date: format(new Date(h.date), "MMM d"), score: h.score }))}>
-                          <Line type="monotone" dataKey="score" stroke="#bc7e57" strokeWidth={2} dot={{ fill: '#bc7e57', r: 3 }} activeDot={{ r: 5 }} />
+                          <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))', r: 3 }} activeDot={{ r: 5 }} />
                           <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
                           <ReferenceLine y={100} stroke="#888" strokeOpacity={0.2} strokeDasharray="3 3"/>
                           <YAxis domain={['dataMin - 5', 100]} hide />
@@ -793,7 +788,7 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
 
                 {/* Active Task Log */}
                 <div>
-                   <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><CheckSquare className="w-4 h-4 text-[#bc7e57]" /> Active & Overdue Pipeline</h3>
+                   <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><CheckSquare className="w-4 h-4 text-primary" /> Active & Overdue Pipeline</h3>
                    <div className="border border-border/50 rounded-xl overflow-hidden bg-card">
                      <Table>
                        <TableHeader className="bg-muted/30">
@@ -898,7 +893,7 @@ const ReallocationBoard = ({ profiles, departments }: { profiles: any[], departm
        {isUpdating && (
          <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-50 flex items-center justify-center rounded-xl">
             <div className="flex items-center gap-2 px-4 py-2 bg-card border border-border shadow-xl rounded-full text-sm font-bold">
-              <RefreshCw className="w-4 h-4 animate-spin text-[#bc7e57]" /> Syncing Matrix...
+              <RefreshCw className="w-4 h-4 animate-spin text-primary" /> Syncing Matrix...
             </div>
          </div>
        )}
@@ -922,15 +917,15 @@ const ReallocationBoard = ({ profiles, departments }: { profiles: any[], departm
                   draggable={true} 
                   onDragStart={(e) => handleDragStart(e, p.id, dept)}
                   onDragEnd={handleDragEnd}
-                  className="bg-card p-4 rounded-[14px] border border-border/80 hover:border-[#bc7e57]/60 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-all group"
+                  className="bg-card p-4 rounded-[14px] border border-border/80 hover:border-primary/60 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-all group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-[#bc7e57]/10 to-transparent flex border border-[#bc7e57]/20 items-center justify-center font-bold text-[#bc7e57] text-sm group-hover:scale-105 transition-transform">
+                    <div className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-primary/10 to-transparent flex border border-primary/20 items-center justify-center font-bold text-primary text-sm group-hover:scale-105 transition-transform">
                        {(p.full_name||'').substring(0,2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <p className="font-bold text-sm leading-tight truncate">{p.full_name}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase mt-1 font-semibold tracking-wider truncate border-l-2 border-[#bc7e57]/30 pl-1.5">{p.role?.replace('_', ' ')}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase mt-1 font-semibold tracking-wider truncate border-l-2 border-primary/30 pl-1.5">{p.role?.replace('_', ' ')}</p>
                     </div>
                   </div>
                 </div>

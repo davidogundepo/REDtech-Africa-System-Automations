@@ -26,6 +26,7 @@ import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import Papa from "papaparse";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { SkeletonTable } from "@/components/shared/SkeletonCard";
 
 // NGN Currency Formatter
 const formatCurrency = (amount: number) => {
@@ -88,7 +89,7 @@ const FinanceDashboard = () => {
   const expensesFill = theme === "dark" ? "#9ca3af" : "#1f2937";
   const tooltipBg = theme === "dark" ? "#1f2937" : "#ffffff";
   const tooltipBorder = theme === "dark" ? "#374151" : "#e5e7eb";
-  const pieColors = ["#bc7e57", "#1e293b", "#10b981", "#f59e0b", "#6366f1", "#e11d48"];
+  const pieColors = ["#C4622D", "#1e293b", "#10b981", "#f59e0b", "#6366f1", "#e11d48"];
 
   // 1. Fetch Active Transactions
   const { data: transactions, isLoading: loadingTx } = useQuery({
@@ -295,7 +296,7 @@ const FinanceDashboard = () => {
             <table style="width:100%; border-collapse:collapse; margin:16px 0;">
               <tr><td style="padding:8px 12px; background:#f8f6f3; border-radius:6px 6px 0 0;"><strong>Requested By</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${profile?.full_name}</td></tr>
               <tr><td style="padding:8px 12px;"><strong>Category</strong></td><td style="padding:8px 12px;">${newReq.category}</td></tr>
-              <tr><td style="padding:8px 12px; background:#f8f6f3;"><strong>Amount</strong></td><td style="padding:8px 12px; background:#f8f6f3; font-weight:700; color:#bc7e57;">${formatCurrency(parseFloat(newReq.amount))}</td></tr>
+              <tr><td style="padding:8px 12px; background:#f8f6f3;"><strong>Amount</strong></td><td style="padding:8px 12px; background:#f8f6f3; font-weight:700; color:#C4622D;">${formatCurrency(parseFloat(newReq.amount))}</td></tr>
               <tr><td style="padding:8px 12px; border-radius:0 0 6px 6px;"><strong>Description</strong></td><td style="padding:8px 12px;">${newReq.description}</td></tr>
             </table>
             <p>Please review and approve or reject this payment request.</p>
@@ -429,7 +430,7 @@ const FinanceDashboard = () => {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-2xl border border-border/40 backdrop-blur-sm shadow-sm">
             <div className="flex items-center gap-1.5">
-              <CalendarIcon className="h-4 w-4 text-[#bc7e57] shrink-0" />
+              <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
               <div className="flex flex-col">
                 <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-0.5">From</span>
                 <Input type="date" value={exportPeriodFrom} onChange={e => setExportPeriodFrom(e.target.value)} className="h-8 w-36 bg-transparent border-none text-xs font-bold focus-visible:ring-0 p-0 cursor-pointer" />
@@ -442,7 +443,7 @@ const FinanceDashboard = () => {
             </div>
           </div>
 
-          <Button variant="outline" className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 text-[#bc7e57] disabled:opacity-50 h-10 px-4 rounded-2xl font-bold" onClick={handleExportCSV} disabled={!transactions?.length}>
+          <Button variant="outline" className="border-primary/50 hover:bg-primary/10 text-primary disabled:opacity-50 h-10 px-4 rounded-2xl font-bold" onClick={handleExportCSV} disabled={!transactions?.length}>
             <Download className="h-4 w-4 mr-2" /> Export CSV
           </Button>
 
@@ -456,7 +457,7 @@ const FinanceDashboard = () => {
                 onChange={handleImportCSV} 
               />
               <Label htmlFor="csv-upload" className="cursor-pointer">
-                <div className="inline-flex items-center justify-center rounded-2xl text-sm font-bold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 border-[#bc7e57]/50 hover:bg-[#bc7e57]/10">
+                <div className="inline-flex items-center justify-center rounded-2xl text-sm font-bold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 border-primary/50 hover:bg-primary/10">
                   <ArrowUpRight className="h-4 w-4 mr-2" /> Import CSV
                 </div>
               </Label>
@@ -466,7 +467,7 @@ const FinanceDashboard = () => {
           {canEdit && (
             <Dialog open={isReqDialogOpen} onOpenChange={setIsReqDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="border-[#bc7e57]/50 hover:bg-[#bc7e57]/10 text-[#bc7e57] h-10 px-4 rounded-2xl font-bold">
+                <Button variant="outline" className="border-primary/50 hover:bg-primary/10 text-primary h-10 px-4 rounded-2xl font-bold">
                   <CreditCard className="h-4 w-4 mr-2" /> Request Payment
                 </Button>
               </DialogTrigger>
@@ -480,7 +481,7 @@ const FinanceDashboard = () => {
                   <div><Label>Amount (NGN) *</Label><Input type="number" required min="0" step="0.01" value={newReq.amount} onChange={(e) => setNewReq({...newReq, amount: e.target.value})} /></div>
                   <div><Label>Category *</Label><Input required value={newReq.category} onChange={(e) => setNewReq({...newReq, category: e.target.value})} placeholder="e.g., Software, Travel, Office Supplies" /></div>
                   <div><Label>Description</Label><Input value={newReq.description} onChange={(e) => setNewReq({...newReq, description: e.target.value})} placeholder="Detailed reason for request" /></div>
-                  <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }} disabled={addRequestMutation.isPending}>Submit Request</Button>
+                  <Button type="submit" className="w-full" style={{ backgroundColor: '#C4622D' }} disabled={addRequestMutation.isPending}>Submit Request</Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -489,7 +490,7 @@ const FinanceDashboard = () => {
           {(isAdmin || isSuperAdmin) && (
             <Dialog open={isTxDialogOpen} onOpenChange={setIsTxDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-[#bc7e57] hover:bg-[#bc7e57]/90 h-10 px-5 rounded-2xl font-bold">
+                <Button className="bg-primary hover:bg-primary/90 h-10 px-5 rounded-2xl font-bold">
                   <Plus className="h-4 w-4 mr-2" /> Add Transaction
                 </Button>
               </DialogTrigger>
@@ -497,10 +498,23 @@ const FinanceDashboard = () => {
                 <DialogHeader><DialogTitle>Manual Transaction Entry</DialogTitle></DialogHeader>
                 <form onSubmit={(e) => {
                   e.preventDefault();
-                  if (!newTx.amount || !newTx.category) return toast.error("Required fields missing");
-                  addTxMutation.mutate({ ...newTx, amount: parseFloat(newTx.amount), created_by: profile?.full_name || "Admin" });
+                  if (addTxMutation.isPending) return;
+                  // ── Validation (Fortune-500 hardening) ─────────────────
+                  const amt = parseFloat(newTx.amount);
+                  const category = (newTx.category || "").trim();
+                  if (!newTx.amount || isNaN(amt)) return toast.error("Enter a valid amount");
+                  if (amt <= 0) return toast.error("Amount must be greater than zero");
+                  if (amt > 10_000_000_000) return toast.error("Amount looks unusually large — please double-check");
+                  if (!category) return toast.error("Category is required");
+                  if (category.length > 100) return toast.error("Category must be under 100 characters");
+                  if ((newTx.description || "").length > 500) return toast.error("Description must be under 500 characters");
+                  if (!newTx.date) return toast.error("Date is required");
+                  const d = new Date(newTx.date);
+                  if (isNaN(d.getTime())) return toast.error("Invalid date");
+                  if (!["revenue", "expense"].includes(newTx.type)) return toast.error("Invalid type");
+                  addTxMutation.mutate({ ...newTx, category, description: (newTx.description || "").trim(), amount: amt, created_by: profile?.full_name || "Admin" });
                 }} className="space-y-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label>Type *</Label>
                       <Select value={newTx.type} onValueChange={(v) => setNewTx({...newTx, type: v})}>
@@ -508,14 +522,16 @@ const FinanceDashboard = () => {
                         <SelectContent><SelectItem value="revenue">Revenue</SelectItem><SelectItem value="expense">Expense</SelectItem></SelectContent>
                       </Select>
                     </div>
-                    <div><Label>Amount (NGN) *</Label><Input type="number" required min="0" step="0.01" value={newTx.amount} onChange={(e) => setNewTx({...newTx, amount: e.target.value})} /></div>
+                    <div><Label>Amount (NGN) *</Label><Input type="number" required min="0.01" step="0.01" value={newTx.amount} onChange={(e) => setNewTx({...newTx, amount: e.target.value})} /></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div><Label>Date *</Label><Input type="date" required value={newTx.date} onChange={(e) => setNewTx({...newTx, date: e.target.value})} /></div>
-                    <div><Label>Category *</Label><Input required value={newTx.category} onChange={(e) => setNewTx({...newTx, category: e.target.value})} placeholder="e.g., Retainer, AWS, Payroll" /></div>
+                    <div><Label>Category *</Label><Input required maxLength={120} value={newTx.category} onChange={(e) => setNewTx({...newTx, category: e.target.value})} placeholder="e.g., Retainer, AWS, Payroll" /></div>
                   </div>
-                  <div><Label>Description</Label><Input value={newTx.description} onChange={(e) => setNewTx({...newTx, description: e.target.value})} placeholder="Notes..." /></div>
-                  <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }} disabled={addTxMutation.isPending}>Save Transaction</Button>
+                  <div><Label>Description</Label><Input maxLength={500} value={newTx.description} onChange={(e) => setNewTx({...newTx, description: e.target.value})} placeholder="Notes..." /></div>
+                  <Button type="submit" className="w-full" style={{ backgroundColor: '#C4622D' }} disabled={addTxMutation.isPending}>
+                    {addTxMutation.isPending ? "Saving…" : "Save Transaction"}
+                  </Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -554,7 +570,7 @@ const FinanceDashboard = () => {
                 </div>
                 <div className="rounded-xl border border-border/50 bg-card p-4">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MRR</p>
-                  <p className="text-2xl font-black mt-1" style={{ color: '#bc7e57' }}>{formatCurrency(mrr)}</p>
+                  <p className="text-2xl font-black mt-1" style={{ color: 'hsl(var(--primary))' }}>{formatCurrency(mrr)}</p>
                 </div>
                 <div className="rounded-xl border border-border/50 bg-card p-4">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Daily Burn Rate</p>
@@ -652,7 +668,7 @@ const FinanceDashboard = () => {
             </CardHeader>
             <CardContent className="p-0">
               {loadingInvoices ? (
-                <div className="flex items-center justify-center py-16"><div className="h-6 w-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>
+                <div className="p-4"><SkeletonTable rows={5} cols={4} /></div>
               ) : !invoices || invoices.length === 0 ? (
                 <div className="py-16 text-center">
                   <FileText className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
@@ -706,7 +722,7 @@ const FinanceDashboard = () => {
             <CardHeader><CardTitle className="text-xl font-bold">Recent Transactions</CardTitle></CardHeader>
             <CardContent>
               {loadingTx ? (
-                <div className="flex items-center justify-center py-12 text-muted-foreground gap-2"><span className="animate-spin rounded-full h-5 w-5 border-2 border-[#bc7e57] border-t-transparent"/><span>Loading ledger...</span></div>
+                <SkeletonTable rows={6} cols={6} />
               ) : (
                 <Table>
                   <TableHeader>
@@ -976,7 +992,7 @@ const FinanceDashboard = () => {
                 </div>
                 <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="border-[#bc7e57] text-[#bc7e57] hover:bg-[#bc7e57]/10">
+                    <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
                       <Plus className="h-4 w-4 mr-2" /> Set Budget
                     </Button>
                   </DialogTrigger>
@@ -1018,14 +1034,14 @@ const FinanceDashboard = () => {
                         <Label>Budgeted Amount (NGN)</Label>
                         <Input type="number" required min="0" step="1000" value={newBudget.budgeted_amount} onChange={(e) => setNewBudget({...newBudget, budgeted_amount: e.target.value})} />
                       </div>
-                      <Button type="submit" className="w-full" style={{ backgroundColor: '#bc7e57' }} disabled={addBudgetMutation.isPending}>Save Budget</Button>
+                      <Button type="submit" className="w-full" style={{ backgroundColor: '#C4622D' }} disabled={addBudgetMutation.isPending}>Save Budget</Button>
                     </form>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
               <CardContent>
                 {loadingBudgets ? (
-                  <div className="flex items-center justify-center py-12 text-muted-foreground gap-2"><span className="animate-spin rounded-full h-5 w-5 border-2 border-[#bc7e57] border-t-transparent"/><span>Loading budgets...</span></div>
+                  <SkeletonTable rows={4} cols={3} />
                 ) : (
                   <Table>
                     <TableHeader>

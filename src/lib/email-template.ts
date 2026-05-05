@@ -49,7 +49,7 @@ export const brandedEmailTemplate = ({
           
           <!-- Accent line -->
           <tr>
-            <td style="height:3px; background-color:#bc7e57; font-size:0; line-height:0;">&nbsp;</td>
+            <td style="height:3px; background-color:#C4622D; font-size:0; line-height:0;">&nbsp;</td>
           </tr>
           
           <!-- Body Content -->
@@ -68,7 +68,7 @@ export const brandedEmailTemplate = ({
               ${ctaText && ctaUrl ? `
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:32px 0 8px;">
                 <tr>
-                  <td style="border-radius:8px; background-color:#bc7e57;">
+                  <td style="border-radius:8px; background-color:#C4622D;">
                     <a href="${ctaUrl}" target="_blank" style="display:inline-block; padding:13px 28px; color:#ffffff; font-size:14px; font-weight:600; text-decoration:none; letter-spacing:0.2px;">
                       ${ctaText} &rarr;
                     </a>
@@ -89,7 +89,7 @@ export const brandedEmailTemplate = ({
             <td style="padding:20px 40px 28px;">
               ${footerNote ? `<p style="margin:0 0 12px; color:#999; font-size:12px; line-height:1.6;">${footerNote}</p>` : ''}
               <p style="margin:0; color:#bbb; font-size:11px; line-height:1.5;">
-                This is an automated notification from <strong style="color:#bc7e57;">REDtech Africa Consulting</strong>.<br>
+                This is an automated notification from <strong style="color:#C4622D;">REDtech Africa Consulting</strong>.<br>
                 &copy; ${new Date().getFullYear()} REDtech Africa Consulting LTD. All rights reserved.
               </p>
             </td>

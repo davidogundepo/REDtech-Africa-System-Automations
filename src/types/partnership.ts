@@ -101,7 +101,7 @@ export const defaultPartnershipCompany = {
   companyEmail: "partnerships@redtechafrica.com",
   companyRep: "",
   companyRepTitle: "Managing Director",
-  accentColor: "#bc7e57",
+  accentColor: "hsl(var(--primary))",
 };
 
 export const AGREEMENT_LABELS: Record<AgreementType, string> = {

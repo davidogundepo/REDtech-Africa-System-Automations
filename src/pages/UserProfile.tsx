@@ -44,9 +44,11 @@ const UserProfile = () => {
   const [editName, setEditName] = useState(profile?.full_name || "");
   const [editDepartment, setEditDepartment] = useState(profile?.department || "");
   
-  const textFill = theme === "dark" ? "#f3f4f6" : "#1f2937";
-  const tooltipBg = theme === "dark" ? "#1f2937" : "#ffffff";
-  const tooltipBorder = theme === "dark" ? "#374151" : "#e5e7eb";
+  const textFill = theme === "dark" ? "hsl(210 20% 92%)" : "hsl(20 14% 12%)";
+  const tooltipBg = theme === "dark" ? "hsl(20 8% 12%)" : "hsl(0 0% 100%)";
+  const tooltipBorder = theme === "dark" ? "hsl(20 6% 22%)" : "hsl(30 12% 90%)";
+  const chartAccent = "hsl(var(--info))";
+  const chartGrid = theme === "dark" ? "hsl(20 6% 22%)" : "hsl(30 12% 90%)";
 
   const departments = useDepartmentNames(); // dynamic from DepartmentProvider
 
@@ -172,18 +174,18 @@ const UserProfile = () => {
   const performanceScore = Math.min(100, Math.max(0, 100 - totalDeductions));
 
   const scoreDoughnutData = [
-    { name: 'Core Efficiency', value: performanceScore, color: performanceScore >= 80 ? '#10b981' : performanceScore >= 50 ? '#f59e0b' : '#ef4444' },
-    { name: 'Task Penalty', value: overdueDeduction + pendingDeduction, color: '#ef4444' },
-    { name: 'Time Penalty', value: lateDeduction, color: '#f59e0b' },
-    { name: 'Base Offset', value: Math.max(0, 100 - performanceScore - totalDeductions), color: theme === 'dark' ? '#374151' : '#e5e7eb' },
+    { name: 'Core Efficiency', value: performanceScore, color: performanceScore >= 80 ? 'hsl(var(--success))' : performanceScore >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))' },
+    { name: 'Task Penalty', value: overdueDeduction + pendingDeduction, color: 'hsl(var(--destructive))' },
+    { name: 'Time Penalty', value: lateDeduction, color: 'hsl(var(--warning))' },
+    { name: 'Base Offset', value: Math.max(0, 100 - performanceScore - totalDeductions), color: theme === 'dark' ? 'hsl(20 6% 22%)' : 'hsl(30 14% 92%)' },
   ];
 
   const getScoreBadge = (score: number) => {
-    if (score >= 90) return { label: "Outstanding", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" };
-    if (score >= 75) return { label: "Excellent", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" };
-    if (score >= 60) return { label: "Good", color: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" };
-    if (score >= 40) return { label: "Needs Improvement", color: "bg-orange-500/10 text-orange-500 border-orange-500/20" };
-    return { label: "Critical", color: "bg-red-500/10 text-red-500 border-red-500/20" };
+    if (score >= 90) return { label: "Outstanding", color: "bg-success/10 text-success border-success/30" };
+    if (score >= 75) return { label: "Excellent", color: "bg-info/10 text-info border-info/30" };
+    if (score >= 60) return { label: "Good", color: "bg-warning/10 text-warning border-warning/30" };
+    if (score >= 40) return { label: "Needs Improvement", color: "bg-accent-gold/10 text-accent-gold border-accent-gold/30" };
+    return { label: "Critical", color: "bg-destructive/10 text-destructive border-destructive/30" };
   };
 
   const scoreBadge = getScoreBadge(performanceScore);
@@ -253,28 +255,28 @@ const UserProfile = () => {
       
       {/* 🌟 Profile Header */}
       <Card className="mb-8 overflow-hidden rounded-3xl border-border/50 shadow-lg bg-card/60 backdrop-blur-sm">
-        <div className="h-3 md:h-4 w-full bg-gradient-to-r from-[#bc7e57] via-[#eab308] to-[#10b981]" />
+        <div className="h-3 md:h-4 w-full bg-gradient-to-r from-primary via-accent-gold to-success" />
         <CardContent className="pt-8 pb-8 px-6 md:px-10">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
             {/* Avatar Cluster */}
             <div className="relative group shrink-0">
               <button onClick={() => setAvatarExpanded(true)} className="cursor-pointer relative z-10 transition-transform duration-500 group-hover:scale-105">
-                <div className="h-24 w-24 md:h-32 md:w-32 rounded-3xl border-4 border-background bg-[#bc7e57]/10 flex items-center justify-center overflow-hidden shadow-xl">
+                <div className="h-24 w-24 md:h-32 md:w-32 rounded-3xl border-4 border-background bg-primary/10 flex items-center justify-center overflow-hidden shadow-xl">
                   {profile.avatar_url ? (
                     <img src={profile.avatar_url} alt="Profile" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-3xl md:text-5xl font-black text-[#bc7e57] drop-shadow-sm">
+                    <span className="text-3xl md:text-5xl font-black text-primary drop-shadow-sm">
                       {profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                     </span>
                   )}
                 </div>
               </button>
               {/* Decorative Ring */}
-              <div className="absolute inset-0 -m-1 rounded-3xl border border-[#bc7e57]/30 opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500 z-0"></div>
+              <div className="absolute inset-0 -m-1 rounded-3xl border border-primary/30 opacity-0 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500 z-0"></div>
               
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-2 -right-2 h-10 w-10 rounded-xl bg-[#bc7e57] text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-[#a66c4a] transition-all duration-300 hover:scale-110 z-20"
+                className="absolute -bottom-2 -right-2 h-10 w-10 rounded-xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-all duration-300 hover:scale-110 z-20"
               >
                 <Camera className="h-4 w-4 drop-shadow-md" />
               </button>
@@ -288,8 +290,8 @@ const UserProfile = () => {
                   {profile.avatar_url ? (
                     <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-auto max-h-[80vh] object-contain" />
                   ) : (
-                    <div className="w-full aspect-square flex items-center justify-center bg-[#bc7e57]/20">
-                      <span className="text-8xl font-black text-[#bc7e57] drop-shadow-lg">
+                    <div className="w-full aspect-square flex items-center justify-center bg-primary/20">
+                      <span className="text-8xl font-black text-primary drop-shadow-lg">
                         {profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                       </span>
                     </div>
@@ -307,10 +309,10 @@ const UserProfile = () => {
                        <Badge variant="outline" className={`font-bold tracking-widest uppercase border ${scoreBadge.color}`}>{scoreBadge.label}</Badge>
                     </div>
                     <div className="flex flex-wrap items-center gap-4 mt-3 text-sm font-semibold text-muted-foreground">
-                       <span className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50"><Mail className="h-4 w-4 text-[#bc7e57]" /> {profile.email}</span>
-                       <span className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50"><Building2 className="h-4 w-4 text-[#bc7e57]" /> {profile.department || "Unassigned"}</span>
-                       <span className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50"><Shield className="h-4 w-4 text-[#bc7e57]" /> {profile.role}</span>
-                       <span className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50"><User className="h-4 w-4 text-[#bc7e57]" /> {(() => {
+                       <span className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50"><Mail className="h-4 w-4 text-primary" /> {profile.email}</span>
+                       <span className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50"><Building2 className="h-4 w-4 text-primary" /> {profile.department || "Unassigned"}</span>
+                       <span className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50"><Shield className="h-4 w-4 text-primary" /> {profile.role}</span>
+                       <span className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50"><User className="h-4 w-4 text-primary" /> {(() => {
                            const fn = (profile.full_name || "").split(" ")[0].toLowerCase();
                            const femaleNames = ["ngozi","chioma","amara","adaeze","ada","funke","funmi","folake","yetunde","nneka","ify","joy","grace","blessing","mary","ruth","naomi","faith","hope","patience","esther","deborah","sarah","hannah","abigail","maryam","fatima","halima","aisha","zainab","aminat","taiwo","titi","tomi","bimpe","sade","bola","ronke"];
                            const maleNames = ["david","adebayo","emeka","chukwu","obinna","ikenna","oluwaseun","oluwadamilare","bamidele","femi","segun","tunde","obi","uche","chijioke","kalu","ifeanyi","nnamdi","chidi","ayo","bayo","ade","wale","jide","gbenga","sola","tobi","dele","kunle","akin","mohammed","ibrahim","musa","ahmed","yusuf","ola"];
@@ -347,14 +349,14 @@ const UserProfile = () => {
                                 </SelectContent>
                              </Select>
                           </div>
-                          <Button className="w-full h-11 bg-[#bc7e57] hover:bg-[#a66c4a] text-white font-bold rounded-xl mt-2" onClick={() => updateNameMutation.mutate()}>
+                          <Button className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl mt-2" onClick={() => updateNameMutation.mutate()}>
                              Flash Changes
                           </Button>
                           </div>
                        </DialogContent>
                     </Dialog>
                     {isSuperAdmin && (
-                       <Button size="sm" onClick={handleAdminPing} className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-lg shadow-amber-500/20">
+                       <Button size="sm" onClick={handleAdminPing} className="rounded-xl bg-accent-gold hover:bg-accent-gold/90 text-foreground font-bold shadow-lg shadow-accent-gold/20">
                           <BellRing className="w-4 h-4 mr-2" /> Award Ping
                        </Button>
                     )}
@@ -365,11 +367,11 @@ const UserProfile = () => {
               <div className="flex flex-wrap items-center gap-6 mt-6 pt-6 border-t border-border/40 text-xs font-bold">
                  <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground tracking-widest uppercase">Contract</span>
-                    <span className="flex items-center gap-1.5 text-foreground"><UserCheck className="w-3.5 h-3.5 text-emerald-500"/> Full-Time</span>
+                    <span className="flex items-center gap-1.5 text-foreground"><UserCheck className="w-3.5 h-3.5 text-success"/> Full-Time</span>
                  </div>
                  <div className="flex flex-col gap-1">
                      <span className="text-muted-foreground tracking-widest uppercase">Gender</span>
-                     <span className="flex items-center gap-1.5 text-foreground"><User className="w-3.5 h-3.5 text-blue-500"/> {(() => {
+                     <span className="flex items-center gap-1.5 text-foreground"><User className="w-3.5 h-3.5 text-info"/> {(() => {
                         const fn = (profile.full_name || "").split(" ")[0].toLowerCase();
                         const femaleNames = ["ngozi","chioma","amara","adaeze","ada","funke","funmi","folake","yetunde","nneka","ify","joy","grace","blessing","mary","ruth","naomi","faith","hope","patience","esther","deborah","sarah","hannah","abigail","maryam","fatima","halima","aisha","zainab","aminat","taiwo","titi","tomi","bimpe","sade","bola","ronke"];
                         const maleNames = ["david","adebayo","emeka","chukwu","obinna","ikenna","oluwaseun","oluwadamilare","bamidele","femi","segun","tunde","obi","uche","chijioke","kalu","ifeanyi","nnamdi","chidi","ayo","bayo","ade","wale","jide","gbenga","sola","tobi","dele","kunle","akin","mohammed","ibrahim","musa","ahmed","yusuf","ola"];
@@ -380,11 +382,11 @@ const UserProfile = () => {
                  </div>
                  <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground tracking-widest uppercase">Start Date</span>
-                    <span className="flex items-center gap-1.5 text-foreground"><CalendarDays className="w-3.5 h-3.5 text-[#bc7e57]"/> {format(new Date(profile.created_at), "MMMM do, yyyy")}</span>
+                    <span className="flex items-center gap-1.5 text-foreground"><CalendarDays className="w-3.5 h-3.5 text-primary"/> {format(new Date(profile.created_at), "MMMM do, yyyy")}</span>
                  </div>
                  <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground tracking-widest uppercase">Tenure</span>
-                    <span className="flex items-center gap-1.5 text-foreground"><Clock className="w-3.5 h-3.5 text-purple-500"/> {Math.max(1, Math.round(differenceInDays(new Date(), new Date(profile.created_at))/30))} Months</span>
+                    <span className="flex items-center gap-1.5 text-foreground"><Clock className="w-3.5 h-3.5 text-accent-gold"/> {Math.max(1, Math.round(differenceInDays(new Date(), new Date(profile.created_at))/30))} Months</span>
                  </div>
               </div>
             </div>
@@ -397,7 +399,7 @@ const UserProfile = () => {
          <Card className="lg:col-span-5 rounded-3xl border-border/50 shadow-lg bg-card overflow-hidden">
             <CardHeader className="bg-muted/20 border-b border-border/30 pb-4">
                <CardTitle className="flex items-center gap-2 text-lg font-black tracking-tight">
-                  <Target className="w-5 h-5 text-[#bc7e57]" /> Performance Matrix
+                  <Target className="w-5 h-5 text-primary" /> Performance Matrix
                </CardTitle>
             </CardHeader>
             <CardContent className="p-6 md:p-8 flex flex-col items-center">
@@ -433,12 +435,12 @@ const UserProfile = () => {
 
                <div className="w-full grid grid-cols-2 gap-4 mt-2">
                   <div className="bg-muted/30 p-4 rounded-2xl border border-border/50 text-center flex flex-col gap-1">
-                     <CheckCircle2 className="w-5 h-5 mx-auto text-emerald-500 mb-1" />
+                     <CheckCircle2 className="w-5 h-5 mx-auto text-success mb-1" />
                      <span className="text-2xl font-black">{completionRate}%</span>
                      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Task Routing</span>
                   </div>
                   <div className="bg-muted/30 p-4 rounded-2xl border border-border/50 text-center flex flex-col gap-1">
-                     <Zap className="w-5 h-5 mx-auto text-amber-500 mb-1" />
+                     <Zap className="w-5 h-5 mx-auto text-accent-gold mb-1" />
                      <span className="text-2xl font-black">{avgDaysToComplete > 0 ? avgDaysToComplete : '—'}</span>
                      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Speed (Days)</span>
                   </div>
@@ -456,11 +458,11 @@ const UserProfile = () => {
                         <div className="flex justify-between items-start mb-8">
                            <div>
                               <h3 className="text-xl font-black mb-1 flex items-center gap-2">
-                                 <Flame className="w-5 h-5 text-orange-500" /> Operational Streak
+                                 <Flame className="w-5 h-5 text-primary" /> Operational Streak
                               </h3>
                               <p className="text-xs text-muted-foreground font-bold tracking-widest uppercase">Perfect Execution Consecutive Days</p>
                            </div>
-                           <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/30 px-4 py-1.5 font-black text-sm">
+                           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 px-4 py-1.5 font-black text-sm">
                               {currentStreak} Days 🔥
                            </Badge>
                         </div>
@@ -469,22 +471,22 @@ const UserProfile = () => {
                         <div className="space-y-4 mb-10">
                            <div className="flex justify-between text-sm font-bold">
                               <span>Current Run: {currentStreak}</span>
-                              <span className="text-[#bc7e57]">Record: {bestStreak}</span>
+                              <span className="text-primary">Record: {bestStreak}</span>
                            </div>
-                           <Progress value={(currentStreak / bestStreak) * 100} className="h-3 bg-muted shadow-inner" style={{color: '#bc7e57'}}/>
+                           <Progress value={(currentStreak / bestStreak) * 100} className="h-3 bg-muted shadow-inner" style={{color: 'hsl(var(--primary))'}}/>
                         </div>
 
                         {/* Rewards Benchmark Track */}
                         <div>
                            <h3 className="text-xl font-black mb-1 flex items-center gap-2">
-                              <Gift className="w-5 h-5 text-[#bc7e57]" /> Rewards Benchmark
+                              <Gift className="w-5 h-5 text-primary" /> Rewards Benchmark
                            </h3>
                            <p className="text-xs text-muted-foreground font-bold tracking-widest uppercase mb-6">Aggregate Value Generation Points (185/250)</p>
                            
                            <div className="relative pt-6 pb-2">
                               {/* Connector Line */}
                               <div className="absolute top-10 left-[10%] right-[10%] h-1 bg-muted rounded-full" />
-                              <div className="absolute top-10 left-[10%] w-[40%] h-1 bg-gradient-to-r from-amber-600 to-slate-400 rounded-full shadow-[0_0_8px_rgba(205,127,50,0.5)]" />
+                              <div className="absolute top-10 left-[10%] w-[40%] h-1 bg-gradient-to-r from-primary via-accent-gold to-primary/50 rounded-full shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
                               
                               <div className="relative z-10 flex justify-between">
                                  {rewardsTiers.map((tier, idx) => {
@@ -517,7 +519,7 @@ const UserProfile = () => {
                         <div className="flex justify-between items-start mb-6">
                            <div>
                               <h3 className="text-xl font-black mb-1 flex items-center gap-2">
-                                 <Clock className="w-5 h-5 text-blue-500" /> Work Output Baseline
+                                 <Clock className="w-5 h-5 text-info" /> Work Output Baseline
                               </h3>
                               <p className="text-xs text-muted-foreground font-bold tracking-widest uppercase">Hours Logged Across Last 10 Shifts</p>
                            </div>
@@ -527,18 +529,18 @@ const UserProfile = () => {
                               <AreaChart data={workHoursData} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
                                  <defs>
                                     <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
-                                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                       <stop offset="5%" stopColor={chartAccent} stopOpacity={0.4}/>
+                                       <stop offset="95%" stopColor={chartAccent} stopOpacity={0}/>
                                     </linearGradient>
                                  </defs>
-                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
+                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartGrid} />
                                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill: textFill, fontSize: 11, fontWeight: 700}} dy={10} />
                                  <YAxis axisLine={false} tickLine={false} tick={{fill: textFill, fontSize: 11, fontWeight: 700}} />
                                  <RechartsTooltip 
                                     contentStyle={{backgroundColor: tooltipBg, color: textFill, borderRadius: '12px', border: `1px solid ${tooltipBorder}`, fontWeight: 'bold'}}
                                     formatter={(value) => [`${value} Hrs`, 'Logged Time']}
                                  />
-                                 <Area type="monotone" dataKey="hours" stroke="#3b82f6" strokeWidth={3} fill="url(#colorHours)" activeDot={{r: 6, strokeWidth: 2}} />
+                                 <Area type="monotone" dataKey="hours" stroke={chartAccent} strokeWidth={3} fill="url(#colorHours)" activeDot={{r: 6, strokeWidth: 2}} />
                               </AreaChart>
                            </ResponsiveContainer>
                         </div>
@@ -552,7 +554,7 @@ const UserProfile = () => {
                          <div className="flex justify-between items-start mb-6">
                             <div>
                                <h3 className="text-xl font-black mb-1 flex items-center gap-2">
-                                  <CalendarHeart className="w-5 h-5 text-emerald-500" /> Attendance Heatmap
+                                  <CalendarHeart className="w-5 h-5 text-success" /> Attendance Heatmap
                                </h3>
                                <p className="text-xs text-muted-foreground font-bold tracking-widest uppercase">GitHub-Style Yearly Presence Visualization</p>
                             </div>
@@ -561,8 +563,8 @@ const UserProfile = () => {
                              <ActivityCalendar
                                data={attendanceHeatmapData}
                                theme={{
-                                 dark: ['#1a1a2e', '#0d4429', '#006d32', '#26a641', '#39d353'],
-                                 light: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'],
+                                 dark: ['hsl(20 8% 14%)', 'hsl(20 60% 35%)', 'hsl(20 70% 48%)', 'hsl(22 75% 58%)', 'hsl(36 85% 60%)'],
+                                 light: ['hsl(30 14% 92%)', 'hsl(28 60% 88%)', 'hsl(22 75% 70%)', 'hsl(20 70% 55%)', 'hsl(20 75% 42%)'],
                                }}
                                colorScheme={theme === 'dark' ? 'dark' : 'light'}
                                blockSize={14}
@@ -585,7 +587,7 @@ const UserProfile = () => {
          <Card className="rounded-3xl border-border/50 shadow-lg bg-card/60 backdrop-blur-sm overflow-hidden">
             <CardHeader className="bg-muted/30 border-b border-border/30 p-6">
                <CardTitle className="flex items-center gap-2 text-lg font-black">
-               <BarChart3 className="h-5 w-5 text-[#bc7e57]" /> Calculation Ledger
+               <BarChart3 className="h-5 w-5 text-primary" /> Calculation Ledger
                </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -599,34 +601,34 @@ const UserProfile = () => {
                <TableBody>
                   <TableRow className="border-border/30 hover:bg-muted/20">
                      <TableCell className="font-bold flex items-center gap-3 p-4">
-                        <Star className="h-4 w-4 text-emerald-500" /> Base Initialization
+                        <Star className="h-4 w-4 text-success" /> Base Initialization
                      </TableCell>
-                     <TableCell className="text-right font-black text-emerald-500 p-4">Base 100</TableCell>
+                     <TableCell className="text-right font-black text-success p-4">Base 100</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30 hover:bg-muted/20">
                      <TableCell className="font-bold flex items-center gap-3 p-4">
-                     <AlertTriangle className="h-4 w-4 text-red-500" /> Overdue Debt
+                     <AlertTriangle className="h-4 w-4 text-destructive" /> Overdue Debt
                      <span className="text-xs text-muted-foreground font-medium ml-2">({overdueTasks} × 3)</span>
                      </TableCell>
-                     <TableCell className="text-right font-black text-red-500 p-4">-{overdueDeduction}</TableCell>
+                     <TableCell className="text-right font-black text-destructive p-4">-{overdueDeduction}</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30 hover:bg-muted/20">
                      <TableCell className="font-bold flex items-center gap-3 p-4">
-                     <Clock className="h-4 w-4 text-amber-500" /> Pending Wait
+                     <Clock className="h-4 w-4 text-warning" /> Pending Wait
                      <span className="text-xs text-muted-foreground font-medium ml-2">({pendingTasks} × 1)</span>
                      </TableCell>
-                     <TableCell className="text-right font-black text-amber-500 p-4">-{pendingDeduction}</TableCell>
+                     <TableCell className="text-right font-black text-warning p-4">-{pendingDeduction}</TableCell>
                   </TableRow>
                   <TableRow className="border-b-4 border-border/50 hover:bg-muted/20">
                      <TableCell className="font-bold flex items-center gap-3 p-4">
-                     <AlertTriangle className="h-4 w-4 text-orange-500" /> Lateness Vector
+                     <AlertTriangle className="h-4 w-4 text-accent-gold" /> Lateness Vector
                      <span className="text-xs text-muted-foreground font-medium ml-2">({daysLate} × 2)</span>
                      </TableCell>
-                     <TableCell className="text-right font-black text-orange-600 p-4">-{lateDeduction}</TableCell>
+                     <TableCell className="text-right font-black text-accent-gold p-4">-{lateDeduction}</TableCell>
                   </TableRow>
                   <TableRow className="bg-muted/10">
                      <TableCell className="font-black text-[10px] uppercase tracking-widest p-4">Calculated Sync</TableCell>
-                     <TableCell className={`text-right text-xl font-black p-4 ${scoreDoughnutData[0].color}`}>{performanceScore} Score</TableCell>
+                     <TableCell className="text-right text-xl font-black p-4" style={{color: scoreDoughnutData[0].color}}>{performanceScore} Score</TableCell>
                   </TableRow>
                </TableBody>
                </Table>
@@ -636,7 +638,7 @@ const UserProfile = () => {
          {/* Recent Tasks */}
          <Card className="rounded-3xl border-border/50 shadow-lg bg-card/60 backdrop-blur-sm overflow-hidden flex flex-col">
             <CardHeader className="bg-muted/30 border-b border-border/30 p-6">
-               <CardTitle className="flex items-center gap-2 text-lg font-black text-emerald-500">
+               <CardTitle className="flex items-center gap-2 text-lg font-black text-success">
                <Activity className="h-5 w-5" /> Active Execution Flow
                </CardTitle>
             </CardHeader>
@@ -662,16 +664,16 @@ const UserProfile = () => {
                            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1.5 flex items-center gap-2">
                               {task.due_date ? format(new Date(task.due_date), "MMM d") : "No Date"} 
                               <span className="w-1 h-1 rounded-full bg-border inline-block" /> 
-                              <span className={task.priority === 'high' ? 'text-red-500' : task.priority === 'urgent' ? 'text-purple-500' : 'text-blue-500'}>{task.priority}</span>
+                              <span className={task.priority === 'high' ? 'text-destructive' : task.priority === 'urgent' ? 'text-primary' : 'text-info'}>{task.priority}</span>
                            </div>
                         </TableCell>
                         <TableCell className="p-4">
                            <Badge
                            variant="outline"
                            className={`font-black uppercase tracking-wider text-[9px] px-2 py-1 ${
-                              task.status === "completed" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : 
-                              task.status === "overdue" ? "bg-red-500/10 text-red-500 border-red-500/30" : 
-                              "bg-amber-500/10 text-amber-500 border-amber-500/30"
+                              task.status === "completed" ? "bg-success/10 text-success border-success/30" : 
+                              task.status === "overdue" ? "bg-destructive/10 text-destructive border-destructive/30" : 
+                              "bg-warning/10 text-warning border-warning/30"
                            }`}
                            >
                            {task.status?.replace("-", " ")}
@@ -688,22 +690,22 @@ const UserProfile = () => {
 
       {/* Viewer Upgrade Section */}
       {isViewer && (
-        <Card className="mb-8 border-dashed border-[#bc7e57]/40 bg-[#bc7e57]/[0.03] rounded-3xl">
+        <Card className="mb-8 border-dashed border-primary/40 bg-primary/[0.03] rounded-3xl">
           <CardContent className="py-8 px-6 flex flex-col xl:flex-row items-center justify-between text-center xl:text-left gap-8">
             <div className="flex items-center flex-col xl:flex-row gap-6">
-               <div className="h-20 w-20 rounded-3xl bg-[#bc7e57]/10 flex items-center justify-center transform hover:rotate-6 transition-transform">
-               <Shield className="h-8 w-8" style={{ color: '#bc7e57', opacity: 0.8 }} />
+               <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center transform hover:rotate-6 transition-transform">
+               <Shield className="h-8 w-8" style={{ color: 'hsl(var(--primary))', opacity: 0.8 }} />
                </div>
                <div className="space-y-2 max-w-xl">
-               <h3 className="text-2xl font-black text-[#bc7e57]">Role Expansion Required</h3>
+               <h3 className="text-2xl font-black text-primary">Role Expansion Required</h3>
                <p className="text-sm text-foreground/80 font-medium leading-relaxed">
                   As a Viewer, you have clearance to review analytics but cannot mutate values or clear tasks. <br className="hidden xl:block"/>
-                  Graduate to <strong className="text-emerald-500">Team Member</strong> or <strong className="text-blue-500">Admin</strong> by submitting an authorization request to your operations lead.
+                  Graduate to <strong className="text-success">Team Member</strong> or <strong className="text-info">Admin</strong> by submitting an authorization request to your operations lead.
                </p>
                </div>
             </div>
             <a href="mailto:ayomide@redtechafrica.com?subject=Role%20Upgrade%20Request&body=Hi%20Ayomide!%20I%27d%20like%20to%20request%20a%20role%20upgrade%20on%20the%20RAC%20Automations%20Dashboard." className="no-underline shrink-0">
-              <Button className="gap-2 h-14 px-8 rounded-2xl text-base font-bold shadow-lg shadow-[#bc7e57]/20 hover:scale-105 transition-all" style={{ backgroundColor: '#bc7e57' }}>
+              <Button className="gap-2 h-14 px-8 rounded-2xl text-base font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all bg-primary hover:bg-primary/90 text-primary-foreground">
                 <Mail className="h-5 w-5" /> Request Clearance Upgrade
               </Button>
             </a>

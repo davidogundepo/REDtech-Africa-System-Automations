@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export interface EmailPayload {
   to: string | string[];
   subject: string;
@@ -6,24 +8,20 @@ export interface EmailPayload {
 }
 
 /**
- * Utility to trigger the Vercel Serverless Function that relies on Resend to dispatch emails.
+ * Sends a branded notification email via the secure `send-notification-email`
+ * edge function. The Resend API key is stored server-side as a secret and
+ * never reaches the browser.
  */
 export const sendNotificationEmail = async (payload: EmailPayload) => {
   try {
-    const response = await fetch('/api/send-email', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+    const { data, error } = await supabase.functions.invoke('send-notification-email', {
+      body: payload,
     });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.error || 'Failed to send email notification');
+    if (error) {
+      console.error('Email Dispatch Error:', error);
+      return null;
     }
-    
-    return await response.json();
+    return data;
   } catch (error) {
     console.error('Email Dispatch Error:', error);
     return null;

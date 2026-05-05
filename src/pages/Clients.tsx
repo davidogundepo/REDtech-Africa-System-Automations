@@ -26,6 +26,8 @@ import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { format } from "date-fns";
 import { ClientDashboard } from "@/components/clients/ClientDashboard";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { SkeletonCardList, SkeletonTable } from "@/components/shared/SkeletonCard";
 
 interface Client {
   id: string;
@@ -95,6 +97,7 @@ const Clients = () => {
   const [formData, setFormData] = useState(emptyClient);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [showMyClients, setShowMyClients] = useState(false);
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
   const [pipelineTab, setPipelineTab] = useState("all");
@@ -163,62 +166,89 @@ const Clients = () => {
   const getInitials = (name: string) => (name || "").split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
 
   const handleSubmit = async () => {
-    if (!formData.name.trim()) { toast.error("Client name is required"); return; }
-    
+    if (submitting) return;
+
+    // ── Validation (Fortune-500 hardening) ─────────────────
+    const name = (formData.name || "").trim();
+    if (!name) { toast.error("Client name is required"); return; }
+    if (name.length > 200) { toast.error("Name must be under 200 characters"); return; }
+
+    const email = (formData.email || "").trim();
+    if (email) {
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      if (!emailOk) { toast.error("Please enter a valid email address"); return; }
+      if (email.length > 255) { toast.error("Email is too long"); return; }
+    }
+
+    const phone = (formData.phone || "").trim();
+    if (phone && phone.length > 50) { toast.error("Phone must be under 50 characters"); return; }
+    if ((formData.notes || "").length > 5000) { toast.error("Notes must be under 5000 characters"); return; }
+
+    const validStatuses = dealStatuses.map(s => s.id);
+    if (!validStatuses.includes(formData.deal_status)) { toast.error("Invalid deal status"); return; }
+
+    setSubmitting(true);
     const isNewContact = formData.deal_status !== 'lead' && (!editingId || clients.find(c => c.id === editingId)?.deal_status === 'lead');
 
     const payload: any = {
-      name: formData.name,
-      company: formData.company || null,
-      email: formData.email || null,
-      phone: formData.phone || null,
-      address: formData.address || null,
+      name,
+      company: (formData.company || "").trim() || null,
+      email: email || null,
+      phone: phone || null,
+      address: (formData.address || "").trim() || null,
       industry: formData.industry || null,
       source: formData.source || null,
-      notes: formData.notes || null,
+      notes: (formData.notes || "").trim() || null,
       deal_status: formData.deal_status,
       assigned_to: formData.assigned_to || null,
       ...(isNewContact && { last_contact_date: new Date().toISOString() })
     };
 
-    if (editingId) {
-      const { error } = await (supabase as any).from("clients").update(payload).eq("id", editingId);
-      if (error) { toast.error("Failed to update client"); return; }
-      toast.success("Client updated");
-    } else {
-      const { error } = await (supabase as any).from("clients").insert(payload);
-      if (error) { toast.error("Failed to add client"); return; }
-      toast.success(`${formData.name} added to your Deal Book! 🤝`);
+    try {
+      if (editingId) {
+        const { error } = await (supabase as any).from("clients").update(payload).eq("id", editingId);
+        if (error) throw error;
+        toast.success("Client updated");
+      } else {
+        const { error } = await (supabase as any).from("clients").insert(payload);
+        if (error) throw error;
+        toast.success(`${name} added to your Deal Book! 🤝`);
 
-      if (formData.assigned_to && formData.assigned_to !== profile?.id) {
-        const assignedProfile = profiles.find(p => p.id === formData.assigned_to);
-        if (assignedProfile) {
-          sendNotificationEmail({
-            to: "management@redtechafrica.com", // Demo routing
-            subject: `New Lead Assigned to You: ${formData.name}`,
-            html: brandedEmailTemplate({
-              recipientName: assignedProfile.full_name,
-              heading: "A New Lead Has Been Assigned to You 🤝",
-              body: `
-                <table style="width:100%; border-collapse:collapse; margin:16px 0;">
-                  <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Contact</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${formData.name}</td></tr>
-                  <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Company</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${formData.company || 'N/A'}</td></tr>
-                  <tr><td style="padding:10px 14px; font-weight:600; color:#1a1a2e;">Status</td><td style="padding:10px 14px;">${dealStatuses.find(s => s.id === formData.deal_status)?.label}</td></tr>
-                </table>
-                <p>Log in to the Deal Book to view details and start engaging this lead.</p>
-              `,
-              ctaText: "Open Deal Book",
-              ctaUrl: "https://ractools.vercel.app/clients",
-            })
-          });
+        if (formData.assigned_to && formData.assigned_to !== profile?.id) {
+          const assignedProfile = profiles.find(p => p.id === formData.assigned_to);
+          if (assignedProfile) {
+            sendNotificationEmail({
+              to: "management@redtechafrica.com", // Demo routing
+              subject: `New Lead Assigned to You: ${name}`,
+              html: brandedEmailTemplate({
+                recipientName: assignedProfile.full_name,
+                heading: "A New Lead Has Been Assigned to You 🤝",
+                body: `
+                  <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+                    <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Contact</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${name}</td></tr>
+                    <tr><td style="padding:10px 14px; border-bottom:1px solid #f0ece7; font-weight:600; color:#1a1a2e;">Company</td><td style="padding:10px 14px; border-bottom:1px solid #f0ece7;">${formData.company || 'N/A'}</td></tr>
+                    <tr><td style="padding:10px 14px; font-weight:600; color:#1a1a2e;">Status</td><td style="padding:10px 14px;">${dealStatuses.find(s => s.id === formData.deal_status)?.label}</td></tr>
+                  </table>
+                  <p>Log in to the Deal Book to view details and start engaging this lead.</p>
+                `,
+                ctaText: "Open Deal Book",
+                ctaUrl: "https://ractools.vercel.app/clients",
+              })
+            }).catch((e) => console.warn("client email failed", e));
+          }
         }
       }
+
+      setFormData(emptyClient);
+      setEditingId(null);
+      setDialogOpen(false);
+      fetchClients();
+    } catch (err: any) {
+      console.error("Client submit failed:", err);
+      toast.error(err?.message || "Failed to save client. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    
-    setFormData(emptyClient);
-    setEditingId(null);
-    setDialogOpen(false);
-    fetchClients();
   };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
@@ -325,7 +355,7 @@ const Clients = () => {
                 <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">FX Rates</span>
                 {currencies.filter(c => c.code !== "NGN").map(c => (
                   <span key={c.code} className="inline-flex items-center gap-1 text-[10px] font-bold bg-muted/50 px-2 py-0.5 rounded-full border border-border/30">
-                    <span className="text-[#bc7e57]">{c.symbol}1</span>
+                    <span className="text-primary">{c.symbol}1</span>
                     <span className="text-muted-foreground">=</span>
                     <span className="font-black text-foreground">₦{exchangeRates[c.code]?.toLocaleString()}</span>
                   </span>
@@ -334,9 +364,9 @@ const Clients = () => {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleExportClients} className="border-border/50 text-muted-foreground font-bold">
-              <Download className="h-3.5 w-3.5 mr-1.5" /> Export Report
+              <Download className="h-3.5 w-3.5 mr-1.5" /> <span className="hidden sm:inline">Export Report</span><span className="sm:hidden">Export</span>
             </Button>
             {canEdit && (
               <>
@@ -360,11 +390,11 @@ const Clients = () => {
                   </DialogTrigger>
 
                   {/* ═══════ PREMIUM SPLIT MODAL ═══════ */}
-                  <DialogContent className="p-0 overflow-hidden border-0 sm:max-w-[760px] sm:rounded-[20px] shadow-lvl-3">
-                    <div className="flex flex-col md:flex-row max-h-[90vh]">
+                  <DialogContent className="p-0 overflow-hidden border-0 w-[95vw] sm:max-w-[760px] sm:rounded-[20px] shadow-lvl-3 max-h-[92vh]">
+                    <div className="flex flex-col md:flex-row max-h-[92vh] overflow-y-auto md:overflow-visible">
 
                       {/* LEFT — dark brand panel (40%) */}
-                      <div className="md:w-[40%] premium-hero-gradient p-8 md:p-10 flex flex-col justify-between text-white relative overflow-hidden">
+                      <div className="md:w-[40%] premium-hero-gradient p-6 sm:p-8 md:p-10 flex flex-col justify-between text-white relative overflow-hidden">
                         <div className="absolute -bottom-12 -right-12 opacity-[0.07]">
                           <Handshake className="w-64 h-64 text-primary" strokeWidth={1} />
                         </div>
@@ -392,13 +422,13 @@ const Clients = () => {
                       </div>
 
                       {/* RIGHT — form panel (60%) */}
-                      <div className="md:w-[60%] bg-card p-7 md:p-9 overflow-y-auto">
+                      <div className="md:w-[60%] bg-card p-5 sm:p-7 md:p-9 md:overflow-y-auto">
                         <div className="space-y-5">
                           <div className="space-y-2">
                             <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Contact Name *</Label>
                             <Input placeholder="e.g. John Doe" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Company</Label>
                               <Input placeholder="Acme Corp" value={formData.company || ""} onChange={e => setFormData({...formData, company: e.target.value})} />
@@ -448,7 +478,7 @@ const Clients = () => {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="grid grid-cols-3 gap-4">
+                          <div className="grid grid-cols-3 gap-3 sm:gap-4">
                             <div className="col-span-1 space-y-2">
                               <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Currency</Label>
                               <Select value={formData.currency || "NGN"} onValueChange={v => setFormData({...formData, currency: v})}>
@@ -466,11 +496,11 @@ const Clients = () => {
                         </div>
 
                         <div className="flex items-center gap-3 pt-7 mt-6 border-t border-border">
-                          <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1 h-11 font-semibold">
+                          <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting} className="flex-1 h-11 font-semibold">
                             Cancel
                           </Button>
-                          <Button onClick={handleSubmit} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md shadow-primary/20">
-                            {editingId ? "Save Changes" : "Create Deal"}
+                          <Button onClick={handleSubmit} disabled={submitting || !(formData.name || "").trim()} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md shadow-primary/20 disabled:opacity-60">
+                            {submitting ? "Saving…" : (editingId ? "Save Changes" : "Create Deal")}
                           </Button>
                         </div>
                       </div>
@@ -483,16 +513,28 @@ const Clients = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50 p-1 rounded-xl shrink-0">
-            <TabsTrigger value="pipeline" className="rounded-lg font-bold py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">Sales Pipeline</TabsTrigger>
-            <TabsTrigger value="directory" className="rounded-lg font-bold py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">Client Directory</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50 p-1 rounded-xl shrink-0 h-auto">
+            <TabsTrigger value="pipeline" className="rounded-lg font-bold py-2 text-xs sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">Sales Pipeline</TabsTrigger>
+            <TabsTrigger value="directory" className="rounded-lg font-bold py-2 text-xs sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">Client Directory</TabsTrigger>
           </TabsList>
 
           <div className="flex-1 min-h-0">
             <ScrollArea className="h-full pr-4 -mr-4">
               <TabsContent value="pipeline" className="mt-0 space-y-6 pb-6">
                 <ClientDashboard clients={clients} profiles={profiles} onMetricClick={handleMetricClick} />
-                
+
+                {loading ? (
+                  <SkeletonCardList count={4} />
+                ) : clients.length === 0 ? (
+                  <EmptyState
+                    illustration="clients"
+                    heading="The Deal Book is empty"
+                    subtext="Add your first client or import an existing pipeline to get started."
+                    ctaText={canEdit ? "Add client" : undefined}
+                    onCta={canEdit ? () => { setFormData(emptyClient); setEditingId(null); setDialogOpen(true); } : undefined}
+                  />
+                ) : (
+                <>
                 {/* Kanban View — horizontally scrollable, drag-and-drop enabled */}
                 <div className="overflow-x-auto pb-4 -mx-2 px-2">
                   <div className="flex gap-4" style={{ minWidth: `${columns.length * 240}px` }}>
@@ -500,11 +542,11 @@ const Clients = () => {
                     <div 
                       key={column.id} 
                       className="flex flex-col h-full min-h-[400px] shrink-0 w-[260px]"
-                      onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-[#bc7e57]/40', 'rounded-2xl'); }}
-                      onDragLeave={(e) => { e.currentTarget.classList.remove('ring-2', 'ring-[#bc7e57]/40', 'rounded-2xl'); }}
+                      onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-primary/40', 'rounded-2xl'); }}
+                      onDragLeave={(e) => { e.currentTarget.classList.remove('ring-2', 'ring-primary/40', 'rounded-2xl'); }}
                       onDrop={async (e) => {
                         e.preventDefault();
-                        e.currentTarget.classList.remove('ring-2', 'ring-[#bc7e57]/40', 'rounded-2xl');
+                        e.currentTarget.classList.remove('ring-2', 'ring-primary/40', 'rounded-2xl');
                         const clientId = e.dataTransfer.getData('text/plain');
                         if (!clientId) return;
                         const { error } = await supabase.from('clients').update({ deal_status: column.id }).eq('id', clientId);
@@ -570,6 +612,8 @@ const Clients = () => {
                   ))}
                   </div>
                 </div>
+                </>
+                )}
               </TabsContent>
 
               <TabsContent value="directory" className="mt-0 space-y-6 pb-6">
@@ -599,6 +643,19 @@ const Clients = () => {
                   </CardContent>
                 </Card>
 
+                {loading ? (
+                  <SkeletonTable rows={6} cols={5} />
+                ) : filtered.length === 0 ? (
+                  <EmptyState
+                    illustration="clients"
+                    heading={clients.length === 0 ? "No clients yet" : "No matches"}
+                    subtext={clients.length === 0
+                      ? "Add your first client to populate the directory."
+                      : "Try clearing the search or stage filter."}
+                    ctaText={clients.length === 0 && canEdit ? "Add client" : undefined}
+                    onCta={clients.length === 0 && canEdit ? () => { setFormData(emptyClient); setEditingId(null); setDialogOpen(true); } : undefined}
+                  />
+                ) : (
                 <Card className="border-border/40 shadow-sm overflow-hidden rounded-2xl">
                   <Table>
                     <TableHeader className="bg-muted/30">
@@ -671,6 +728,7 @@ const Clients = () => {
                     </TableBody>
                   </Table>
                 </Card>
+                )}
               </TabsContent>
             </ScrollArea>
           </div>

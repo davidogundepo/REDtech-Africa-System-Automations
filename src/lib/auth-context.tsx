@@ -15,6 +15,17 @@ export interface Profile {
   created_at: string;
 }
 
+// Email domain allow-list. Empty array means any email is accepted (useful
+// for invited collaborators outside the redtechafrica.com workspace).
+const ALLOWED_EMAIL_DOMAINS: string[] = [];
+
+const isAllowedEmail = (email: string) => {
+  if (ALLOWED_EMAIL_DOMAINS.length === 0) return true;
+  const normalized = email.trim().toLowerCase();
+  const [, domain = ""] = normalized.split("@");
+  return ALLOWED_EMAIL_DOMAINS.includes(domain);
+};
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
@@ -106,9 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    // Client-side domain check (server trigger also enforces)
-    if (!email.endsWith("@redtechafrica.com") && email !== "david.oludepo@gmail.com") {
-      return { error: "Only @redtechafrica.com email addresses are allowed." };
+    if (!isAllowedEmail(email)) {
+      return { error: "Use your verified work email to create an account." };
     }
 
     const { error } = await supabase.auth.signUp({

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 // ALL modules that can be toggled
 export const ALL_MODULES = [
   { key: 'invoice',     label: 'Invoice Generator',    path: '/invoice' },
+  { key: 'partnerships', label: 'Partnership Generator', path: '/partnerships' },
   { key: 'waybill',     label: 'Waybill Generator',    path: '/waybill' },
   { key: 'clients',     label: 'Client Directory',     path: '/clients' },
   { key: 'tasks',       label: 'Task Tracker',         path: '/tasks' },

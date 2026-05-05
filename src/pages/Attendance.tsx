@@ -285,8 +285,11 @@ const Attendance = () => {
   const clockInMutation = useMutation({
     mutationFn: async () => {
       if (!profile) throw new Error("Not logged in");
+      if (myRecord) throw new Error("You've already clocked in today");
+      const trimmedNotes = (notes || "").trim();
+      if (trimmedNotes.length > 500) throw new Error("Notes must be under 500 characters");
       const gps = await getGeoLocation();
-      const notesWithGPS = [notes, gps].filter(Boolean).join(" ").trim();
+      const notesWithGPS = [trimmedNotes, gps].filter(Boolean).join(" ").trim();
       const { error } = await supabase.from("attendance_records").insert([{
         user_id: profile.id,
         clock_in: new Date().toISOString(),
@@ -300,12 +303,15 @@ const Attendance = () => {
       queryClient.invalidateQueries({ queryKey: ["my-attendance"] });
       toast.success("Clocked in successfully! 📍");
       setNotesDialog(false);
-    }
+      setNotes("");
+    },
+    onError: (err: any) => toast.error(err?.message || "Clock-in failed. Please try again.")
   });
 
   const clockOutMutation = useMutation({
     mutationFn: async () => {
-      if (!profile || !myRecord) throw new Error("No clock-in record");
+      if (!profile || !myRecord) throw new Error("No clock-in record found");
+      if (myRecord.clock_out) throw new Error("Already clocked out for today");
       const gps = await getGeoLocation();
       const existingNotes = myRecord.notes || "";
       const outNotes = [existingNotes, gps ? `→ out: ${gps}` : ""].filter(Boolean).join(" ").trim();
@@ -318,7 +324,8 @@ const Attendance = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-attendance"] });
       toast.success("Clocked out successfully! 📍");
-    }
+    },
+    onError: (err: any) => toast.error(err?.message || "Clock-out failed. Please try again.")
   });
 
   const firstName = (profile?.full_name || "").split(" ")[0] || "User";
@@ -344,11 +351,11 @@ const Attendance = () => {
             </p>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {!myRecord && new Date().getDay() !== 0 && new Date().getDay() !== 6 ? (
               <Button
                 onClick={() => setNotesDialog(true)}
-                className="h-13 px-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base shadow-lvl-2 hover:shadow-lvl-3 hover:-translate-y-0.5 transition-all"
+                className="h-12 sm:h-13 px-6 sm:px-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm sm:text-base shadow-lvl-2 hover:shadow-lvl-3 hover:-translate-y-0.5 transition-all"
               >
                 <LogIn className="w-4 h-4 mr-2" /> Clock In →
               </Button>
@@ -358,19 +365,21 @@ const Attendance = () => {
               </Badge>
             ) : !myRecord.clock_out ? (
               <Button
+                disabled={clockOutMutation.isPending}
                 onClick={() => {
+                  if (clockOutMutation.isPending) return;
                   const now = new Date();
                   const endHour = shiftConfig?.used_days ?? 17;
                   if (now.getHours() < endHour) setEarlyLeaveDialog(true);
                   else clockOutMutation.mutate();
                 }}
-                className="h-13 px-8 rounded-full bg-success hover:bg-success/90 text-white font-bold text-base shadow-lvl-2 transition-all relative"
+                className="h-12 sm:h-13 px-6 sm:px-8 rounded-full bg-success hover:bg-success/90 text-white font-bold text-sm sm:text-base shadow-lvl-2 transition-all relative disabled:opacity-60"
               >
                 <span className="relative flex h-2.5 w-2.5 mr-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
                 </span>
-                Clock Out
+                {clockOutMutation.isPending ? "Clocking out…" : "Clock Out"}
               </Button>
             ) : (
               <Badge className="bg-success/10 text-success border-success/20 py-2 px-4 text-sm font-bold">
@@ -393,7 +402,7 @@ const Attendance = () => {
         </div>
 
         <Tabs defaultValue="my-dashboard" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/50 p-1 rounded-xl shrink-0">
+          <TabsList className={`grid w-full ${(isAdmin || isSuperAdmin) ? 'grid-cols-3' : 'grid-cols-1'} mb-6 bg-muted/50 p-1 rounded-xl shrink-0 h-auto`}>
             <TabsTrigger value="my-dashboard" className="rounded-lg font-bold py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">My Dashboard</TabsTrigger>
             {(isAdmin || isSuperAdmin) && <TabsTrigger value="team-overview" className="rounded-lg font-bold py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">Team Overview</TabsTrigger>}
             {(isAdmin || isSuperAdmin) && <TabsTrigger value="analytics" className="rounded-lg font-bold py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">System Analytics</TabsTrigger>}
@@ -427,7 +436,7 @@ const Attendance = () => {
                   <Card className="border-border/40 shadow-sm overflow-hidden rounded-2xl">
                     <CardHeader className="bg-muted/30 border-b border-border/20 py-4 px-6 flex flex-row items-center justify-between">
                       <CardTitle className="text-lg font-black flex items-center gap-2">
-                        <Users className="w-5 h-5 text-[#bc7e57]" /> Daily Attendance Log
+                        <Users className="w-5 h-5 text-primary" /> Daily Attendance Log
                       </CardTitle>
                       <div className="flex items-center gap-3">
                         <Input 
@@ -454,7 +463,7 @@ const Attendance = () => {
                             <TableRow key={rec.id} className="hover:bg-muted/10 transition-colors">
                               <TableCell className="pl-6 py-3">
                                 <div className="flex items-center gap-3">
-                                  <div className="h-8 w-8 rounded-full bg-[#bc7e57]/10 flex items-center justify-center text-[#bc7e57] font-black text-xs border border-[#bc7e57]/20 shadow-sm">
+                                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs border border-primary/20 shadow-sm">
                                     {(rec.profiles?.full_name || "U")[0]}
                                   </div>
                                   <div>
@@ -476,7 +485,7 @@ const Attendance = () => {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-sm font-medium">{rec.clock_in ? format(new Date(rec.clock_in), "HH:mm") : "—"}</TableCell>
-                              <TableCell className="text-sm font-bold text-[#bc7e57] text-right pr-6">{rec.clock_in && rec.clock_out ? getWorkingHours(rec.clock_in, rec.clock_out) : "—"}</TableCell>
+                              <TableCell className="text-sm font-bold text-primary text-right pr-6">{rec.clock_in && rec.clock_out ? getWorkingHours(rec.clock_in, rec.clock_out) : "—"}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -518,7 +527,9 @@ const Attendance = () => {
               <Label>Any blockers or notes for today?</Label>
               <Textarea placeholder="E.g. Working on the new UI components..." value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
-            <Button className="w-full bg-[#bc7e57]" onClick={() => clockInMutation.mutate()}>Confirm Clock In</Button>
+            <Button className="w-full bg-primary disabled:opacity-60" disabled={clockInMutation.isPending} onClick={() => { if (!clockInMutation.isPending) clockInMutation.mutate(); }}>
+              {clockInMutation.isPending ? "Clocking in…" : "Confirm Clock In"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

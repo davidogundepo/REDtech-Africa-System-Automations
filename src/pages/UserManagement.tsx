@@ -17,7 +17,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus, Clock, MapPin, Key, Trash2, Plus, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus, Clock, MapPin, Key, Trash2, Plus, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
+import { resetUserTour } from "@/components/shared/FeatureTour";
 import { toast } from "sonner";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { MotionPage } from "@/components/shared/MotionPage";
@@ -25,6 +26,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip, L
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { format, subDays } from "date-fns";
+import { DemoModeToggle } from "@/components/shared/DemoModeToggle";
 
 const roleBadgeColors: Record<string, string> = {
   super_admin: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
@@ -114,16 +116,30 @@ const UserManagement = () => {
 
   const createUserMutation = useMutation({
     mutationFn: async () => {
+      const fullName = newUser.full_name.trim();
+      const email = newUser.email.trim().toLowerCase();
+      const password = newUser.password;
+      const VALID_ROLES: UserRole[] = ["super_admin", "admin", "team_member", "viewer"];
+
+      if (!fullName) throw new Error("Full name is required");
+      if (fullName.length > 120) throw new Error("Full name must be under 120 characters");
+      if (!email) throw new Error("Email is required");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Email is not valid");
+      if (email.length > 255) throw new Error("Email is too long");
+      if (!VALID_ROLES.includes(newUser.role)) throw new Error("Invalid role");
+      if (!newUser.department?.trim()) throw new Error("Department is required");
+      if (password && password.length < 8) throw new Error("Password must be at least 8 characters");
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUser.email,
-        password: newUser.password || "RACStaff2026!", // Default password
-        options: { data: { full_name: newUser.full_name } }
+        email,
+        password: password || "RACStaff2026!", // Default password
+        options: { data: { full_name: fullName } }
       });
       if (authError) throw authError;
       if (!authData.user) throw new Error("Failed to create auth user");
 
       // Auto-detect gender from name
-      const detectedGender = inferGender(newUser.full_name);
+      const detectedGender = inferGender(fullName);
 
       // Profile is created by trigger, but we need to update role, dept, and gender
       const { error: profileError } = await supabase
@@ -138,7 +154,7 @@ const UserManagement = () => {
       setNewUser({ full_name: "", email: "", role: "team_member", department: "Operations", password: "" });
       toast.success("Staff profile created and invited! 📧 Gender auto-detected.");
     },
-    onError: (err: any) => toast.error("Creation failed: " + err.message)
+    onError: (err: any) => toast.error("Creation failed: " + (err?.message || "Unknown error"))
   });
 
   const { data: users, isLoading } = useQuery({
@@ -232,7 +248,11 @@ const UserManagement = () => {
 
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, role, department, is_active, work_days, work_mode, clock_in_required }: { id: string; role: UserRole; department: string; is_active: boolean; work_days?: Record<string, boolean>; work_mode?: string, clock_in_required?: boolean }) => {
-      const updates: Record<string, any> = { role, department, is_active };
+      const VALID_ROLES: UserRole[] = ["super_admin", "admin", "team_member", "viewer"];
+      if (!id) throw new Error("Missing user id");
+      if (!VALID_ROLES.includes(role)) throw new Error("Invalid role selected");
+      if (!department || !department.trim()) throw new Error("Department is required");
+      const updates: Record<string, any> = { role, department: department.trim(), is_active };
       if (work_days !== undefined) updates.work_days = work_days;
       if (work_mode !== undefined) updates.work_mode = work_mode;
       if (clock_in_required !== undefined) updates.clock_in_required = clock_in_required;
@@ -247,7 +267,7 @@ const UserManagement = () => {
       setEditDialogOpen(false);
       toast.success(`User updated, ${(currentProfile?.full_name || "").split(" ")[0]}! Changes saved ✅`);
     },
-    onError: (error) => toast.error("Failed to update: " + error.message),
+    onError: (error: any) => toast.error("Failed to update: " + (error?.message || "Unknown error")),
   });
 
   const DEFAULT_WORK_DAYS = { mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false };
@@ -268,6 +288,20 @@ const UserManagement = () => {
 
   const handleSaveEdit = () => {
     if (!editingUser) return;
+    if (updateUserMutation.isPending) return; // double-submit guard
+
+    // Guard: prevent users from demoting themselves out of super_admin
+    if (currentProfile?.id === editingUser.id && editingUser.role === "super_admin" && editRole !== "super_admin") {
+      const ok = confirm("⚠️ You're about to remove your own Super Admin role. You may lose access to this page. Continue?");
+      if (!ok) return;
+    }
+
+    // Confirm role escalation/de-escalation for other users
+    if (editingUser.role !== editRole) {
+      const ok = confirm(`Change role for ${editingUser.full_name} from "${roleLabels[editingUser.role] || editingUser.role}" to "${roleLabels[editRole] || editRole}"?`);
+      if (!ok) return;
+    }
+
     updateUserMutation.mutate({
       id: editingUser.id,
       role: editRole,
@@ -324,19 +358,28 @@ const UserManagement = () => {
 
   const broadcastMutation = useMutation({
     mutationFn: async () => {
-      let targetUserIds = [];
+      const title = broadcastTitle.trim();
+      const message = broadcastMessage.trim();
+      const ALLOWED_TYPES = ["info", "success", "warning", "error", "announcement"];
+      if (!title) throw new Error("Title is required");
+      if (title.length > 120) throw new Error("Title must be under 120 characters");
+      if (!message) throw new Error("Message is required");
+      if (message.length > 1000) throw new Error("Message must be under 1000 characters");
+      if (broadcastType && !ALLOWED_TYPES.includes(broadcastType)) throw new Error("Invalid broadcast type");
+
+      let targetUserIds: string[] = [];
       if (broadcastTarget === "all") {
-        targetUserIds = users?.map((u: any) => u.id) || [];
+        targetUserIds = (users || []).filter((u: any) => u.is_active !== false).map((u: any) => u.id);
       } else {
         targetUserIds = [broadcastTarget];
       }
 
-      if (targetUserIds.length === 0) throw new Error("No users to broadcast to.");
+      if (targetUserIds.length === 0) throw new Error("No active users to broadcast to.");
 
       const notifications = targetUserIds.map(id => ({
         user_id: id,
-        title: broadcastTitle,
-        message: broadcastMessage,
+        title,
+        message,
         type: broadcastType,
         link: "/user-management" // Optional generic link
       }));
@@ -388,7 +431,7 @@ const UserManagement = () => {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 rounded-full border-2 border-[#bc7e57] border-t-transparent animate-spin" />
+          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
           <p className="text-sm text-muted-foreground">Loading user management…</p>
         </div>
       </div>
@@ -413,8 +456,9 @@ const UserManagement = () => {
     <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#bc7e57' }}>User Management</h1>
+          <h1 className="text-3xl font-bold" style={{ color: 'hsl(var(--primary))' }}>User Management</h1>
           <p className="text-muted-foreground mt-2">Manage team members, roles, and department assignments</p>
+          <DemoModeToggle />
         </div>
         <div className="flex items-center gap-4">
           {/* Notifications Popover */}
@@ -452,14 +496,14 @@ const UserManagement = () => {
           {/* Shift Settings Config */}
           <Dialog open={shiftDialogOpen} onOpenChange={setShiftDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="border-[#bc7e57] text-[#bc7e57] hover:bg-[#bc7e57]/10">
+              <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
                 <Clock className="h-4 w-4 mr-2" /> Shift Settings
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg shadow-2xl">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-xl font-bold bg-gradient-to-r from-[#bc7e57] to-[#eab308] bg-clip-text text-transparent">
-                  <Clock className="h-5 w-5 text-[#bc7e57]" /> Global Shift Configuration
+                <DialogTitle className="flex items-center gap-2 bg-gradient-to-r from-primary to-[hsl(var(--highlight))] bg-clip-text text-xl font-bold text-transparent">
+                  <Clock className="h-5 w-5 text-primary" /> Global Shift Configuration
                 </DialogTitle>
               </DialogHeader>
               <div className="py-4 space-y-6">
@@ -492,8 +536,8 @@ const UserManagement = () => {
 
                 <Button 
                   onClick={() => saveShiftConfigMutation.mutate()}
-                  className="w-full py-6 text-lg font-bold shadow-lg gap-2 mt-4"
-                  style={{ backgroundColor: '#bc7e57', color: 'white' }}
+                  className="mt-4 w-full gap-2 py-6 text-lg font-bold shadow-lg"
+                  style={{ backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
                   disabled={saveShiftConfigMutation.isPending}
                 >
                   {saveShiftConfigMutation.isPending ? "Syncing to Cloud..." : "Save Global Rules"}
@@ -505,7 +549,7 @@ const UserManagement = () => {
           {/* Admin Broadcast Button */}
           <Dialog open={broadcastDialogOpen} onOpenChange={setBroadcastDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#bc7e57] hover:bg-[#a88a56] text-white">
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
                 <Bell className="h-4 w-4 mr-2" /> Admin Broadcast
               </Button>
             </DialogTrigger>
@@ -563,7 +607,7 @@ const UserManagement = () => {
                     broadcastMutation.mutate();
                   }} 
                   disabled={!broadcastTitle || !broadcastMessage || broadcastMutation.isPending}
-                  className="w-full bg-[#bc7e57] hover:bg-[#a88a56] text-white"
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {broadcastMutation.isPending ? "Sending..." : "Send Broadcast"}
                 </Button>
@@ -574,7 +618,7 @@ const UserManagement = () => {
           <div className="flex items-center gap-2">
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white font-bold h-10 px-5 rounded-2xl shadow-lg shadow-[#bc7e57]/20">
+                <Button className="h-10 rounded-2xl bg-primary px-5 font-bold text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90">
                   <UserPlus className="h-4 w-4 mr-2" /> Create Staff Profile
                 </Button>
               </DialogTrigger>
@@ -582,24 +626,24 @@ const UserManagement = () => {
                 {/* Two-column layout */}
                 <div className="flex flex-col md:flex-row min-h-[560px]">
                   {/* LEFT: Brand panel */}
-                  <div className="hidden md:flex flex-col justify-between w-80 shrink-0 bg-gradient-to-b from-[#1a0e06] via-[#0f0905] to-[#080503] p-10 relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, #bc7e57 0%, transparent 60%), radial-gradient(circle at 80% 80%, #bc7e5740 0%, transparent 50%)' }} />
+                  <div className="relative hidden w-80 shrink-0 flex-col justify-between overflow-hidden bg-gradient-to-b from-[hsl(var(--brand-800))] via-[hsl(var(--brand-900))] to-[hsl(var(--background))] p-10 md:flex">
+                    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, hsl(var(--primary)) 0%, transparent 60%), radial-gradient(circle at 80% 80%, hsl(var(--primary) / 0.25) 0%, transparent 50%)' }} />
                     <div className="relative z-10">
-                      <div className="h-12 w-12 rounded-2xl bg-[#bc7e57]/20 border border-[#bc7e57]/30 flex items-center justify-center mb-8">
-                        <UserPlus className="h-6 w-6 text-[#bc7e57]" />
+                      <div className="h-12 w-12 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center mb-8">
+                        <UserPlus className="h-6 w-6 text-primary" />
                       </div>
-                      <h2 className="text-2xl font-black text-white mb-3 leading-tight">Register New<br />Staff Member</h2>
-                      <p className="text-sm text-white/50 leading-relaxed mb-10">Create a platform account for your team. They’ll receive an email invite automatically.</p>
+                      <h2 className="mb-3 text-2xl font-black leading-tight text-primary-foreground">Register New<br />Staff Member</h2>
+                      <p className="mb-10 text-sm leading-relaxed text-primary-foreground/60">Create a platform account for your team. They’ll receive an email invite automatically.</p>
                       <div className="space-y-5">
                         {[{ n: '01', t: 'Fill in staff details', d: 'Name, email and department' }, { n: '02', t: 'Assign role & access', d: 'Set permissions level' }, { n: '03', t: 'System sends invite', d: 'Auto-email with login link' }].map(s => (
                           <div key={s.n} className="flex gap-4 items-start">
-                            <span className="text-[10px] font-black text-[#bc7e57] bg-[#bc7e57]/10 rounded-lg px-2 py-1 mt-0.5 shrink-0 tracking-widest">{s.n}</span>
-                            <div><p className="text-xs font-bold text-white/80">{s.t}</p><p className="text-[10px] text-white/35 mt-0.5">{s.d}</p></div>
+                            <span className="text-[10px] font-black text-primary bg-primary/10 rounded-lg px-2 py-1 mt-0.5 shrink-0 tracking-widest">{s.n}</span>
+                            <div><p className="text-xs font-bold text-primary-foreground/85">{s.t}</p><p className="mt-0.5 text-[10px] text-primary-foreground/40">{s.d}</p></div>
                           </div>
                         ))}
                       </div>
                     </div>
-                    <p className="relative z-10 text-[10px] text-white/20 font-medium tracking-widest uppercase">REDtech Africa &bull; RAC Automations</p>
+                    <p className="relative z-10 text-[10px] font-medium uppercase tracking-widest text-primary-foreground/25">REDtech Africa &bull; RAC Automations</p>
                   </div>
                   {/* RIGHT: Form */}
                   <div className="flex-1 p-8 md:p-12 overflow-y-auto">
@@ -637,7 +681,7 @@ const UserManagement = () => {
                           <p className="text-[11px] text-muted-foreground">Defaults to <code className="bg-muted px-1 rounded">RACStaff2026!</code> if left blank. Staff should change on first login.</p>
                         </div>
                       </div>
-                      <Button className="w-full h-14 bg-[#bc7e57] hover:bg-[#a66c4a] text-white font-black text-base rounded-xl shadow-lg shadow-[#bc7e57]/20 mt-2" onClick={() => createUserMutation.mutate()} disabled={createUserMutation.isPending}>
+                      <Button className="mt-2 h-14 w-full rounded-xl bg-primary text-base font-black text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90" onClick={() => createUserMutation.mutate()} disabled={createUserMutation.isPending}>
                         {createUserMutation.isPending ? "Creating account..." : <>Create Account & Send Invitation →</>}
                       </Button>
                     </div>
@@ -714,7 +758,7 @@ const UserManagement = () => {
           label: "Access Levels",
           content: (
             <div className="p-6">
-              <h3 className="text-lg font-bold flex items-center gap-2 mb-5"><Key className="w-5 h-5 text-[#bc7e57]" /> Access Levels Overview</h3>
+              <h3 className="text-lg font-bold flex items-center gap-2 mb-5"><Key className="w-5 h-5 text-primary" /> Access Levels Overview</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {(['super_admin', 'admin', 'team_member', 'viewer'] as const).map(role => {
                   const roleUsers = users?.filter((u: any) => u.role === role && u.is_active) || [];
@@ -729,7 +773,7 @@ const UserManagement = () => {
                         {roleUsers.slice(0, 5).map((u: any) => (
                           <p key={u.id} className="text-xs text-muted-foreground truncate">{u.full_name} — {u.department || 'No dept'}</p>
                         ))}
-                        {roleUsers.length > 5 && <p className="text-xs text-[#bc7e57] font-medium">+{roleUsers.length - 5} more</p>}
+                        {roleUsers.length > 5 && <p className="text-xs text-primary font-medium">+{roleUsers.length - 5} more</p>}
                       </div>
                     </div>
                   );
@@ -742,7 +786,7 @@ const UserManagement = () => {
           label: "Location Stats",
           content: (
             <div className="p-6">
-              <h3 className="text-lg font-bold flex items-center gap-2 mb-5"><MapPin className="w-5 h-5 text-[#bc7e57]" /> Work Location Distribution</h3>
+              <h3 className="text-lg font-bold flex items-center gap-2 mb-5"><MapPin className="w-5 h-5 text-primary" /> Work Location Distribution</h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-muted/20 rounded-2xl p-4 border border-border/30 flex items-center justify-center">
                   <ResponsiveContainer width="100%" height={220}>
@@ -839,6 +883,19 @@ const UserManagement = () => {
                           <DropdownMenuItem onClick={() => handleEdit(user)} className="cursor-pointer gap-2">
                             <Edit className="h-4 w-4" /> Edit Profile
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              try {
+                                await resetUserTour(user.id, user.full_name, currentProfile?.full_name || "An admin");
+                                toast.success(`Onboarding tour reset for ${user.full_name.split(" ")[0]}. It will replay on their next visit.`);
+                              } catch (e: any) {
+                                toast.error("Failed to reset tour: " + (e?.message || "Unknown error"));
+                              }
+                            }}
+                            className="cursor-pointer gap-2 text-primary focus:text-primary"
+                          >
+                            <Sparkles className="h-4 w-4" /> Reset Onboarding Tour
+                          </DropdownMenuItem>
                           {user.is_active && (
                             <DropdownMenuItem 
                               onClick={() => {
@@ -867,29 +924,29 @@ const UserManagement = () => {
         <DialogContent className="p-0 gap-0 max-w-[95vw] sm:max-w-5xl overflow-hidden bg-background shadow-2xl border-border/40">
           <div className="flex flex-col md:flex-row min-h-[520px]">
             {/* LEFT: User context panel */}
-            <div className="hidden md:flex flex-col justify-between w-72 shrink-0 bg-gradient-to-b from-[#0d0a08] to-[#1a120a] p-10 relative overflow-hidden">
-              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(ellipse at top, #bc7e5740, transparent 70%)' }} />
+            <div className="relative hidden w-72 shrink-0 flex-col justify-between overflow-hidden bg-gradient-to-b from-[hsl(var(--brand-900))] to-[hsl(var(--brand-800))] p-10 md:flex">
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(ellipse at top, hsl(var(--primary) / 0.25), transparent 70%)' }} />
               <div className="relative z-10">
-                <div className="h-20 w-20 rounded-3xl bg-[#bc7e57]/10 border-2 border-[#bc7e57]/30 flex items-center justify-center mb-6 text-3xl font-black text-[#bc7e57]">
+                <div className="h-20 w-20 rounded-3xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center mb-6 text-3xl font-black text-primary">
                   {(editingUser?.full_name || 'U').charAt(0).toUpperCase()}
                 </div>
-                <h3 className="text-xl font-black text-white mb-1">{editingUser?.full_name}</h3>
-                <p className="text-sm text-white/40 mb-2">{editingUser?.email}</p>
-                <div className="inline-flex items-center gap-2 bg-[#bc7e57]/10 rounded-lg px-3 py-1.5 mt-1">
+                <h3 className="mb-1 text-xl font-black text-primary-foreground">{editingUser?.full_name}</h3>
+                <p className="mb-2 text-sm text-primary-foreground/45">{editingUser?.email}</p>
+                <div className="inline-flex items-center gap-2 bg-primary/10 rounded-lg px-3 py-1.5 mt-1">
                   <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[11px] font-black text-[#bc7e57] uppercase tracking-widest">{editingUser?.department || 'No dept'}</span>
+                  <span className="text-[11px] font-black text-primary uppercase tracking-widest">{editingUser?.department || 'No dept'}</span>
                 </div>
                 <div className="mt-10 space-y-3">
-                  <p className="text-[10px] font-black text-white/25 uppercase tracking-widest mb-4">Editing permissions</p>
+                  <p className="mb-4 text-[10px] font-black uppercase tracking-widest text-primary-foreground/25">Editing permissions</p>
                   {['Role & access level', 'Department assignment', 'Work schedule & location', 'Clock-in requirement'].map(item => (
                     <div key={item} className="flex items-center gap-3">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                      <span className="text-[11px] text-white/50 font-medium">{item}</span>
+                      <span className="text-[11px] font-medium text-primary-foreground/50">{item}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <p className="relative z-10 text-[10px] text-white/20 font-medium tracking-widest uppercase">REDtech Africa &bull; RAC Admin</p>
+              <p className="relative z-10 text-[10px] font-medium uppercase tracking-widest text-primary-foreground/20">REDtech Africa &bull; RAC Admin</p>
             </div>
             {/* RIGHT: Edit form */}
             <div className="flex-1 p-8 md:p-12 overflow-y-auto">
@@ -927,14 +984,14 @@ const UserManagement = () => {
                   <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Work Days</Label>
                   <div className="flex gap-2 flex-wrap">
                     {(['mon','tue','wed','thu','fri','sat','sun'] as const).map(day => (
-                      <button key={day} type="button" onClick={() => setEditWorkDays(prev => ({ ...prev, [day]: !prev[day] }))} className={`px-4 py-2 rounded-xl text-xs font-black border transition-all ${ editWorkDays[day] ? 'bg-[#bc7e57] text-white border-[#bc7e57]' : 'bg-muted text-muted-foreground border-border hover:border-[#bc7e57]/50' }`}>
+                      <button key={day} type="button" onClick={() => setEditWorkDays(prev => ({ ...prev, [day]: !prev[day] }))} className={`px-4 py-2 rounded-xl text-xs font-black border transition-all ${ editWorkDays[day] ? 'bg-primary text-white border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary/50' }`}>
                         {day.charAt(0).toUpperCase() + day.slice(1)}
                       </button>
                     ))}
                   </div>
                   <div className="flex gap-3">
                     {(['office','hybrid','remote'] as const).map(mode => (
-                      <button key={mode} type="button" onClick={() => setEditWorkMode(mode)} className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-all capitalize ${ editWorkMode === mode ? 'bg-[#bc7e57]/10 text-[#bc7e57] border-[#bc7e57]/50' : 'bg-muted text-muted-foreground border-border hover:border-[#bc7e57]/30' }`}>
+                      <button key={mode} type="button" onClick={() => setEditWorkMode(mode)} className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-all capitalize ${ editWorkMode === mode ? 'bg-primary/10 text-primary border-primary/50' : 'bg-muted text-muted-foreground border-border hover:border-primary/30' }`}>
                         {mode === 'office' ? '🏢 Office' : mode === 'hybrid' ? '🔀 Hybrid' : '🏠 Remote'}
                       </button>
                     ))}
@@ -947,7 +1004,7 @@ const UserManagement = () => {
                   </div>
                   <PremiumToggle checked={editClockInRequired} onChange={() => setEditClockInRequired(!editClockInRequired)} />
                 </div>
-                <Button onClick={handleSaveEdit} className="w-full h-14 font-black text-base rounded-xl" style={{ backgroundColor: '#bc7e57', color: 'white' }} disabled={updateUserMutation.isPending}>
+                <Button onClick={handleSaveEdit} className="h-14 w-full rounded-xl bg-primary text-base font-black text-primary-foreground hover:bg-primary/90" disabled={updateUserMutation.isPending}>
                   {updateUserMutation.isPending ? 'Syncing changes...' : 'Save Profile Changes →'}
                 </Button>
               </div>
@@ -1010,7 +1067,7 @@ const UserManagement = () => {
         <CardHeader className="border-b border-border/30 pb-5 flex flex-row items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-2xl font-black">
-              <Building2 className="h-6 w-6 text-[#bc7e57]" /> Department Manager
+              <Building2 className="h-6 w-6 text-primary" /> Department Manager
             </CardTitle>
             <p className="text-xs text-muted-foreground font-medium mt-1.5">Create, toggle, or remove departments. All changes propagate everywhere instantly.</p>
           </div>
@@ -1025,7 +1082,7 @@ const UserManagement = () => {
             />
             <Button
               onClick={() => { if (newDeptName.trim()) { addDepartment(newDeptName); setNewDeptName(''); } }}
-              className="bg-[#bc7e57] hover:bg-[#a66c4a] text-white font-black h-11 px-5 shadow-lg shadow-[#bc7e57]/20"
+              className="bg-primary hover:bg-[#a66c4a] text-white font-black h-11 px-5 shadow-lg shadow-primary/20"
             >
               <Plus className="h-4 w-4 mr-2" /> Add
             </Button>
@@ -1038,7 +1095,7 @@ const UserManagement = () => {
                 key={dept.id}
                 className={`group relative rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-xl ${
                   dept.isActive
-                    ? 'border-border/50 bg-card hover:border-[#bc7e57]/20 hover:shadow-[#bc7e57]/5'
+                    ? 'border-border/50 bg-card hover:border-primary/20 hover:shadow-primary/5'
                     : 'border-border/20 bg-muted/20'
                 }`}
               >
