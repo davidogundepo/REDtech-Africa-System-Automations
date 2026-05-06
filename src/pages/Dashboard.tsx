@@ -315,9 +315,14 @@ const Dashboard = () => {
     ];
   }, [tasksByStatus]);
 
-  /* Greeting */
+  /* Time-aware greeting + icon */
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const { greeting, greetingIcon } = (() => {
+    if (hour < 12) return { greeting: "Good morning", greetingIcon: "☀️" };
+    if (hour < 17) return { greeting: "Good afternoon", greetingIcon: "🌤️" };
+    if (hour < 21) return { greeting: "Good evening", greetingIcon: "🌆" };
+    return { greeting: "Good night", greetingIcon: "🌙" };
+  })();
   const firstName = authLoading ? "" : (profile?.full_name || "").split(" ")[0] || "there";
 
   /* KPI values */
@@ -342,8 +347,9 @@ const Dashboard = () => {
               All systems operational
             </span>
           </div>
-          <h1 className="text-h1 font-bold text-foreground">
-            {greeting}, {authLoading ? <span className="inline-block h-7 w-32 align-middle rounded skeleton-shimmer" /> : firstName} 👋
+          <h1 className="text-h1 font-bold text-foreground flex items-center gap-2 flex-wrap">
+            <span className="text-3xl" aria-hidden>{greetingIcon}</span>
+            <span>{greeting}, {authLoading ? <span className="inline-block h-7 w-32 align-middle rounded skeleton-shimmer" /> : firstName} 👋</span>
           </h1>
           <p className="text-[13px] text-muted-foreground mt-1">
             Here's what's moving across REDtech today.
