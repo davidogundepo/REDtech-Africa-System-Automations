@@ -20,13 +20,15 @@ function buildSteps(firstName: string, role: Role | undefined) {
     },
   };
 
+  // NOTE: kept as a centered popover (no `element`) so it always renders even
+  // if the sidebar is collapsed / hidden on small screens. Previously this
+  // step dimmed the screen but never showed the popover when the target was
+  // off-screen.
   const dashboard = {
-    element: '[data-tour="nav-dashboard"]',
     popover: {
-      title: "🏠 Dashboard",
-      description: "Your daily command centre — KPIs, your tasks, attendance status, and a feed of what's happening across the team.",
-      side: "right" as const,
-      align: "start" as const,
+      title: "🏠 Your Dashboard",
+      description:
+        "This is your daily command centre — KPIs, your tasks, attendance status, and a live feed of what's happening across the team. You'll land here every time you log in.",
     },
   };
 
