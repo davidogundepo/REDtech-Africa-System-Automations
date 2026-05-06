@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { 
   FileText, Truck, Users, CheckSquare, CalendarDays, 
   LayoutDashboard, LogOut, BarChart3, FolderOpen, TrendingUp, Megaphone,
-  Moon, Sun, Shield, Clock, UserCog, UsersRound, HardDrive, PanelLeftClose, PanelLeft, Handshake, Search, Sparkles
+  Moon, Sun, Shield, Clock, UserCog, UsersRound, HardDrive, PanelLeftClose, PanelLeft, Handshake, Search, Sparkles, PlayCircle
 } from "lucide-react";
 import { startFeatureTour } from "@/components/shared/FeatureTour";
 import { useTheme } from "@/components/ThemeProvider";
@@ -308,14 +308,17 @@ function StorageBox({ isCollapsed }: { isCollapsed: boolean }) {
 
   return (
     <>
-      <div className="rounded-xl border border-border/50 bg-muted/20 p-3 mb-2 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setDetailOpen(true)}>
+      <div
+        className="rounded-xl border border-sidebar-border bg-sidebar-accent/40 dark:bg-muted/20 p-3 mb-2 cursor-pointer hover:bg-sidebar-accent/70 dark:hover:bg-muted/30 transition-colors shadow-sm"
+        onClick={() => setDetailOpen(true)}
+      >
         <div className="flex items-center gap-2 mb-2">
           <HardDrive className="h-3.5 w-3.5 text-primary" />
-          <span className="text-[11px] font-semibold text-foreground">Storage</span>
-          <span className="text-[9px] text-muted-foreground ml-auto">Click for details</span>
+          <span className="text-[11px] font-semibold text-sidebar-foreground">Storage</span>
+          <span className="text-[9px] text-sidebar-foreground/60 ml-auto">Click for details</span>
         </div>
-        <Progress value={pct} className="h-1.5 mb-1.5" />
-        <div className="flex justify-between text-[10px] text-muted-foreground">
+        <Progress value={pct} className="h-1.5 mb-1.5 bg-sidebar-border/60" />
+        <div className="flex justify-between text-[10px] font-medium text-sidebar-foreground/75">
           <span>{usedMB} MB used</span>
           <span>{totalGB} GB total</span>
         </div>
@@ -547,7 +550,7 @@ export function AppSidebar() {
           onClick={() => startFeatureTour((profile?.full_name || "there").split(" ")[0], profile?.role as any)}
           title="Replay onboarding tour"
         >
-          <Sparkles className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} />
+          <PlayCircle className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} />
           {!isCollapsed && <span>Replay Tour</span>}
         </Button>
         <Button
