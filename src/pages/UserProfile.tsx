@@ -16,7 +16,7 @@ import { format, differenceInDays } from "date-fns";
 import {
   User, Mail, Building2, Shield, Camera, Award, CheckCircle2,
   Clock, AlertTriangle, TrendingUp, Star, Zap, Target, CalendarDays, BarChart3,
-  Flame, Gift, BellRing, UserCheck, Activity
+  Flame, Gift, BellRing, UserCheck, Activity, Edit
 } from "lucide-react";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { MotionPage } from "@/components/shared/MotionPage";
@@ -323,17 +323,21 @@ const UserProfile = () => {
                     </div>
                  </div>
                  
-                 <div className="flex md:flex-col gap-2 shrink-0">
+                  <div className="flex md:flex-col gap-2 shrink-0">
                     <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="rounded-xl border-border/60 hover:bg-muted/50 font-bold" onClick={() => setEditName(profile.full_name)}>
-                            Edit Specs
+                          <Button
+                            size="sm"
+                            className="rounded-xl bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 font-bold shadow-sm transition-all"
+                            onClick={() => setEditName(profile.full_name)}
+                          >
+                            <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit Profile
                           </Button>
                        </DialogTrigger>
                        <DialogContent className="rounded-3xl border-border/50 bg-card/95 backdrop-blur-xl">
                           <DialogHeader>
-                          <DialogTitle className="text-xl font-black">Edit Hardware Specs</DialogTitle>
-                          <DialogDescription className="font-medium">Update structural staff identity parameters.</DialogDescription>
+                          <DialogTitle className="text-xl font-black">Edit Profile</DialogTitle>
+                          <DialogDescription className="font-medium">Update name and department assignment.</DialogDescription>
                           </DialogHeader>
                           <div className="space-y-5 py-4">
                           <div className="space-y-2">
@@ -350,28 +354,23 @@ const UserProfile = () => {
                              </Select>
                           </div>
                           <Button className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl mt-2" onClick={() => updateNameMutation.mutate()}>
-                             Flash Changes
+                             Save Changes
                           </Button>
                           </div>
                        </DialogContent>
                     </Dialog>
-                    {isSuperAdmin && (
-                       <Button size="sm" onClick={handleAdminPing} className="rounded-xl bg-accent-gold hover:bg-accent-gold/90 text-foreground font-bold shadow-lg shadow-accent-gold/20">
-                          <BellRing className="w-4 h-4 mr-2" /> Award Ping
-                       </Button>
-                    )}
                  </div>
               </div>
 
               {/* Personalised Demographics Spread */}
-              <div className="flex flex-wrap items-center gap-6 mt-6 pt-6 border-t border-border/40 text-xs font-bold">
-                 <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground tracking-widest uppercase">Contract</span>
-                    <span className="flex items-center gap-1.5 text-foreground"><UserCheck className="w-3.5 h-3.5 text-success"/> Full-Time</span>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 pt-6 border-t border-border/40">
+                 <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Contract</span>
+                    <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><UserCheck className="w-3.5 h-3.5 text-success shrink-0"/> Full-Time</span>
                  </div>
-                 <div className="flex flex-col gap-1">
-                     <span className="text-muted-foreground tracking-widest uppercase">Gender</span>
-                     <span className="flex items-center gap-1.5 text-foreground"><User className="w-3.5 h-3.5 text-info"/> {(() => {
+                 <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/40">
+                     <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Gender</span>
+                     <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><User className="w-3.5 h-3.5 text-info shrink-0"/> {(() => {
                         const fn = (profile.full_name || "").split(" ")[0].toLowerCase();
                         const femaleNames = ["ngozi","chioma","amara","adaeze","ada","funke","funmi","folake","yetunde","nneka","ify","joy","grace","blessing","mary","ruth","naomi","faith","hope","patience","esther","deborah","sarah","hannah","abigail","maryam","fatima","halima","aisha","zainab","aminat","taiwo","titi","tomi","bimpe","sade","bola","ronke"];
                         const maleNames = ["david","adebayo","emeka","chukwu","obinna","ikenna","oluwaseun","oluwadamilare","bamidele","femi","segun","tunde","obi","uche","chijioke","kalu","ifeanyi","nnamdi","chidi","ayo","bayo","ade","wale","jide","gbenga","sola","tobi","dele","kunle","akin","mohammed","ibrahim","musa","ahmed","yusuf","ola"];
@@ -380,13 +379,13 @@ const UserProfile = () => {
                         return "Not Specified";
                      })()}</span>
                  </div>
-                 <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground tracking-widest uppercase">Start Date</span>
-                    <span className="flex items-center gap-1.5 text-foreground"><CalendarDays className="w-3.5 h-3.5 text-primary"/> {format(new Date(profile.created_at), "MMMM do, yyyy")}</span>
+                 <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Start Date</span>
+                    <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><CalendarDays className="w-3.5 h-3.5 text-primary shrink-0"/> {format(new Date(profile.created_at), "MMM d, yyyy")}</span>
                  </div>
-                 <div className="flex flex-col gap-1">
-                    <span className="text-muted-foreground tracking-widest uppercase">Tenure</span>
-                    <span className="flex items-center gap-1.5 text-foreground"><Clock className="w-3.5 h-3.5 text-accent-gold"/> {Math.max(1, Math.round(differenceInDays(new Date(), new Date(profile.created_at))/30))} Months</span>
+                 <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Tenure</span>
+                    <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><Clock className="w-3.5 h-3.5 text-accent-gold shrink-0"/> {Math.max(1, Math.round(differenceInDays(new Date(), new Date(profile.created_at))/30))} Months</span>
                  </div>
               </div>
             </div>

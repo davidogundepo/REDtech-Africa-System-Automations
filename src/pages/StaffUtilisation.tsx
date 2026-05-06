@@ -143,7 +143,7 @@ const StaffUtilisation = () => {
       const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
   
       // Determine Custom Flight Risk Labels
-      const tags = [];
+      const tags: string[] = [];
       if (overdue > 3) tags.push("High Overdue Volume");
       if (total > 15 && completionRate < 40) tags.push("Severe Bottleneck");
       if ((profile.performance_score || 100) < 60) tags.push("Low Score");

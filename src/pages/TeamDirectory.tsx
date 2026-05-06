@@ -3,6 +3,7 @@ import { MotionPage } from "@/components/shared/MotionPage";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useDepartmentNames } from "@/lib/departments";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -58,11 +59,14 @@ const TeamDirectory = () => {
     },
   });
 
+  // Pull live departments from the central Supabase table — merged with
+  // any historical department names found on profiles, so legacy values
+  // still appear in the filter dropdown.
+  const liveDepts = useDepartmentNames();
   const departments = useMemo(() => {
-    if (!profiles) return [];
-    const depts = [...new Set(profiles.map(p => p.department).filter(Boolean))] as string[];
-    return depts.sort();
-  }, [profiles]);
+    const fromProfiles = profiles ? profiles.map((p: any) => p.department).filter(Boolean) as string[] : [];
+    return Array.from(new Set([...liveDepts, ...fromProfiles])).sort();
+  }, [profiles, liveDepts]);
 
   const filtered = useMemo(() => {
     if (!profiles) return [];

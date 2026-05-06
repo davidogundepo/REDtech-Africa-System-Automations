@@ -1,60 +1,66 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth-context";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
 /**
- * Demo Mode
- * ----------
- * Stored in `app_settings` under key `demo_mode_enabled` so admins can flip
- * it once and every client picks it up. Every page that ships pre-canned
- * demo numbers should gate them behind `useDemoMode().isDemo` and otherwise
- * render an EmptyState with a "Switch on Demo Mode" hint for admins.
+ * Demo Mode (per-user)
+ * --------------------
+ * Each user toggles independently — preference persists in localStorage so it
+ * survives refresh. No DB write, no admin gating. Pages can branch on
+ * `useDemoMode().isDemo` to render canned mock data instead of querying.
  */
 interface DemoModeCtx {
   isDemo: boolean;
   loading: boolean;
   setDemo: (v: boolean) => Promise<void>;
+  toggleDemo: () => void;
 }
 
-const Ctx = createContext<DemoModeCtx>({ isDemo: false, loading: true, setDemo: async () => {} });
+const Ctx = createContext<DemoModeCtx>({
+  isDemo: false,
+  loading: false,
+  setDemo: async () => {},
+  toggleDemo: () => {},
+});
 
-const KEY = "demo_mode_enabled";
+const KEY = "rac_demo_mode_enabled";
+
+function readInitial(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 export function DemoModeProvider({ children }: { children: ReactNode }) {
-  const { user, isAdmin } = useAuth();
-  const [isDemo, setIsDemo] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo] = useState<boolean>(readInitial);
 
-  const refresh = useCallback(async () => {
-    const { data } = await (supabase as any)
-      .from("app_settings")
-      .select("value")
-      .eq("key", KEY)
-      .maybeSingle();
-    setIsDemo(Boolean(data?.value?.enabled));
-    setLoading(false);
+  // Cross-tab sync
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === KEY) setIsDemo(e.newValue === "1");
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
   }, []);
 
-  useEffect(() => {
-    refresh();
-    const ch = supabase
-      .channel("app_settings_demo")
-      .on("postgres_changes", { event: "*", schema: "public", table: "app_settings", filter: `key=eq.${KEY}` }, refresh)
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, [refresh]);
-
-  const setDemo = async (v: boolean) => {
-    if (!isAdmin || !user) throw new Error("Only admins can toggle demo mode.");
-    await (supabase as any)
-      .from("app_settings")
-      .upsert({ key: KEY, value: { enabled: v }, updated_by: user.id, updated_at: new Date().toISOString() });
+  const persist = (v: boolean) => {
     setIsDemo(v);
+    try {
+      window.localStorage.setItem(KEY, v ? "1" : "0");
+    } catch {
+      /* ignore quota / private mode */
+    }
   };
 
-  return <Ctx.Provider value={{ isDemo, loading, setDemo }}>{children}</Ctx.Provider>;
+  const setDemo = async (v: boolean) => persist(v);
+  const toggleDemo = () => persist(!isDemo);
+
+  return (
+    <Ctx.Provider value={{ isDemo, loading: false, setDemo, toggleDemo }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useDemoMode() {

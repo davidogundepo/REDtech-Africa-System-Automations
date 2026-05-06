@@ -26,6 +26,7 @@ import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { format } from "date-fns";
 import { ClientDashboard } from "@/components/clients/ClientDashboard";
+import { useCompany } from "@/lib/use-company";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { SkeletonCardList, SkeletonTable } from "@/components/shared/SkeletonCard";
 
@@ -90,6 +91,7 @@ const dealStatuses = [
 
 const Clients = () => {
   const { profile, canEdit, isSuperAdmin, isAdmin } = useAuth();
+  const { currency: baseCurrency, symbol: baseSymbol } = useCompany();
   const [clients, setClients] = useState<Client[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -295,7 +297,7 @@ const Clients = () => {
   };
 
   const filtered = clients
-    .filter(c => !showMyClients || c.assigned_to === profile?.id)
+    .filter(c => !showMyClients || c.assigned_to === profile?.id || (c as any).created_by === profile?.id)
     .filter(c => pipelineTab === "all" || c.deal_status === pipelineTab)
     .filter(c => 
       [c.name, c.company, c.email, c.industry].some(f => f?.toLowerCase().includes(search.toLowerCase()))
@@ -319,6 +321,10 @@ const Clients = () => {
   };
 
   const handleExportClients = () => {
+    if (!clients.length) {
+      toast.info("No clients to export yet — add a deal first.");
+      return;
+    }
     const rows = clients.map(c => ({
       "Name": c.name,
       "Company": c.company || "",
@@ -334,7 +340,7 @@ const Clients = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Clients");
     XLSX.writeFile(wb, `RAC_Client_Directory_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-    toast.success("Client directory exported as Excel! 📥");
+    toast.success(`Exported ${rows.length} client${rows.length === 1 ? '' : 's'} as Excel! 📥`);
   };
 
   const handleMetricClick = (status: string) => {
@@ -353,13 +359,18 @@ const Clients = () => {
             {ratesLastUpdated && (
               <div className="flex items-center gap-3 mt-2 flex-wrap">
                 <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">FX Rates</span>
-                {currencies.filter(c => c.code !== "NGN").map(c => (
-                  <span key={c.code} className="inline-flex items-center gap-1 text-[10px] font-bold bg-muted/50 px-2 py-0.5 rounded-full border border-border/30">
-                    <span className="text-primary">{c.symbol}1</span>
-                    <span className="text-muted-foreground">=</span>
-                    <span className="font-black text-foreground">₦{exchangeRates[c.code]?.toLocaleString()}</span>
-                  </span>
-                ))}
+                {currencies.filter(c => c.code !== baseCurrency).map(c => {
+                  const ngnPerUnit = exchangeRates[c.code] ?? 0;
+                  const ngnPerBase = baseCurrency === "NGN" ? 1 : (exchangeRates[baseCurrency] ?? 1);
+                  const rate = ngnPerBase ? ngnPerUnit / ngnPerBase : 0;
+                  return (
+                    <span key={c.code} className="inline-flex items-center gap-1 text-[10px] font-bold bg-muted/50 px-2 py-0.5 rounded-full border border-border/30">
+                      <span className="text-primary">{c.symbol}1</span>
+                      <span className="text-muted-foreground">=</span>
+                      <span className="font-black text-foreground">{baseSymbol}{rate ? rate.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</span>
+                    </span>
+                  );
+                })}
                 <span className="text-[9px] text-muted-foreground/50 font-medium">Updated {ratesLastUpdated}</span>
               </div>
             )}

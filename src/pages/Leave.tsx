@@ -20,9 +20,14 @@ import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { MotionPage } from "@/components/shared/MotionPage";
 import { ActivityCalendar } from 'react-activity-calendar';
 import { useTheme } from "@/components/ThemeProvider";
+import { useDepartmentNames } from "@/lib/departments";
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format as fmtDate } from "date-fns";
+import { cn } from "@/lib/utils";
 import { SkeletonCardList, SkeletonTable } from "@/components/shared/SkeletonCard";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -481,11 +486,12 @@ const Leave = () => {
     return (tp?.department || "") === filterDept;
   });
 
+  const liveDepts = useDepartmentNames();
   const deptOptions = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>(liveDepts);
     teamProfiles.forEach(p => { if (p.department) set.add(p.department); });
     return Array.from(set).sort();
-  }, [teamProfiles]);
+  }, [teamProfiles, liveDepts]);
 
   const formatDate = (d: string) => {
     try {
@@ -592,11 +598,58 @@ const Leave = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Start Date</Label>
-                    <Input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} className="h-12 bg-background rounded-xl font-medium" />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={cn(
+                            "h-12 w-full justify-start bg-background rounded-xl font-medium",
+                            !formData.start_date && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarDays className="mr-2 h-4 w-4 opacity-60" />
+                          {formData.start_date ? fmtDate(new Date(formData.start_date), "MMM d, yyyy") : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 rounded-2xl" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={formData.start_date ? new Date(formData.start_date) : undefined}
+                          onSelect={(d) => d && setFormData({ ...formData, start_date: fmtDate(d, "yyyy-MM-dd") })}
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</Label>
-                    <Input type="date" required value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} className="h-12 bg-background rounded-xl font-medium" />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={cn(
+                            "h-12 w-full justify-start bg-background rounded-xl font-medium",
+                            !formData.end_date && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarDays className="mr-2 h-4 w-4 opacity-60" />
+                          {formData.end_date ? fmtDate(new Date(formData.end_date), "MMM d, yyyy") : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 rounded-2xl" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={formData.end_date ? new Date(formData.end_date) : undefined}
+                          onSelect={(d) => d && setFormData({ ...formData, end_date: fmtDate(d, "yyyy-MM-dd") })}
+                          disabled={(d) => formData.start_date ? d < new Date(formData.start_date) : false}
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
 

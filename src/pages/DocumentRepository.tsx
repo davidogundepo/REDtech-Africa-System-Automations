@@ -19,6 +19,7 @@ import { FileIcon, FolderOpen, MoreVertical, Search, Upload, FileText, FileSprea
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useTheme } from "@/components/ThemeProvider";
+import { useDepartmentNames } from "@/lib/departments";
 import { DocumentsDashboard } from "@/components/documents/DocumentsDashboard";
 
 const TypeIcon = ({ type, className }: { type: string, className?: string }) => {
@@ -181,6 +182,7 @@ const DocumentRepository = () => {
   const [uploadMode, setUploadMode] = useState<"file" | "link">("file");
   const [newLink, setNewLink] = useState({ name: "", url: "", department: "all" });
   const [uploadDepartment, setUploadDepartment] = useState("all");
+  const liveDeptNames = useDepartmentNames();
 
   // Manage Folders state
   const [manageFoldersOpen, setManageFoldersOpen] = useState(false);
@@ -536,10 +538,9 @@ const DocumentRepository = () => {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all" className="font-medium">🌍 Public (All Staff)</SelectItem>
-                              <SelectItem value="finance">Finance & Accounting</SelectItem>
-                              <SelectItem value="hr">Human Resources</SelectItem>
-                              <SelectItem value="operations">Operations</SelectItem>
-                              <SelectItem value="executive">Executive Board</SelectItem>
+                              {liveDeptNames.map(d => (
+                                <SelectItem key={d} value={d.toLowerCase()}>{d}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -565,10 +566,9 @@ const DocumentRepository = () => {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all" className="font-medium">🌍 Public (All Staff)</SelectItem>
-                              <SelectItem value="finance">Finance & Accounting</SelectItem>
-                              <SelectItem value="hr">Human Resources</SelectItem>
-                              <SelectItem value="operations">Operations</SelectItem>
-                              <SelectItem value="executive">Executive Board</SelectItem>
+                              {liveDeptNames.map(d => (
+                                <SelectItem key={d} value={d.toLowerCase()}>{d}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>

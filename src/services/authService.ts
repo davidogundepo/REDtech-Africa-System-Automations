@@ -38,7 +38,7 @@ export const registerWithEmail = async (email: string, password: string, display
     await createUserWithId(user.uid, {
       email: user.email!,
       displayName: displayName,
-      photoURL: user.photoURL,
+      photoURL: user.photoURL || undefined,
       role: 'user',
       profileCompleteness: 15,
       skills: []
@@ -71,7 +71,7 @@ export const loginWithGoogle = async () => {
       await createUserWithId(user.uid, {
         email: user.email!,
         displayName: user.displayName || '',
-        photoURL: user.photoURL,
+      photoURL: user.photoURL || undefined,
         role: 'user',
         profileCompleteness: 15,
         skills: []

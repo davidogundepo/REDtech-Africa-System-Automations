@@ -10,9 +10,11 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ModuleToggleProvider, useModuleToggles } from "@/lib/module-toggles";
 import { DepartmentProvider } from "@/lib/departments";
 import { DemoModeProvider } from "@/lib/demo-mode";
+import { PlatformSettingsProvider } from "@/lib/platform-settings";
 import { QueryAuthBridge } from "@/lib/query-auth-bridge";
 import { PageLoader, FullScreenLoader } from "@/components/shared/PageLoader";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
+import { RouteMemory } from "@/components/shared/RouteMemory";
 
 // Eager: tiny + always needed
 import Auth from "./pages/Auth";
@@ -37,6 +39,9 @@ const Attendance = lazy(() => import("./pages/Attendance"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const TeamDirectory = lazy(() => import("./pages/TeamDirectory"));
 const PartnershipGenerator = lazy(() => import("./pages/PartnershipGenerator"));
+const ActivityHistory = lazy(() => import("./pages/ActivityHistory"));
+const PlatformSettings = lazy(() => import("./pages/PlatformSettings"));
+const DepartmentsAdmin = lazy(() => import("./pages/DepartmentsAdmin"));
 
 /**
  * Robust QueryClient defaults:
@@ -96,6 +101,7 @@ const AppRoutes = () => (
     <Route path="/*" element={
       <ProtectedRoute>
         <AppLayout>
+          <RouteMemory />
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
@@ -114,6 +120,9 @@ const AppRoutes = () => (
               <Route path="/profile" element={<UserProfile />} />
               <Route path="/team" element={<ModuleGuard path="/team"><TeamDirectory /></ModuleGuard>} />
               <Route path="/partnerships" element={<PartnershipGenerator />} />
+              <Route path="/activity" element={<ActivityHistory />} />
+              <Route path="/platform-settings" element={<PlatformSettings />} />
+              <Route path="/departments" element={<DepartmentsAdmin />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
@@ -135,9 +144,11 @@ const App = () => (
             <QueryAuthBridge />
             <ModuleToggleProvider>
               <DepartmentProvider>
-                <DemoModeProvider>
-                  <AppRoutes />
-                </DemoModeProvider>
+                <PlatformSettingsProvider>
+                  <DemoModeProvider>
+                    <AppRoutes />
+                  </DemoModeProvider>
+                </PlatformSettingsProvider>
               </DepartmentProvider>
             </ModuleToggleProvider>
           </AuthProvider>

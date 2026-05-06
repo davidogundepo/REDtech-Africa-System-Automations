@@ -1,19 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   FileText, Truck, Users, CheckSquare, CalendarDays, FolderOpen,
   TrendingUp, Megaphone, Sparkles, ArrowUpRight, ArrowDownRight,
   PlusCircle, Receipt, ClipboardList, UserPlus, Send, Upload,
   Activity, Target, Zap, ArrowRight, MoreHorizontal, Briefcase,
+  Sun, Sunrise, Sunset, Moon, RefreshCcw, Eye, Filter,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MotionPage } from "@/components/shared/MotionPage";
 import { format, formatDistanceToNow } from "date-fns";
+import { useCompany } from "@/lib/use-company";
+import { toast } from "sonner";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import {
   Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
   CartesianGrid, Line, LineChart, PieChart, Pie, Cell,
@@ -26,7 +33,7 @@ const fmtN = (n: number) =>
   : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k`
   : `${n}`;
 
-const fmtCurrency = (n: number) => `₦${n.toLocaleString("en-NG")}`;
+// Currency formatter is sourced from useCompany() inside the component.
 
 /** Animated count-up from 0 → value over `duration` ms. */
 function useCountUp(value: number, duration = 900) {
@@ -199,6 +206,17 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 
 const Dashboard = () => {
   const { profile, loading: authLoading } = useAuth();
+  const { name: companyName, formatMoney: fmtCurrency } = useCompany();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  // Period filter for header — controls KPI trend window. Persisted in localStorage
+  // so the user's preference survives page refresh.
+  const [period, setPeriod] = useState<"today" | "this-week" | "this-month" | "this-quarter">(() => {
+    if (typeof window === "undefined") return "this-week";
+    return (localStorage.getItem("rac.dash.period") as any) || "this-week";
+  });
+  useEffect(() => { try { localStorage.setItem("rac.dash.period", period); } catch {} }, [period]);
+  const periodLabel = period === "today" ? "Today" : period === "this-week" ? "This week" : period === "this-month" ? "This month" : "This quarter";
 
   /* Live counts */
   const { data: taskCount = 0 } = useQuery({
@@ -315,14 +333,15 @@ const Dashboard = () => {
     ];
   }, [tasksByStatus]);
 
-  /* Time-aware greeting + icon */
+  /* Time-aware greeting + iconic SVG (no emoji invisibility issues) */
   const hour = new Date().getHours();
-  const { greeting, greetingIcon } = (() => {
-    if (hour < 12) return { greeting: "Good morning", greetingIcon: "☀️" };
-    if (hour < 17) return { greeting: "Good afternoon", greetingIcon: "🌤️" };
-    if (hour < 21) return { greeting: "Good evening", greetingIcon: "🌆" };
-    return { greeting: "Good night", greetingIcon: "🌙" };
+  const greetingMeta = (() => {
+    if (hour < 12) return { greeting: "Good morning", Icon: Sunrise, tone: "from-amber-400 to-orange-500" };
+    if (hour < 17) return { greeting: "Good afternoon", Icon: Sun, tone: "from-yellow-400 to-amber-500" };
+    if (hour < 21) return { greeting: "Good evening", Icon: Sunset, tone: "from-orange-500 to-rose-500" };
+    return { greeting: "Good night", Icon: Moon, tone: "from-indigo-500 to-violet-600" };
   })();
+  const { greeting, Icon: GreetingIcon, tone: greetingTone } = greetingMeta;
   const firstName = authLoading ? "" : (profile?.full_name || "").split(" ")[0] || "there";
 
   /* KPI values */
@@ -347,18 +366,33 @@ const Dashboard = () => {
               All systems operational
             </span>
           </div>
-          <h1 className="text-h1 font-bold text-foreground flex items-center gap-2 flex-wrap">
-            <span className="text-3xl" aria-hidden>{greetingIcon}</span>
+          <h1 className="text-h1 font-bold text-foreground flex items-center gap-3 flex-wrap">
+            <span className={`h-10 w-10 rounded-xl bg-gradient-to-br ${greetingTone} flex items-center justify-center shadow-md ring-1 ring-black/5`} aria-hidden>
+              <GreetingIcon className="h-5 w-5 text-white" strokeWidth={2.4} />
+            </span>
             <span>{greeting}, {authLoading ? <span className="inline-block h-7 w-32 align-middle rounded skeleton-shimmer" /> : firstName} 👋</span>
           </h1>
           <p className="text-[13px] text-muted-foreground mt-1">
-            Here's what's moving across REDtech today.
+            Here's what's moving across {companyName} today.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9 rounded-sm border-border text-foreground hover:bg-muted">
-            This week
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 rounded-sm border-border text-foreground hover:bg-muted">
+                <Filter className="h-3.5 w-3.5 mr-1.5" />
+                {periodLabel}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">Time window</DropdownMenuLabel>
+              {(["today","this-week","this-month","this-quarter"] as const).map((p) => (
+                <DropdownMenuItem key={p} onClick={() => setPeriod(p)} className={period === p ? "font-bold text-primary" : ""}>
+                  {p === "today" ? "Today" : p === "this-week" ? "This week" : p === "this-month" ? "This month" : "This quarter"}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button asChild size="sm" className="h-9 rounded-sm bg-primary text-primary-foreground hover:bg-primary-dark">
             <NavLink to="/tasks"><PlusCircle className="h-4 w-4 mr-1.5" /> New task</NavLink>
           </Button>
@@ -413,7 +447,7 @@ const Dashboard = () => {
               <Activity className="h-4 w-4 text-primary" />
               <h2 className="text-h3 font-semibold text-foreground">Recent activity</h2>
             </div>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-[12px] text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/activity")} className="h-7 px-2 text-[12px] text-muted-foreground hover:text-foreground">
               View all <ArrowRight className="h-3 w-3 ml-1" />
             </Button>
           </div>
@@ -532,7 +566,19 @@ const Dashboard = () => {
               <h2 className="text-h3 font-semibold text-foreground">Task completion</h2>
               <p className="text-[12px] text-muted-foreground mt-0.5">By status · live</p>
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate("/tasks")}><Eye className="h-3.5 w-3.5 mr-2" />Open Task Tracker</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { queryClient.invalidateQueries(); toast.success("Dashboard refreshed"); }}>
+                  <RefreshCcw className="h-3.5 w-3.5 mr-2" />Refresh data
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/activity")}><Activity className="h-3.5 w-3.5 mr-2" />View activity log</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="relative flex-1 min-h-[200px] flex items-center justify-center">

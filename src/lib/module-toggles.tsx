@@ -1,22 +1,27 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  FileText, Handshake, Truck, Users, CheckSquare, CalendarDays, Clock,
+  BarChart3, FolderOpen, TrendingUp, Megaphone, UsersRound, UserCog, Shield,
+  type LucideIcon,
+} from 'lucide-react';
 
 // ALL modules that can be toggled
 export const ALL_MODULES = [
-  { key: 'invoice',     label: 'Invoice Generator',    path: '/invoice' },
-  { key: 'partnerships', label: 'Partnership Generator', path: '/partnerships' },
-  { key: 'waybill',     label: 'Waybill Generator',    path: '/waybill' },
-  { key: 'clients',     label: 'Client Directory',     path: '/clients' },
-  { key: 'tasks',       label: 'Task Tracker',         path: '/tasks' },
-  { key: 'leave',       label: 'Leave Management',     path: '/leave' },
-  { key: 'attendance',  label: 'Attendance',           path: '/attendance' },
-  { key: 'finance',     label: 'Finance Dashboard',    path: '/finance-dashboard' },
-  { key: 'documents',   label: 'Document Repository',  path: '/documents' },
-  { key: 'ops',         label: 'Operations Dashboard', path: '/ops-dashboard' },
-  { key: 'social',      label: 'Social Media Hub',     path: '/social' },
-  { key: 'team',        label: 'Team Directory',       path: '/team' },
-  { key: 'utilisation', label: 'Staff Utilisation',    path: '/utilisation' },
-  { key: 'users',       label: 'User Management',      path: '/users' },
+  { key: 'invoice',      label: 'Invoice Generator',     path: '/invoice',           icon: FileText as LucideIcon },
+  { key: 'partnerships', label: 'Partnership Generator', path: '/partnerships',      icon: Handshake },
+  { key: 'waybill',      label: 'Waybill Generator',     path: '/waybill',           icon: Truck },
+  { key: 'clients',      label: 'Client Directory',      path: '/clients',           icon: Users },
+  { key: 'tasks',        label: 'Task Tracker',          path: '/tasks',             icon: CheckSquare },
+  { key: 'leave',        label: 'Leave Management',      path: '/leave',             icon: CalendarDays },
+  { key: 'attendance',   label: 'Attendance',            path: '/attendance',        icon: Clock },
+  { key: 'finance',      label: 'Finance Dashboard',     path: '/finance-dashboard', icon: BarChart3 },
+  { key: 'documents',    label: 'Document Repository',   path: '/documents',         icon: FolderOpen },
+  { key: 'ops',          label: 'Operations Dashboard',  path: '/ops-dashboard',     icon: TrendingUp },
+  { key: 'social',       label: 'Social Media Hub',      path: '/social',            icon: Megaphone },
+  { key: 'team',         label: 'Team Directory',        path: '/team',              icon: UsersRound },
+  { key: 'utilisation',  label: 'Staff Utilisation',     path: '/utilisation',       icon: UserCog },
+  { key: 'users',        label: 'User Management',       path: '/users',             icon: Shield },
 ] as const;
 
 export type ModuleKey = typeof ALL_MODULES[number]['key'];

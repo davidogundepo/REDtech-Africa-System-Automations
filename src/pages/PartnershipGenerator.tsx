@@ -11,13 +11,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { 
   FileText, Download, RotateCcw, Eye, Edit, Plus, Trash2, ChevronDown, ChevronUp, 
-  Handshake, Building2, Users, DollarSign, Shield, Scale, FileSignature, Sparkles
+  Handshake, Building2, Users, DollarSign, Shield, Scale, FileSignature, Sparkles, Send
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   PartnershipData, CommissionTier, CoveredService, AgreementType,
   defaultPartnershipCompany, AGREEMENT_LABELS,
 } from "@/types/partnership";
+import { SendDocumentModal } from "@/components/shared/SendDocumentModal";
 
 // ── UTILITIES ──
 const today = new Date().toISOString().split("T")[0];
@@ -659,6 +660,7 @@ export default function PartnershipGenerator() {
   const [data, setData] = useState<PartnershipData>(() => createDefaultData(profile));
   const [activeView, setActiveView] = useState<"form" | "preview">("form");
   const [exporting, setExporting] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -729,6 +731,18 @@ export default function PartnershipGenerator() {
               <Eye className="h-3.5 w-3.5 inline mr-1.5" />Preview
             </button>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const err = validateBeforeExport();
+              if (err) { toast.error(err); return; }
+              setSendOpen(true);
+            }}
+            disabled={exporting}
+            className="border-border/50 h-10 px-4 rounded-2xl font-bold"
+          >
+            <Send className="h-4 w-4 mr-2" /> Send to Partner
+          </Button>
           <Button onClick={handleExport} disabled={exporting} className="bg-primary hover:bg-[#a66c4a] h-10 px-5 rounded-2xl font-bold shadow-lg disabled:opacity-60">
             <Download className="h-4 w-4 mr-2" /> {exporting ? "Exporting…" : "Export PDF"}
           </Button>
@@ -762,6 +776,20 @@ export default function PartnershipGenerator() {
           </div>
         </div>
       </div>
+
+      <SendDocumentModal
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        printNode={printRef.current}
+        entityType="partnership"
+        entityId={data.agreementNumber}
+        documentLabel="Partnership Agreement"
+        defaultTo={data.partnerEmail}
+        recipientName={data.partnerName}
+        companyName={(data as any).companyName || "REDtech Africa"}
+        defaultSubject={`Partnership Agreement ${data.agreementNumber} — ${data.partnerCompany}`}
+        filenameBase={`Partnership-${data.agreementNumber}-${data.partnerCompany || "Partner"}`}
+      />
     </MotionPage>
   );
 }

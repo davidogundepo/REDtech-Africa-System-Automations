@@ -262,12 +262,12 @@ const Attendance = () => {
     
     const male = allProfiles.filter(p => inferGender(p) === "male").length;
     const female = allProfiles.filter(p => inferGender(p) === "female").length;
-    const other = allProfiles.length - male - female;
+    // Male/Female only — Nigerian context. Skip empty buckets so the donut
+    // doesn't render a grey "Other" wedge when everyone is classified.
     return [
-      { name: "Male", value: male, color: "#3b82f6" },
-      { name: "Female", value: female, color: "#ec4899" },
-      { name: "Other", value: other, color: "#94a3b8" }
-    ];
+      { name: "Male", value: male, color: "#2563eb" },
+      { name: "Female", value: female, color: "#db2777" },
+    ].filter(s => s.value > 0);
   }, [allProfiles]);
 
   // Helper: capture GPS location
@@ -511,25 +511,72 @@ const Attendance = () => {
       </div>
 
       <Dialog open={notesDialog} onOpenChange={setNotesDialog}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Clock In Notes</DialogTitle></DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label>How are you working today?</Label>
-              <Select value={workMode} onValueChange={setWorkMode}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {WORK_MODES.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+        <DialogContent className="max-w-[720px] w-[92vw] p-0 overflow-hidden border-0 shadow-lvl-3 rounded-[20px] [&>button]:hidden">
+          <div className="flex flex-col md:flex-row max-h-[90vh]">
+            {/* Hero */}
+            <div className="md:w-[38%] premium-hero-gradient p-8 flex flex-col justify-between text-white relative overflow-hidden">
+              <div aria-hidden className="absolute -top-10 -right-10 w-40 h-40 rounded-full" style={{ background: "hsl(var(--primary) / 0.18)", filter: "blur(40px)" }} />
+              <div className="relative">
+                <div className="h-14 w-14 rounded-2xl bg-primary/15 ring-1 ring-primary/30 flex items-center justify-center mb-6">
+                  <LogIn className="h-7 w-7 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight mb-2 leading-tight">Start Your Day</h2>
+                <p className="text-sm text-white/60 leading-relaxed">
+                  Pick where you're working from and flag anything blocking you — your manager will see it instantly.
+                </p>
+              </div>
+              <div className="relative space-y-2 mt-8">
+                <p className="text-[10px] uppercase tracking-widest text-white/50 font-semibold">Local Time</p>
+                <p className="text-xl font-extrabold text-primary tabular-nums">{format(new Date(), "HH:mm")}</p>
+                <p className="text-xs text-white/50">{format(new Date(), "EEEE, MMM do")}</p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Any blockers or notes for today?</Label>
-              <Textarea placeholder="E.g. Working on the new UI components..." value={notes} onChange={(e) => setNotes(e.target.value)} />
+            {/* Form */}
+            <div className="md:w-[62%] flex flex-col bg-card">
+              <div className="flex items-center justify-between p-6 border-b border-border">
+                <h3 className="text-base font-bold">Clock In</h3>
+                <button onClick={() => setNotesDialog(false)} className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted transition" aria-label="Close">×</button>
+              </div>
+              <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Where are you today?</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {WORK_MODES.map((m) => {
+                      const Icon = m.icon;
+                      const active = workMode === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setWorkMode(m.id)}
+                          className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${active ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "border-border hover:border-primary/40 hover:bg-muted/40"}`}
+                        >
+                          <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <span className="text-sm font-bold">{m.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Blockers or notes (optional)</Label>
+                  <Textarea placeholder="E.g. Waiting on design assets for the dashboard refresh…" value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className="resize-none" />
+                  <p className="text-[10px] text-muted-foreground">{notes.length}/500 — visible to your manager</p>
+                </div>
+              </div>
+              <div className="p-6 border-t border-border bg-muted/30 flex items-center justify-between gap-3">
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5"><MapPin className="h-3 w-3" />GPS will be captured for verification</p>
+                <Button
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lvl-2 min-w-[160px] disabled:opacity-60"
+                  disabled={clockInMutation.isPending}
+                  onClick={() => { if (!clockInMutation.isPending) clockInMutation.mutate(); }}
+                >
+                  {clockInMutation.isPending ? "Clocking in…" : "Confirm Clock In"}
+                </Button>
+              </div>
             </div>
-            <Button className="w-full bg-primary disabled:opacity-60" disabled={clockInMutation.isPending} onClick={() => { if (!clockInMutation.isPending) clockInMutation.mutate(); }}>
-              {clockInMutation.isPending ? "Clocking in…" : "Confirm Clock In"}
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
