@@ -11,40 +11,47 @@ type Role = "super_admin" | "admin" | "team_member" | "viewer";
 
 function buildSteps(firstName: string, role: Role | undefined) {
   const isAdmin = role === "super_admin" || role === "admin";
+  const isMac = typeof window !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const cmd = isMac ? "⌘K" : "Ctrl+K";
 
   const welcome = {
     popover: {
-      title: `👋 Welcome to RAC Automations, ${firstName}!`,
+      title: `Welcome aboard, ${firstName} 👋`,
       description:
-        `Let's take a quick 60-second tour of your workspace. You can skip with <kbd>Esc</kbd>, replay anytime from your profile, and an admin can reset this for you whenever you want a refresher.`,
+        `<p style="margin:0 0 10px">You're looking at <strong>RAC Automations</strong> — your team's command centre for invoicing, partnerships, tasks, attendance and more.</p>` +
+        `<p style="margin:0;color:hsl(var(--muted-foreground))">This 60-second tour shows you where everything lives. Press <kbd>Esc</kbd> to skip — you can replay it from the sidebar anytime.</p>`,
     },
   };
 
-  // NOTE: kept as a centered popover (no `element`) so it always renders even
-  // if the sidebar is collapsed / hidden on small screens. Previously this
-  // step dimmed the screen but never showed the popover when the target was
-  // off-screen.
   const dashboard = {
     popover: {
-      title: "🏠 Your Dashboard",
+      title: "Your Dashboard 🏠",
       description:
-        "This is your daily command centre — KPIs, your tasks, attendance status, and a live feed of what's happening across the team. You'll land here every time you log in.",
+        `<p style="margin:0 0 8px">This is your daily home base — live KPIs, your tasks, attendance status, and a real-time feed of what's happening across the team.</p>` +
+        `<p style="margin:0;color:hsl(var(--muted-foreground))">You'll land here every time you log in.</p>`,
     },
   };
 
+  const sectionIntro = (label: string, blurb: string) => ({
+    popover: {
+      title: label,
+      description: `<p style="margin:0;color:hsl(var(--muted-foreground))">${blurb}</p>`,
+    },
+  });
+
   const modules = [
-    { el: 'nav-invoice', icon: '💰', title: 'Invoice Generator', desc: 'Create branded invoices with live preview, auto-numbering, and one-click PDF export or email send.' },
-    { el: 'nav-partnerships', icon: '🤝', title: 'Partnership Generator', desc: 'Draft partnership proposals and contracts in your house style, ready to send.' },
-    { el: 'nav-waybill', icon: '🚚', title: 'Waybill Generator', desc: 'Issue dispatch waybills with item lists, recipient details and printable PDFs.' },
-    { el: 'nav-clients', icon: '👥', title: 'Client Directory', desc: 'Your CRM. Profiles, contacts, contracts and history — all searchable.' },
-    { el: 'nav-tasks', icon: '✅', title: 'Task Tracker', desc: 'Kanban boards for assigning, prioritising and tracking work across teams and projects.' },
+    { el: 'nav-invoice', icon: '💰', title: 'Invoice Generator', desc: 'Create branded invoices with live preview, auto-numbering, VAT, and one-click PDF export or email send.' },
+    { el: 'nav-partnerships', icon: '🤝', title: 'Partnership Generator', desc: 'Draft partnership proposals and contracts in your house style, ready to send to prospects.' },
+    { el: 'nav-waybill', icon: '🚚', title: 'Waybill Generator', desc: 'Issue dispatch waybills with itemised lists, recipient details and printable PDFs.' },
+    { el: 'nav-clients', icon: '👥', title: 'Client Directory', desc: 'Your CRM. Profiles, contacts, contracts and full history — all searchable and filterable.' },
+    { el: 'nav-tasks', icon: '✅', title: 'Task Tracker', desc: 'Kanban boards for assigning, prioritising and tracking work across teams, projects and departments.' },
     { el: 'nav-leave', icon: '🌴', title: 'Leave Management', desc: 'Request, approve and track leave with built-in awareness of Nigerian public holidays.' },
-    { el: 'nav-attendance', icon: '⏱️', title: 'Attendance & Timesheets', desc: 'Clock in / out, view heatmaps, and export timesheets for payroll.' },
+    { el: 'nav-attendance', icon: '⏱️', title: 'Attendance & Timesheets', desc: 'Clock in / out, view heatmaps, and export timesheets straight to payroll.' },
   ].map(m => ({
     element: `[data-tour="${m.el}"]`,
     popover: {
-      title: `${m.icon} ${m.title}`,
-      description: m.desc,
+      title: `${m.icon}  ${m.title}`,
+      description: `<p style="margin:0">${m.desc}</p>`,
       side: "right" as const,
       align: "start" as const,
     },
@@ -53,8 +60,8 @@ function buildSteps(firstName: string, role: Role | undefined) {
   const search = {
     element: '[data-tour="header-search"]',
     popover: {
-      title: "⌘ Universal Search",
-      description: `Press <kbd>${typeof window !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "⌘K" : "Ctrl+K"}</kbd> anywhere to jump between pages, find features, or trigger actions in seconds.`,
+      title: "⌘  Universal Search",
+      description: `<p style="margin:0 0 8px">Press <kbd>${cmd}</kbd> anywhere to jump between pages, find clients, or trigger actions in seconds.</p><p style="margin:0;color:hsl(var(--muted-foreground))">Once you learn it, you'll never click the sidebar again.</p>`,
       side: "bottom" as const,
     },
   };
@@ -62,8 +69,8 @@ function buildSteps(firstName: string, role: Role | undefined) {
   const ai = {
     element: '[data-tour="header-ai"]',
     popover: {
-      title: "✨ AI Assistance",
-      description: "Your built-in copilot. Ask it to summarise tasks, draft emails, explain numbers on your dashboard, or guide you through any workflow.",
+      title: "✨  AI Copilot",
+      description: `<p style="margin:0">Your built-in assistant. Ask it to summarise tasks, draft emails, explain numbers on your dashboard, or guide you through any workflow — in plain English.</p>`,
       side: "bottom" as const,
     },
   };
@@ -71,8 +78,8 @@ function buildSteps(firstName: string, role: Role | undefined) {
   const notifications = {
     element: '[data-tour="header-notifications"]',
     popover: {
-      title: "🔔 Live Notifications",
-      description: "Real-time updates for task assignments, leave approvals, mentions and important system events. The dot pulses when something new arrives.",
+      title: "🔔  Live Notifications",
+      description: `<p style="margin:0">Real-time updates for task assignments, leave approvals, mentions and important system events. The dot pulses when something new arrives.</p>`,
       side: "bottom" as const,
       align: "end" as const,
     },
@@ -81,8 +88,8 @@ function buildSteps(firstName: string, role: Role | undefined) {
   const profileFooter = {
     element: '[data-tour="footer-profile"]',
     popover: {
-      title: "👤 Your Profile",
-      description: "Click your avatar anytime to view your profile, performance score, and settings. Your role and department are shown right below your name.",
+      title: "👤  Your Profile",
+      description: `<p style="margin:0">Click your avatar to view your profile, performance score and personal settings. Your role and department live right under your name.</p>`,
       side: "right" as const,
       align: "end" as const,
     },
@@ -91,8 +98,8 @@ function buildSteps(firstName: string, role: Role | undefined) {
   const adminNav = {
     element: '[data-tour="nav-users"]',
     popover: {
-      title: "🛡️ User Management",
-      description: "Invite teammates, assign roles, manage departments, broadcast notifications, and reset onboarding tours for any user.",
+      title: "🛡️  User Management",
+      description: `<p style="margin:0">Invite teammates, assign roles, manage departments, broadcast notifications and reset onboarding tours for any user — all from one place.</p>`,
       side: "right" as const,
       align: "start" as const,
     },
@@ -100,15 +107,19 @@ function buildSteps(firstName: string, role: Role | undefined) {
 
   const closing = {
     popover: {
-      title: "🎉 You're all set!",
-      description: `That's the tour, ${firstName}. Explore freely — and remember, <kbd>${typeof window !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0 ? "⌘K" : "Ctrl+K"}</kbd> is your fastest friend. Welcome aboard.`,
+      title: `You're all set, ${firstName} 🎉`,
+      description:
+        `<p style="margin:0 0 10px">That's the whirlwind tour. Explore freely — every page has live data and the AI Copilot is one click away.</p>` +
+        `<p style="margin:0;color:hsl(var(--muted-foreground))">Pro tip: <kbd>${cmd}</kbd> is your fastest friend on this platform. Welcome to the team. 🚀</p>`,
     },
   };
 
   return [
     welcome,
     dashboard,
+    sectionIntro("📦  Your core modules", "Next up — the seven workspaces you'll use every day. Each one is a full app on its own."),
     ...modules,
+    sectionIntro("⚡  Power tools at the top", "These three live in the header on every page — search, AI, and notifications."),
     search,
     ai,
     notifications,

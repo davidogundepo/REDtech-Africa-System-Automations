@@ -160,6 +160,12 @@ export const InvoiceGenerator = () => {
       }
 
       toast.success(`Invoice generated & saved! ${invoiceData.clientCompany || invoiceData.clientName} — ${invoiceData.currency || "₦"}${total.toLocaleString()}`);
+      // Audit + storage tally (estimated PDF size ~ 80KB per invoice page)
+      import("@/lib/activity").then(({ activity }) =>
+        activity.generated("invoice", invoiceData.invoiceNumber || crypto.randomUUID(),
+          `Invoice for ${invoiceData.clientCompany || invoiceData.clientName} (${invoiceData.currency || "₦"}${total.toLocaleString()})`,
+          80_000)
+      );
     },
     pageStyle: `
       @page {
@@ -314,6 +320,7 @@ export const InvoiceGenerator = () => {
         open={sendOpen}
         onOpenChange={setSendOpen}
         invoiceData={invoiceData}
+        printNode={printRef.current}
         onSent={() => setInvoiceData((p) => ({ ...p, status: "sent" }))}
       />
     </div>

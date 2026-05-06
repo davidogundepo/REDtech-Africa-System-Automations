@@ -4,10 +4,11 @@ import { WaybillData, defaultWaybillInfo } from "@/types/waybill";
 import { WaybillForm } from "./WaybillForm";
 import { WaybillPreview } from "./WaybillPreview";
 import { Button } from "@/components/ui/button";
-import { FileDown, Loader2, Eye, Edit } from "lucide-react";
+import { FileDown, Loader2, Eye, Edit, Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { SendDocumentModal } from "@/components/shared/SendDocumentModal";
 
 const getInitialWaybillData = (): WaybillData => {
   const today = new Date();
@@ -53,6 +54,7 @@ export const WaybillGenerator = () => {
   const [waybillData, setWaybillData] = useState<WaybillData>(getInitialWaybillData);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const [sendOpen, setSendOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -134,6 +136,11 @@ export const WaybillGenerator = () => {
       }
 
       toast.success(`Waybill generated & saved! Delivery to ${waybillData.deliveredTo} — ${itemCount} item${itemCount !== 1 ? 's' : ''}`);
+      import("@/lib/activity").then(({ activity }) =>
+        activity.generated("waybill", waybillData.waybillNumber || crypto.randomUUID(),
+          `Waybill to ${waybillData.deliveredTo} (${itemCount} item${itemCount !== 1 ? "s" : ""})`,
+          70_000)
+      );
     },
     pageStyle: `
       @page {
@@ -212,6 +219,20 @@ export const WaybillGenerator = () => {
                 {showPreview ? "Edit" : "Preview"}
               </Button>
               <Button
+                variant="outline"
+                onClick={() => {
+                  if (!waybillData.deliveredTo?.trim()) {
+                    toast.error("Please enter delivery recipient first");
+                    return;
+                  }
+                  setSendOpen(true);
+                }}
+                disabled={isGenerating}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Send to Client
+              </Button>
+              <Button
                 onClick={handleGenerateWaybill}
                 disabled={isGenerating}
                 className="bg-invoice-accent hover:bg-invoice-accent/90 text-primary-foreground"
@@ -261,6 +282,20 @@ export const WaybillGenerator = () => {
           </div>
         </div>
       </div>
+
+      <SendDocumentModal
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        printNode={printRef.current}
+        entityType="waybill"
+        entityId={waybillData.waybillNumber}
+        documentLabel="Waybill"
+        defaultTo={(waybillData as any).supplierEmail || ""}
+        recipientName={waybillData.deliveredTo}
+        companyName={waybillData.companyName}
+        defaultSubject={`Waybill WB${waybillData.waybillNumber} — ${waybillData.deliveredTo}`}
+        filenameBase={`WB${waybillData.waybillNumber}-${waybillData.deliveredTo || "client"}`}
+      />
     </div>
   );
 };

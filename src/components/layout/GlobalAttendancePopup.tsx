@@ -172,9 +172,9 @@ export function GlobalAttendancePopup() {
               className="absolute inset-0 h-full w-full object-cover"
               loading="eager"
             />
-            {/* gradient overlays */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-primary/10 to-background/80" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+            {/* gradient overlays — dark scrim ensures legibility in both light and dark modes */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[hsl(220_40%_8%/0.85)] via-[hsl(220_40%_8%/0.55)] to-[hsl(220_40%_8%/0.85)]" />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-transparent to-accent-gold/15" />
 
             {/* ambient glow */}
             <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary/30 blur-3xl" />

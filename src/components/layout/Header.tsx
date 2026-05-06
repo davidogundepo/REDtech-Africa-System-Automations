@@ -173,6 +173,24 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
         department: 'IT',
       });
       if (error) throw error;
+
+      // Forward to Google Sheets via edge function (best-effort, non-blocking failure)
+      try {
+        await supabase.functions.invoke('feedback-to-sheets', {
+          body: {
+            email: (profile as any)?.email || '',
+            full_name: profile?.full_name || '',
+            role: profile?.role || '',
+            department: profile?.department || '',
+            page: window.location.pathname,
+            type: bugType,
+            message: bugText,
+          },
+        });
+      } catch (sheetsErr) {
+        console.warn('Sheets forward failed (non-fatal):', sheetsErr);
+      }
+
       toast.success("Feedback submitted successfully. Thank you!", { style: { background: 'hsl(var(--primary))', color: 'white', border: 'none' } });
       setBugOpen(false);
       setBugText("");
@@ -329,8 +347,8 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
             <div className="max-h-[70vh] overflow-y-auto">
               {(!notifications || notifications.length === 0) ? (
                 <div className="py-12 px-6 text-center flex flex-col items-center gap-3">
-                  <div className="h-16 w-16 rounded-2xl bg-primary/5 flex items-center justify-center">
-                    <Sparkles className="h-8 w-8" style={{ color: 'hsl(var(--primary))', opacity: 0.4 }} />
+                  <div className="h-16 w-16 rounded-2xl bg-primary/5 flex items-center justify-center ring-1 ring-primary/10">
+                    <BellRing className="h-8 w-8" style={{ color: 'hsl(var(--primary))', opacity: 0.55 }} />
                   </div>
                   <div className="space-y-1">
                     <p className="font-medium text-sm">All clear, {(profile?.full_name || "").split(' ')[0] || 'champ'}! 🎉</p>

@@ -275,7 +275,15 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
     });
 
     if (error) {
-      const msg = (error as any)?.context?.error || (error as any)?.message || 'AI Copilot is unavailable.';
+      let msg = (error as any)?.message || 'AI Copilot is unavailable.';
+      try {
+        const ctx = (error as any)?.context;
+        if (ctx && typeof ctx.json === 'function') {
+          const body = await ctx.json();
+          if (body?.error) msg = body.error;
+        }
+      } catch { /* ignore */ }
+      console.error('AI assistant invoke error:', error, 'resolved msg:', msg);
       throw new Error(msg);
     }
     return (data?.content as string) || 'I was unable to process that request.';
@@ -366,7 +374,7 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
         const actionRegex = /```json\s*(\{[\s\S]*?\}|\[[\s\S]*?\])\s*```/g;
         let cleanText = aiOutput;
         let match;
-        let queryResults = [];
+       let queryResults: string[] = [];
         
         while ((match = actionRegex.exec(aiOutput)) !== null) {
           if (match[1]) {
