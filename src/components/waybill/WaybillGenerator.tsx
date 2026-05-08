@@ -157,11 +157,7 @@ export const WaybillGenerator = () => {
       }
 
       toast.success(`Waybill generated & saved! Delivery to ${waybillData.deliveredTo} — ${itemCount} item${itemCount !== 1 ? 's' : ''}`);
-      import("@/lib/activity").then(({ activity }) =>
-        activity.generated("waybill", waybillData.waybillNumber || crypto.randomUUID(),
-          `Waybill to ${waybillData.deliveredTo} (${itemCount} item${itemCount !== 1 ? "s" : ""})`,
-          70_000)
-      );
+      // (activity.generated is called inside the upload IIFE above with real bytes)
     },
     pageStyle: `
       @page {
