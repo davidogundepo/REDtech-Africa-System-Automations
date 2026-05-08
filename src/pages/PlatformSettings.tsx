@@ -55,11 +55,13 @@ export default function PlatformSettingsPage() {
   if (!isSuperAdmin) return <Navigate to="/" replace />;
 
   const saveCompany = async () => {
+    const cleanAccent = /^#[0-9a-fA-F]{6}$/.test(accent) ? accent : "#C9A66B";
     await Promise.all([
       set("company_name", name.trim() || "REDtech Africa"),
       set("company_description", desc.trim()),
       set("company_mission", mission.trim()),
       set("company_vision", vision.trim()),
+      set("company_accent", cleanAccent),
     ]);
     toast.success("Company profile saved — visible across the platform.");
   };
