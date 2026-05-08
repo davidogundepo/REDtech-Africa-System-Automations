@@ -59,10 +59,28 @@ export default defineConfig(({ mode }) => ({
           // Excel export (used in Tasks, FinanceDashboard, OpsDashboard)
           if (id.includes("/xlsx/") || id.includes("\\xlsx\\") || id.includes("node_modules/xlsx")) return "vendor-xlsx";
 
-          // Firebase (auth + firestore) — two packages: firebase + @firebase
-          if (id.includes("node_modules/firebase") || id.includes("node_modules/@firebase")) return "vendor-firebase";
+          // Drag-and-drop (used in Tasks board)
+          if (id.includes("@hello-pangea/dnd")) return "vendor-dnd";
 
-          // Everything else
+          // Guided product tour
+          if (id.includes("driver.js")) return "vendor-tour";
+
+          // Command palette (cmdk — used in shadcn Command)
+          if (id.includes("cmdk")) return "vendor-cmd";
+
+          // Toast notifications
+          if (id.includes("sonner")) return "vendor-toast";
+
+          // Form validation
+          if (id.includes("zod") || id.includes("@hookform")) return "vendor-forms";
+
+          // Misc UI primitives (drawer, OTP input, theme)
+          if (id.includes("vaul") || id.includes("input-otp") || id.includes("next-themes")) return "vendor-ui-extra";
+
+          // CSV parsing
+          if (id.includes("papaparse")) return "vendor-csv";
+
+          // Everything else (clsx, cva, tailwind-merge, etc — small utilities)
           return "vendor-misc";
         },
       },
