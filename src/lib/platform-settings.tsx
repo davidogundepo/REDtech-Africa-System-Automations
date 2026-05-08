@@ -85,6 +85,18 @@ export function PlatformSettingsProvider({ children }: { children: ReactNode }) 
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Apply company accent colour to the live theme as soon as it's known
+  useEffect(() => {
+    const accent = settings.company_accent as string | undefined;
+    if (!accent) return;
+    const hsl = hexToHslVar(accent);
+    if (!hsl) return;
+    const root = document.documentElement;
+    root.style.setProperty("--primary", hsl);
+    root.style.setProperty("--sidebar-primary", hsl);
+    root.style.setProperty("--ring", hsl);
+  }, [settings.company_accent]);
+
   const get = <T,>(key: PlatformSettingKey, fallback?: T): T =>
     (settings[key] ?? fallback) as T;
 
