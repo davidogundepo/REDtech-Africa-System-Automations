@@ -1,16 +1,30 @@
 project_id = "soehunvbcdzkcxtowxyi"
 
 [functions.seed-test-accounts]
+# Dev-only function — keep open for seeding test data
 verify_jwt = false
 
 [functions.feedback-to-sheets]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-document-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-assistant]
-verify_jwt = false
+verify_jwt = true
 
 [functions.process-email-outbox]
+# Invoked by cron, not by a user session — must stay open
 verify_jwt = false
+
+[functions.send-notification-email]
+verify_jwt = true
+
+[functions.send-welcome-email]
+verify_jwt = true
+
+[functions.send-application-confirmation]
+verify_jwt = true
+
+[functions.send-host-request-email]
+verify_jwt = true
