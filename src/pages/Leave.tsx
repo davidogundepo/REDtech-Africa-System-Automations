@@ -548,7 +548,7 @@ const Leave = () => {
                   <CalendarDays className="h-4 w-4 mr-2" /> Credit Days
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl">
+              <DialogContent className="sm:max-w-3xl bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl">
                 <DialogHeader><DialogTitle className="text-xl font-bold">Credit Extra Leave Days</DialogTitle></DialogHeader>
                 <div className="space-y-6 py-2">
                   <div className="space-y-3">
@@ -579,7 +579,7 @@ const Leave = () => {
                 <Plane className="h-4 w-4" /> Request Time Off
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-xl bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl overflow-hidden">
+            <DialogContent className="sm:max-w-3xl bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-primary" />
               <DialogHeader className="px-2 pt-4">
                 <DialogTitle className="text-2xl font-black">Book Time Off</DialogTitle>
@@ -1088,7 +1088,7 @@ const Leave = () => {
 
       {/* Rejection / Approval Modal for Managers */}
       <Dialog open={approvalModalOpen} onOpenChange={setApprovalModalOpen}>
-        <DialogContent className="sm:max-w-lg bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl overflow-hidden">
+        <DialogContent className="sm:max-w-3xl bg-card/95 backdrop-blur-3xl border-border/50 rounded-3xl overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-destructive" />
           <DialogHeader className="pt-4 px-2">
             <DialogTitle className="text-xl font-black text-destructive flex items-center gap-2">

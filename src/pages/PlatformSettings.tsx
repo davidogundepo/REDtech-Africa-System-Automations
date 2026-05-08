@@ -39,6 +39,7 @@ export default function PlatformSettingsPage() {
   const [mission, setMission] = useState("");
   const [vision, setVision] = useState("");
   const [currency, setCurrency] = useState("NGN");
+  const [accent, setAccent] = useState("#C9A66B");
 
   useEffect(() => {
     setQuotaMb(String(get("default_storage_quota_mb", 500)));
@@ -47,17 +48,20 @@ export default function PlatformSettingsPage() {
     setMission(String(get("company_mission", "")));
     setVision(String(get("company_vision", "")));
     setCurrency(String(get("company_currency", "NGN")));
+    setAccent(String(get("company_accent", "#C9A66B")));
   }, [settings]);
 
   if (authLoading) return null;
   if (!isSuperAdmin) return <Navigate to="/" replace />;
 
   const saveCompany = async () => {
+    const cleanAccent = /^#[0-9a-fA-F]{6}$/.test(accent) ? accent : "#C9A66B";
     await Promise.all([
       set("company_name", name.trim() || "REDtech Africa"),
       set("company_description", desc.trim()),
       set("company_mission", mission.trim()),
       set("company_vision", vision.trim()),
+      set("company_accent", cleanAccent),
     ]);
     toast.success("Company profile saved — visible across the platform.");
   };
@@ -115,6 +119,31 @@ export default function PlatformSettingsPage() {
                 <Label>Vision statement</Label>
                 <Textarea value={vision} onChange={(e) => setVision(e.target.value)} rows={3} />
               </div>
+            </div>
+            <div className="grid md:grid-cols-[180px,1fr] gap-4 items-end">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /> Brand accent</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={accent}
+                    onChange={(e) => setAccent(e.target.value)}
+                    className="h-10 w-14 rounded-lg border border-border bg-background cursor-pointer"
+                    aria-label="Pick brand accent colour"
+                  />
+                  <Input
+                    value={accent}
+                    onChange={(e) => setAccent(e.target.value)}
+                    placeholder="#C9A66B"
+                    className="font-mono uppercase"
+                    maxLength={7}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">Drives buttons, links, badges and the primary highlight everywhere.</p>
+              </div>
+              <p className="text-xs text-muted-foreground hidden md:block">
+                Tip: keep contrast strong against both light and dark surfaces. Changes apply instantly across the platform once saved.
+              </p>
             </div>
             <div className="flex justify-end">
               <Button onClick={saveCompany}><Sparkles className="h-4 w-4 mr-2" /> Save company profile</Button>
