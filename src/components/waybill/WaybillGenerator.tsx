@@ -80,17 +80,38 @@ export const WaybillGenerator = () => {
         if (error) console.error("Failed to save waybill to transactions:", error);
       });
 
-      // Auto-push to Document Repository
-      (supabase as any).from("documents").insert({
-        name: `WB${waybillData.waybillNumber} — ${waybillData.deliveredTo}.pdf`,
-        type: "pdf",
-        size: "~1KB",
-        url: `#waybill-${waybillData.waybillNumber}`,
-        department: "Operations",
-        created_by: profile?.full_name || "System",
-      }).then(({ error }: any) => {
+      // Auto-push to Document Repository — render real PDF, upload to storage,
+      // store the public URL + actual byte size against the document row.
+      const filename = `WB${waybillData.waybillNumber} — ${waybillData.deliveredTo}.pdf`;
+      (async () => {
+        const uploaded = await import("@/lib/upload-pdf").then(m =>
+          m.renderAndUploadPdf(printRef.current, filename, profile?.id)
+        );
+        const url = uploaded?.url || `#waybill-${waybillData.waybillNumber}`;
+        const sizeBytes = uploaded?.bytes || 60_000;
+        const sizeLabel = sizeBytes > 1024 * 1024
+          ? `${(sizeBytes / (1024 * 1024)).toFixed(1)}MB`
+          : `${Math.max(1, Math.round(sizeBytes / 1024))}KB`;
+
+        const { error } = await (supabase as any).from("documents").insert({
+          name: filename,
+          type: "pdf",
+          size: sizeLabel,
+          url,
+          department: "Operations",
+          created_by: profile?.full_name || "System",
+        });
         if (error) console.error("Failed to auto-save waybill to documents:", error);
-      });
+
+        import("@/lib/activity").then(({ activity }) =>
+          activity.generated(
+            "waybill",
+            waybillData.waybillNumber || crypto.randomUUID(),
+            `Waybill for ${waybillData.deliveredTo}`,
+            sizeBytes,
+          )
+        );
+      })();
 
       // ── Smart Recipient Sync ──────────────────────────────────────────────
       // Records the delivery against the recipient in the CRM:
