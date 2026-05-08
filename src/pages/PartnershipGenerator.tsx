@@ -666,7 +666,43 @@ export default function PartnershipGenerator() {
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `Partnership-Agreement-${data.partnerName || "Partner"}-${data.agreementNumber}`,
-    onAfterPrint: () => setExporting(false),
+    onAfterPrint: () => {
+      setExporting(false);
+      // Render real PDF, upload to Storage, save to Document Repository,
+      // and tally bytes against this user's storage quota.
+      const filename = `Partnership-${data.partnerName || "Partner"}-${data.agreementNumber}.pdf`;
+      (async () => {
+        const uploaded = await import("@/lib/upload-pdf").then(m =>
+          m.renderAndUploadPdf(printRef.current, filename, profile?.id)
+        );
+        const url = uploaded?.url || `#partnership-${data.agreementNumber}`;
+        const sizeBytes = uploaded?.bytes || 120_000;
+        const sizeLabel = sizeBytes > 1024 * 1024
+          ? `${(sizeBytes / (1024 * 1024)).toFixed(1)}MB`
+          : `${Math.max(1, Math.round(sizeBytes / 1024))}KB`;
+
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { error } = await (supabase as any).from("documents").insert({
+          name: filename,
+          type: "pdf",
+          size: sizeLabel,
+          url,
+          department: "Partnerships",
+          created_by: profile?.full_name || "System",
+          description: `Partnership agreement — ${data.partnerCompany || data.partnerName}`,
+        });
+        if (error) console.error("Failed to save partnership to documents:", error);
+
+        import("@/lib/activity").then(({ activity }) =>
+          activity.generated(
+            "partnership",
+            data.agreementNumber || crypto.randomUUID(),
+            `Partnership agreement with ${data.partnerCompany || data.partnerName}`,
+            sizeBytes,
+          )
+        );
+      })();
+    },
   });
 
   const validateBeforeExport = (): string | null => {
