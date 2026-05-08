@@ -89,18 +89,41 @@ export const InvoiceGenerator = () => {
         if (error) console.error("Failed to save invoice to transactions:", error);
       });
 
-      // Auto-push to Document Repository so invoice appears in the repo
-      (supabase as any).from("documents").insert({
-        name: `${invoiceData.invoiceNumber} — ${invoiceData.clientCompany || invoiceData.clientName}.pdf`,
-        type: "pdf",
-        size: `${Math.ceil(total / 100000)}KB`,
-        url: `#invoice-${invoiceData.invoiceNumber}`,
-        department: "Finance",
-        created_by: profile?.full_name || "System",
-        description: `Invoice — Sent | ${invoiceData.clientCompany || invoiceData.clientName} | ${invoiceData.currency}${total.toLocaleString()}`,
-      }).then(({ error }: any) => {
+      // Auto-push to Document Repository — render the live preview to a real
+      // PDF, upload it to the `generated-docs` storage bucket, then store the
+      // public URL + actual file size against the document row.
+      const filename = `${invoiceData.invoiceNumber} — ${invoiceData.clientCompany || invoiceData.clientName}.pdf`;
+      (async () => {
+        const uploaded = await import("@/lib/upload-pdf").then(m =>
+          m.renderAndUploadPdf(printRef.current, filename, profile?.id)
+        );
+        const url = uploaded?.url || `#invoice-${invoiceData.invoiceNumber}`;
+        const sizeBytes = uploaded?.bytes || 80_000;
+        const sizeLabel = sizeBytes > 1024 * 1024
+          ? `${(sizeBytes / (1024 * 1024)).toFixed(1)}MB`
+          : `${Math.max(1, Math.round(sizeBytes / 1024))}KB`;
+
+        const { error } = await (supabase as any).from("documents").insert({
+          name: filename,
+          type: "pdf",
+          size: sizeLabel,
+          url,
+          department: "Finance",
+          created_by: profile?.full_name || "System",
+          description: `Invoice — Sent | ${invoiceData.clientCompany || invoiceData.clientName} | ${invoiceData.currency}${total.toLocaleString()}`,
+        });
         if (error) console.error("Failed to auto-save invoice to documents:", error);
-      });
+
+        // Bump real storage usage with actual bytes
+        import("@/lib/activity").then(({ activity }) =>
+          activity.generated(
+            "invoice",
+            invoiceData.invoiceNumber || crypto.randomUUID(),
+            `Invoice for ${invoiceData.clientCompany || invoiceData.clientName} (${invoiceData.currency || "₦"}${total.toLocaleString()})`,
+            sizeBytes,
+          )
+        );
+      })();
 
       // ── Smart Client Sync ─────────────────────────────────────────────────
       // Saves client to CRM, increments their total_invoiced, updates deal_status
