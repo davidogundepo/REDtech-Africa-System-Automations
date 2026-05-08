@@ -4,11 +4,10 @@ import { WaybillData, defaultWaybillInfo } from "@/types/waybill";
 import { WaybillForm } from "./WaybillForm";
 import { WaybillPreview } from "./WaybillPreview";
 import { Button } from "@/components/ui/button";
-import { FileDown, Loader2, Eye, Edit, Send } from "lucide-react";
+import { FileDown, Loader2, Eye, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { SendDocumentModal } from "@/components/shared/SendDocumentModal";
 
 const getInitialWaybillData = (): WaybillData => {
   const today = new Date();
@@ -54,7 +53,6 @@ export const WaybillGenerator = () => {
   const [waybillData, setWaybillData] = useState<WaybillData>(getInitialWaybillData);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
-  const [sendOpen, setSendOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -80,38 +78,17 @@ export const WaybillGenerator = () => {
         if (error) console.error("Failed to save waybill to transactions:", error);
       });
 
-      // Auto-push to Document Repository — render real PDF, upload to storage,
-      // store the public URL + actual byte size against the document row.
-      const filename = `WB${waybillData.waybillNumber} — ${waybillData.deliveredTo}.pdf`;
-      (async () => {
-        const uploaded = await import("@/lib/upload-pdf").then(m =>
-          m.renderAndUploadPdf(printRef.current, filename, profile?.id)
-        );
-        const url = uploaded?.url || `#waybill-${waybillData.waybillNumber}`;
-        const sizeBytes = uploaded?.bytes || 60_000;
-        const sizeLabel = sizeBytes > 1024 * 1024
-          ? `${(sizeBytes / (1024 * 1024)).toFixed(1)}MB`
-          : `${Math.max(1, Math.round(sizeBytes / 1024))}KB`;
-
-        const { error } = await (supabase as any).from("documents").insert({
-          name: filename,
-          type: "pdf",
-          size: sizeLabel,
-          url,
-          department: "Operations",
-          created_by: profile?.full_name || "System",
-        });
+      // Auto-push to Document Repository
+      (supabase as any).from("documents").insert({
+        name: `WB${waybillData.waybillNumber} — ${waybillData.deliveredTo}.pdf`,
+        type: "pdf",
+        size: "~1KB",
+        url: `#waybill-${waybillData.waybillNumber}`,
+        department: "Operations",
+        created_by: profile?.full_name || "System",
+      }).then(({ error }: any) => {
         if (error) console.error("Failed to auto-save waybill to documents:", error);
-
-        import("@/lib/activity").then(({ activity }) =>
-          activity.generated(
-            "waybill",
-            waybillData.waybillNumber || crypto.randomUUID(),
-            `Waybill for ${waybillData.deliveredTo}`,
-            sizeBytes,
-          )
-        );
-      })();
+      });
 
       // ── Smart Recipient Sync ──────────────────────────────────────────────
       // Records the delivery against the recipient in the CRM:
@@ -157,7 +134,11 @@ export const WaybillGenerator = () => {
       }
 
       toast.success(`Waybill generated & saved! Delivery to ${waybillData.deliveredTo} — ${itemCount} item${itemCount !== 1 ? 's' : ''}`);
-      // (activity.generated is called inside the upload IIFE above with real bytes)
+      import("@/lib/activity").then(({ activity }) =>
+        activity.generated("waybill", waybillData.waybillNumber || crypto.randomUUID(),
+          `Waybill to ${waybillData.deliveredTo} (${itemCount} item${itemCount !== 1 ? "s" : ""})`,
+          70_000)
+      );
     },
     pageStyle: `
       @page {
@@ -236,20 +217,6 @@ export const WaybillGenerator = () => {
                 {showPreview ? "Edit" : "Preview"}
               </Button>
               <Button
-                variant="outline"
-                onClick={() => {
-                  if (!waybillData.deliveredTo?.trim()) {
-                    toast.error("Please enter delivery recipient first");
-                    return;
-                  }
-                  setSendOpen(true);
-                }}
-                disabled={isGenerating}
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Send to Client
-              </Button>
-              <Button
                 onClick={handleGenerateWaybill}
                 disabled={isGenerating}
                 className="bg-invoice-accent hover:bg-invoice-accent/90 text-primary-foreground"
@@ -299,20 +266,6 @@ export const WaybillGenerator = () => {
           </div>
         </div>
       </div>
-
-      <SendDocumentModal
-        open={sendOpen}
-        onOpenChange={setSendOpen}
-        printNode={printRef.current}
-        entityType="waybill"
-        entityId={waybillData.waybillNumber}
-        documentLabel="Waybill"
-        defaultTo={(waybillData as any).supplierEmail || ""}
-        recipientName={waybillData.deliveredTo}
-        companyName={waybillData.companyName}
-        defaultSubject={`Waybill WB${waybillData.waybillNumber} — ${waybillData.deliveredTo}`}
-        filenameBase={`WB${waybillData.waybillNumber}-${waybillData.deliveredTo || "client"}`}
-      />
     </div>
   );
 };

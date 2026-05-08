@@ -1,50 +1,27 @@
 import { useDemoMode } from "@/lib/demo-mode";
+import { Switch } from "@/components/ui/switch";
 import { Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-interface DemoModeToggleProps {
-  /** Compact pill (default) for page headers */
-  compact?: boolean;
-  className?: string;
-}
 
 /**
- * Per-user Demo Mode toggle. Drop into any page header.
- * Persists to localStorage and syncs across tabs.
+ * Inline admin-only switch to flip Demo Mode for the entire workspace.
+ * Renders nothing while the setting is loading so the UI doesn't flicker.
  */
-export function DemoModeToggle({ compact = true, className }: DemoModeToggleProps) {
-  const { isDemo, toggleDemo } = useDemoMode();
+export function DemoModeToggle() {
+  const { isDemo, loading, setDemo } = useDemoMode();
+  if (loading) return null;
 
   return (
-    <button
-      type="button"
-      onClick={toggleDemo}
-      aria-pressed={isDemo}
-      title={isDemo ? "Demo data shown — click to use live data" : "Live data — click to view demo data"}
-      className={cn(
-        "group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
-        isDemo
-          ? "border-primary/40 bg-primary/10 text-primary shadow-sm hover:bg-primary/15"
-          : "border-border/60 bg-card text-muted-foreground hover:text-foreground hover:border-border",
-        compact ? "h-8" : "h-9 text-sm",
-        className,
-      )}
-    >
-      <Sparkles className={cn("h-3.5 w-3.5", isDemo && "animate-pulse")} />
-      <span>{isDemo ? "Demo mode" : "Demo mode off"}</span>
-      <span
-        className={cn(
-          "ml-1 inline-flex h-4 w-7 items-center rounded-full transition-colors",
-          isDemo ? "bg-primary" : "bg-muted",
-        )}
-      >
-        <span
-          className={cn(
-            "inline-block h-3 w-3 transform rounded-full bg-background shadow transition-transform",
-            isDemo ? "translate-x-3.5" : "translate-x-0.5",
-          )}
-        />
+    <div className="mt-3 inline-flex items-center gap-3 rounded-full border border-border/60 bg-card px-3 py-1.5 shadow-sm">
+      <Sparkles className="h-3.5 w-3.5 text-primary" />
+      <span className="text-xs font-medium">Demo Mode</span>
+      <Switch
+        checked={isDemo}
+        onCheckedChange={(v) => setDemo(v).catch(() => {})}
+        aria-label="Toggle demo mode"
+      />
+      <span className="text-xs text-muted-foreground">
+        {isDemo ? "Sample data visible" : "Live data only"}
       </span>
-    </button>
+    </div>
   );
 }

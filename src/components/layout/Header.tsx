@@ -11,7 +11,6 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useNavigate } from "react-router-dom";
 import { CommandPalette } from "@/components/shared/CommandPalette";
 import { PresenceIndicator } from "@/components/shared/PresenceIndicator";
-import { DemoModeToggle } from "@/components/shared/DemoModeToggle";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -174,24 +173,6 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
         department: 'IT',
       });
       if (error) throw error;
-
-      // Forward to Google Sheets via edge function (best-effort, non-blocking failure)
-      try {
-        await supabase.functions.invoke('feedback-to-sheets', {
-          body: {
-            email: (profile as any)?.email || '',
-            full_name: profile?.full_name || '',
-            role: profile?.role || '',
-            department: profile?.department || '',
-            page: window.location.pathname,
-            type: bugType,
-            message: bugText,
-          },
-        });
-      } catch (sheetsErr) {
-        console.warn('Sheets forward failed (non-fatal):', sheetsErr);
-      }
-
       toast.success("Feedback submitted successfully. Thank you!", { style: { background: 'hsl(var(--primary))', color: 'white', border: 'none' } });
       setBugOpen(false);
       setBugText("");
@@ -228,7 +209,6 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
       </div>
       
       <div className="flex items-center gap-2 md:gap-4">
-        <div className="hidden lg:block"><DemoModeToggle /></div>
         {/* Toggle Copilot Button */}
         <Button 
           data-tour="header-ai"
@@ -261,7 +241,7 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
               <span>Feedback</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-3xl">
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-primary"><Bug className="h-5 w-5" /> Help us improve!</DialogTitle>
               <DialogDescription>

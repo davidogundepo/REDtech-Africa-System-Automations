@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { 
   FileText, Truck, Users, CheckSquare, CalendarDays, 
   LayoutDashboard, LogOut, BarChart3, FolderOpen, TrendingUp, Megaphone,
-  Moon, Sun, Shield, Clock, UserCog, UsersRound, HardDrive, PanelLeftClose, PanelLeft, Handshake, Search, Sparkles, PlayCircle, History, Building2, ChevronDown
+  Moon, Sun, Shield, Clock, UserCog, UsersRound, HardDrive, PanelLeftClose, PanelLeft, Handshake, Search, Sparkles, PlayCircle, History, Building2,
+  ChevronsDown, ChevronsUp
 } from "lucide-react";
 import { startFeatureTour } from "@/components/shared/FeatureTour";
 import { useTheme } from "@/components/ThemeProvider";
@@ -75,7 +76,7 @@ function ModuleManagerDialogContent({ disabledModules, toggleModule }: { disable
   const filteredModules = ALL_MODULES.filter((mod) => mod.label.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <DialogContent className="h-[100dvh] w-screen max-w-none gap-0 overflow-hidden border-0 bg-card p-0 shadow-lvl-3 sm:h-[92vh] sm:w-[calc(100vw-2rem)] sm:max-w-6xl sm:rounded-[24px] sm:border sm:border-border/70 [&>button]:right-5 [&>button]:top-5">
+    <DialogContent className="h-[100dvh] w-screen max-w-none gap-0 overflow-hidden border-0 bg-card p-0 shadow-lvl-3 sm:h-[92vh] sm:w-[calc(100vw-2rem)] sm:max-w-6xl sm:rounded-[24px] sm:border sm:border-border/70">
       <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden lg:grid-cols-[340px_minmax(0,1fr)]">
         <aside className="relative hidden overflow-hidden bg-sidebar p-7 lg:flex lg:flex-col lg:justify-between">
           <div className="absolute inset-0 bg-[linear-gradient(150deg,hsl(var(--primary)/0.22),transparent_36%),radial-gradient(circle_at_18%_88%,hsl(var(--accent-gold)/0.12),transparent_34%)]" />
@@ -125,7 +126,7 @@ function ModuleManagerDialogContent({ disabledModules, toggleModule }: { disable
                 <DialogDescription>{enabledCount}/{ALL_MODULES.length} modules visible to the team.</DialogDescription>
               </DialogHeader>
             </div>
-            <div className="hidden items-start justify-between gap-4 lg:flex pr-12">
+            <div className="hidden items-start justify-between gap-4 lg:flex">
               <div>
                 <h2 className="text-2xl font-black tracking-tight">System Modules</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Search, review status, and toggle each workspace from one place.</p>
@@ -162,7 +163,7 @@ function ModuleManagerDialogContent({ disabledModules, toggleModule }: { disable
                   >
                     <div className="flex w-full items-start justify-between gap-3">
                       <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${enabled ? "border-primary/25 bg-primary/15" : "border-border bg-background"}`}>
-                        {(() => { const Icon = (mod as any).icon || Settings2; return <Icon className={`h-5 w-5 ${enabled ? "text-primary" : "text-muted-foreground"}`} />; })()}
+                        <Settings2 className={`h-5 w-5 ${enabled ? "text-primary" : "text-muted-foreground"}`} />
                       </div>
                       <PremiumToggle size="sm" checked={enabled} onChange={() => {}} />
                     </div>
@@ -426,6 +427,9 @@ export function AppSidebar() {
   const { profile, signOut, isSuperAdmin, isAdmin } = useAuth();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const [footerOpen, setFooterOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem("rac-sidebar-footer-open") !== "0"; } catch { return true; }
+  });
   const { isModuleEnabledByPath, disabledModules, toggleModule } = useModuleToggles();
 
   // All roles respect module toggles — super admin can re-enable via the module manager
@@ -509,68 +513,51 @@ export function AppSidebar() {
         {(isSuperAdmin || isAdmin) && renderNavGroup(filterModules(adminModules), "Administration")}
       </SidebarContent>
 
-      <FooterContent
-        profile={profile}
-        isCollapsed={isCollapsed}
-        theme={theme}
-        setTheme={setTheme}
-        isSuperAdmin={isSuperAdmin}
-        disabledModules={disabledModules}
-        toggleModule={toggleModule}
-        navigate={navigate}
-        handleLogout={handleLogout}
-      />
-    </Sidebar>
-  );
-}
+      <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center">
+        {/* Footer hide toggle */}
+        {!isCollapsed && (
+          <button
+            type="button"
+            onClick={() => {
+              const next = !footerOpen;
+              setFooterOpen(next);
+              try { localStorage.setItem("rac-sidebar-footer-open", next ? "1" : "0"); } catch {}
+            }}
+            className="w-full flex items-center justify-center gap-1.5 text-[11px] text-sidebar-foreground/55 hover:text-primary transition-colors py-1 rounded-md hover:bg-sidebar-accent"
+            title={footerOpen ? "Hide footer" : "Show footer"}
+          >
+            {footerOpen ? <ChevronsDown className="h-3.5 w-3.5" /> : <ChevronsUp className="h-3.5 w-3.5" />}
+            <span>{footerOpen ? "Hide footer" : "Show footer"}</span>
+          </button>
+        )}
 
-function FooterContent({ profile, isCollapsed, theme, setTheme, isSuperAdmin, disabledModules, toggleModule, navigate, handleLogout }: any) {
-  const [extrasOpen, setExtrasOpen] = useState(true);
-  return (
-    <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center">
-      {/* Profile + storage block — collapses with the rest of the tools */}
-      {(extrasOpen || isCollapsed) && (
+        {footerOpen && (
         <>
-          {profile && (
-            <div
-              data-tour="footer-profile"
-              className="flex items-center gap-2 px-1 cursor-pointer rounded-lg hover:bg-sidebar-accent transition-colors p-2 -m-1 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:m-0"
-              onClick={() => navigate("/profile")}
-              title="View your profile"
-            >
-              <div className="h-9 w-9 shrink-0 rounded-full bg-primary/20 ring-2 ring-primary/30 flex items-center justify-center text-xs font-bold text-primary overflow-hidden">
-                {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                )}
-              </div>
-              <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-semibold truncate text-white">{profile.full_name}</p>
-                <p className="text-[11px] text-sidebar-foreground/55 font-medium">{roleLabels[profile.role]}</p>
-              </div>
+        {/* Current User Info */}
+        {profile && (
+          <div
+            data-tour="footer-profile"
+            className="flex items-center gap-2 px-1 cursor-pointer rounded-lg hover:bg-sidebar-accent transition-colors p-2 -m-1 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:m-0"
+            onClick={() => navigate("/profile")}
+            title="View your profile"
+          >
+            <div className="h-9 w-9 shrink-0 rounded-full bg-primary/20 ring-2 ring-primary/30 flex items-center justify-center text-xs font-bold text-primary overflow-hidden">
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+              )}
             </div>
-          )}
-          <StorageBox isCollapsed={isCollapsed} />
-        </>
-      )}
+            <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+              <p className="text-sm font-semibold truncate text-white">{profile.full_name}</p>
+              <p className="text-[11px] text-sidebar-foreground/55 font-medium">{roleLabels[profile.role]}</p>
+            </div>
+          </div>
+        )}
+        {/* Storage Management Box */}
+        <StorageBox isCollapsed={isCollapsed} />
 
-      {/* Collapsible footer extras (frees scroll for sidebar modules) */}
-      {!isCollapsed && (
-        <button
-          type="button"
-          onClick={() => setExtrasOpen((v) => !v)}
-          className="w-full flex items-center justify-between text-[10px] uppercase tracking-[0.16em] font-semibold text-sidebar-foreground/45 hover:text-sidebar-foreground/80 transition-colors px-1 py-1"
-          aria-expanded={extrasOpen}
-        >
-          <span>{extrasOpen ? "Hide tools" : "Show tools"}</span>
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${extrasOpen ? "rotate-180" : ""}`} />
-        </button>
-      )}
-
-      {(extrasOpen || isCollapsed) && (
-        <>
-          <Button
+        <Button
           variant="outline"
           size="sm"
           className="w-full justify-start bg-transparent border-sidebar-border text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground hover:border-sidebar-border group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-0"
@@ -606,11 +593,11 @@ function FooterContent({ profile, isCollapsed, theme, setTheme, isSuperAdmin, di
             <ModuleManagerDialogContent disabledModules={disabledModules} toggleModule={toggleModule} />
           </Dialog>
         )}
-          <Button
+        <Button
           variant="ghost"
           size="sm"
           className="w-full justify-start text-sidebar-foreground/65 hover:text-primary hover:bg-primary/10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-0"
-            onClick={() => startFeatureTour((profile?.full_name || "there").split(" ")[0], profile?.role as any)}
+          onClick={() => startFeatureTour((profile?.full_name || "there").split(" ")[0], profile?.role as any)}
           title="Replay onboarding tour"
         >
           <PlayCircle className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} />
@@ -625,7 +612,7 @@ function FooterContent({ profile, isCollapsed, theme, setTheme, isSuperAdmin, di
           <LogOut className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} />
           {!isCollapsed && <span>Log Out</span>}
         </Button>
-          {!isCollapsed && (
+        {!isCollapsed && (
           <>
             <p className="text-[11px] text-sidebar-foreground/45 text-center">
               Made with ❤️ by{" "}
@@ -642,7 +629,8 @@ function FooterContent({ profile, isCollapsed, theme, setTheme, isSuperAdmin, di
           </>
         )}
         </>
-      )}
-    </SidebarFooter>
+        )}
+      </SidebarFooter>
+    </Sidebar>
   );
 }

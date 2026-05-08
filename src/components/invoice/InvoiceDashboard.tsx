@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { toast } from "sonner";
 import { ArrowDownRight, ArrowUpRight, Banknote, Calendar, CreditCard, DollarSign, Activity, FileText, Download, Mail, MoreHorizontal, Search, Trash2, Eye, LayoutGrid, List as ListIcon } from "lucide-react";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from "recharts";
@@ -293,25 +292,9 @@ export const InvoiceDashboard = () => {
                     <div><span className="text-muted-foreground block mb-0.5">Issued:</span><span className="font-medium">{inv.date}</span></div>
                     <div><span className="text-muted-foreground block mb-0.5">Due:</span><span className="font-medium">{inv.due}</span></div>
                   </div>
-                   <div className="flex justify-end gap-2 pr-1">
-                     <Button
-                       variant="ghost"
-                       size="icon"
-                       className="h-8 w-8 hover:bg-invoice-accent/10 hover:text-invoice-accent"
-                       title="Preview invoice PDF"
-                       onClick={() => toast.info("Demo preview — in production this opens the live invoice PDF for this record.")}
-                     >
-                       <Eye className="w-4 h-4" />
-                     </Button>
-                     <Button
-                       variant="ghost"
-                       size="icon"
-                       className="h-8 w-8 hover:bg-invoice-accent/10 hover:text-invoice-accent"
-                       title="Download invoice PDF"
-                       onClick={() => toast.info("Demo download — production wires this straight to the stored PDF in Lovable Cloud storage.")}
-                     >
-                       <Download className="w-4 h-4" />
-                     </Button>
+                  <div className="flex justify-end gap-2 pr-1">
+                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-invoice-accent/10 hover:text-invoice-accent"><Eye className="w-4 h-4" /></Button>
+                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-invoice-accent/10 hover:text-invoice-accent"><Download className="w-4 h-4" /></Button>
                   </div>
                 </div>
               ))}

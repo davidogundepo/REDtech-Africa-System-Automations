@@ -193,27 +193,11 @@ export const TeamOverviewCards = ({
   activeLeaves: any[];
   selectedDate: string;
 }) => {
-  // Defensive: useQuery can return undefined while loading — never call .map/.filter on undefined
-  const safeRecords: any[] = Array.isArray(allRecords) ? allRecords : [];
-  const safeProfiles: any[] = Array.isArray(allProfiles) ? allProfiles : [];
-  const safeLeaves: any[] = Array.isArray(activeLeaves) ? activeLeaves : [];
-  const safeWeekly: any[] = Array.isArray(weeklyGridData) ? weeklyGridData : [];
-  const safeBreakdown = Array.isArray(departmentBreakdown) ? departmentBreakdown : [];
-
-  const totalMembers = safeProfiles.length;
-  const presentCount = safeRecords.filter((r: any) => r.status === "present").length;
-  const lateCount = safeRecords.filter((r: any) => r.status === "late").length;
-  const onLeaveCount = safeLeaves.length;
+  const totalMembers = allProfiles?.length || 0;
+  const presentCount = allRecords?.filter((r: any) => r.status === "present").length || 0;
+  const lateCount = allRecords?.filter((r: any) => r.status === "late").length || 0;
+  const onLeaveCount = activeLeaves?.length || 0;
   const absentCount = Math.max(0, totalMembers - presentCount - lateCount - onLeaveCount);
-
-  // Robust date label — never crash if selectedDate is empty/invalid
-  let weekLabel = "This Week";
-  try {
-    if (selectedDate) {
-      const d = new Date(selectedDate);
-      if (!isNaN(d.getTime())) weekLabel = format(d, "MMM d, yyyy");
-    }
-  } catch { /* keep fallback */ }
 
   return (
     <div className="space-y-4">
@@ -245,7 +229,7 @@ export const TeamOverviewCards = ({
               label: "Department Breakdown",
               content: (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
-                  {safeBreakdown.map((dept, i) => (
+                  {departmentBreakdown.map((dept, i) => (
                     <div key={i} className="p-3 rounded-xl border border-border/30 bg-muted/10 hover:bg-muted/20 transition-colors">
                       <p className="text-xs font-bold text-primary mb-2 truncate">{dept.department}</p>
                       <div className="flex items-baseline gap-2">
@@ -259,7 +243,7 @@ export const TeamOverviewCards = ({
                       </div>
                     </div>
                   ))}
-                  {safeBreakdown.length === 0 && <p className="text-sm text-muted-foreground col-span-full text-center py-6">No department data</p>}
+                  {departmentBreakdown.length === 0 && <p className="text-sm text-muted-foreground col-span-full text-center py-6">No department data</p>}
                 </div>
               ),
             },
@@ -268,11 +252,11 @@ export const TeamOverviewCards = ({
               content: (() => {
                 // Parse GPS coordinates stored in clock-in notes as [📌 lat, lng]
                 const geoPattern = /\[📌\s*(-?\d+\.\d+),\s*(-?\d+\.\d+)\]/;
-                const staffWithGPS = safeRecords
+                const staffWithGPS = allRecords
                   .map((r: any) => {
                     const match = r.notes?.match(geoPattern);
                     if (!match) return null;
-                    const staffName = safeProfiles.find((p: any) => p.id === r.user_id)?.full_name || "Staff";
+                    const staffName = allProfiles?.find((p: any) => p.id === r.user_id)?.full_name || "Staff";
                     return { name: staffName, lat: parseFloat(match[1]), lng: parseFloat(match[2]), status: r.status };
                   })
                   .filter(Boolean) as { name: string; lat: number; lng: number; status: string }[];
@@ -376,7 +360,7 @@ export const TeamOverviewCards = ({
         className="border-border/40 shadow-sm"
         views={[
           {
-            label: `Weekly Grid — ${weekLabel}`,
+            label: `Weekly Grid — ${format(new Date(selectedDate), "MMM d, yyyy")}`,
             content: (
               <div className="overflow-x-auto mt-2">
                 <table className="w-full text-xs">
@@ -389,7 +373,7 @@ export const TeamOverviewCards = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {safeWeekly.slice(0, 15).map((user: any, i: number) => (
+                    {weeklyGridData.slice(0, 15).map((user: any, i: number) => (
                       <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
                         <td className="py-2 px-3 font-medium text-foreground truncate max-w-[120px]">{user.full_name}</td>
                         {user.dayStatuses.map((ds: any, j: number) => (
@@ -409,7 +393,7 @@ export const TeamOverviewCards = ({
                     ))}
                   </tbody>
                 </table>
-                {safeWeekly.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No data available</p>}
+                {weeklyGridData.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No data available</p>}
               </div>
             ),
           },

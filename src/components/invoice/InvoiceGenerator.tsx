@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvoiceDashboard } from "./InvoiceDashboard";
+import { ResponsiveInvoicePreview } from "./ResponsiveInvoicePreview";
 import { SendInvoiceModal } from "./SendInvoiceModal";
 
 const getInitialInvoiceData = (): InvoiceData => {
@@ -89,41 +90,18 @@ export const InvoiceGenerator = () => {
         if (error) console.error("Failed to save invoice to transactions:", error);
       });
 
-      // Auto-push to Document Repository — render the live preview to a real
-      // PDF, upload it to the `generated-docs` storage bucket, then store the
-      // public URL + actual file size against the document row.
-      const filename = `${invoiceData.invoiceNumber} — ${invoiceData.clientCompany || invoiceData.clientName}.pdf`;
-      (async () => {
-        const uploaded = await import("@/lib/upload-pdf").then(m =>
-          m.renderAndUploadPdf(printRef.current, filename, profile?.id)
-        );
-        const url = uploaded?.url || `#invoice-${invoiceData.invoiceNumber}`;
-        const sizeBytes = uploaded?.bytes || 80_000;
-        const sizeLabel = sizeBytes > 1024 * 1024
-          ? `${(sizeBytes / (1024 * 1024)).toFixed(1)}MB`
-          : `${Math.max(1, Math.round(sizeBytes / 1024))}KB`;
-
-        const { error } = await (supabase as any).from("documents").insert({
-          name: filename,
-          type: "pdf",
-          size: sizeLabel,
-          url,
-          department: "Finance",
-          created_by: profile?.full_name || "System",
-          description: `Invoice — Sent | ${invoiceData.clientCompany || invoiceData.clientName} | ${invoiceData.currency}${total.toLocaleString()}`,
-        });
+      // Auto-push to Document Repository so invoice appears in the repo
+      (supabase as any).from("documents").insert({
+        name: `${invoiceData.invoiceNumber} — ${invoiceData.clientCompany || invoiceData.clientName}.pdf`,
+        type: "pdf",
+        size: `${Math.ceil(total / 100000)}KB`,
+        url: `#invoice-${invoiceData.invoiceNumber}`,
+        department: "Finance",
+        created_by: profile?.full_name || "System",
+        description: `Invoice — Sent | ${invoiceData.clientCompany || invoiceData.clientName} | ${invoiceData.currency}${total.toLocaleString()}`,
+      }).then(({ error }: any) => {
         if (error) console.error("Failed to auto-save invoice to documents:", error);
-
-        // Bump real storage usage with actual bytes
-        import("@/lib/activity").then(({ activity }) =>
-          activity.generated(
-            "invoice",
-            invoiceData.invoiceNumber || crypto.randomUUID(),
-            `Invoice for ${invoiceData.clientCompany || invoiceData.clientName} (${invoiceData.currency || "₦"}${total.toLocaleString()})`,
-            sizeBytes,
-          )
-        );
-      })();
+      });
 
       // ── Smart Client Sync ─────────────────────────────────────────────────
       // Saves client to CRM, increments their total_invoiced, updates deal_status
@@ -183,7 +161,12 @@ export const InvoiceGenerator = () => {
       }
 
       toast.success(`Invoice generated & saved! ${invoiceData.clientCompany || invoiceData.clientName} — ${invoiceData.currency || "₦"}${total.toLocaleString()}`);
-      // (activity.generated is called inside the upload IIFE above with real bytes)
+      // Audit + storage tally (estimated PDF size ~ 80KB per invoice page)
+      import("@/lib/activity").then(({ activity }) =>
+        activity.generated("invoice", invoiceData.invoiceNumber || crypto.randomUUID(),
+          `Invoice for ${invoiceData.clientCompany || invoiceData.clientName} (${invoiceData.currency || "₦"}${total.toLocaleString()})`,
+          80_000)
+      );
     },
     pageStyle: `
       @page {
@@ -320,13 +303,9 @@ export const InvoiceGenerator = () => {
                     <Layers className="h-5 w-5 text-invoice-accent" />
                     Live Print Preview
                   </h2>
-                  <div className="bg-muted p-4 rounded-2xl border border-border/50 shadow-inner overflow-auto max-h-[calc(100vh-140px)] custom-scrollbar">
-                    <div style={{ zoom: 0.65 }} className="sm:[zoom:0.7] md:[zoom:0.75] lg:[zoom:0.6] xl:[zoom:0.7] 2xl:[zoom:0.85]">
-                      <div className="shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] hover:shadow-[0_25px_65px_-15px_rgba(0,0,0,0.4)] transition-shadow duration-500 rounded-lg overflow-hidden ring-1 ring-border border-0">
-                        <InvoicePreview ref={printRef} invoiceData={invoiceData} />
-                      </div>
-                    </div>
-                  </div>
+                  <ResponsiveInvoicePreview>
+                    <InvoicePreview ref={printRef} invoiceData={invoiceData} />
+                  </ResponsiveInvoicePreview>
                 </div>
               </div>
             </div>
