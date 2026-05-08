@@ -118,6 +118,31 @@ export default function PlatformSettingsPage() {
                 <Textarea value={vision} onChange={(e) => setVision(e.target.value)} rows={3} />
               </div>
             </div>
+            <div className="grid md:grid-cols-[180px,1fr] gap-4 items-end">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /> Brand accent</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={accent}
+                    onChange={(e) => setAccent(e.target.value)}
+                    className="h-10 w-14 rounded-lg border border-border bg-background cursor-pointer"
+                    aria-label="Pick brand accent colour"
+                  />
+                  <Input
+                    value={accent}
+                    onChange={(e) => setAccent(e.target.value)}
+                    placeholder="#C9A66B"
+                    className="font-mono uppercase"
+                    maxLength={7}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">Drives buttons, links, badges and the primary highlight everywhere.</p>
+              </div>
+              <p className="text-xs text-muted-foreground hidden md:block">
+                Tip: keep contrast strong against both light and dark surfaces. Changes apply instantly across the platform once saved.
+              </p>
+            </div>
             <div className="flex justify-end">
               <Button onClick={saveCompany}><Sparkles className="h-4 w-4 mr-2" /> Save company profile</Button>
             </div>
