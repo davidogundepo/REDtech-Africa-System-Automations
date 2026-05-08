@@ -29,6 +29,7 @@ export function useCompany() {
   const mission = get<string>("company_mission" as any, "");
   const vision = get<string>("company_vision" as any, "");
   const currency = (get<string>("company_currency" as any, "NGN") as CurrencyCode) || "NGN";
+  const accent = get<string>("company_accent" as any, "#C9A66B");
   const symbol = SYMBOLS[currency] ?? currency;
   const locale = LOCALES[currency] ?? "en-US";
 
@@ -37,5 +38,5 @@ export function useCompany() {
     return `${symbol}${Math.round(n).toLocaleString(locale)}`;
   };
 
-  return { name, description, mission, vision, currency, symbol, locale, formatMoney };
+  return { name, description, mission, vision, currency, accent, symbol, locale, formatMoney };
 }
