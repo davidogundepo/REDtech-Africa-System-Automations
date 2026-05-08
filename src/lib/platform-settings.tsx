@@ -10,7 +10,8 @@ export type PlatformSettingKey =
   | "company_description"
   | "company_mission"
   | "company_vision"
-  | "company_currency";
+  | "company_currency"
+  | "company_accent";
 
 type SettingsMap = Partial<Record<PlatformSettingKey, any>>;
 
