@@ -39,6 +39,7 @@ export default function PlatformSettingsPage() {
   const [mission, setMission] = useState("");
   const [vision, setVision] = useState("");
   const [currency, setCurrency] = useState("NGN");
+  const [accent, setAccent] = useState("#C9A66B");
 
   useEffect(() => {
     setQuotaMb(String(get("default_storage_quota_mb", 500)));
@@ -47,6 +48,7 @@ export default function PlatformSettingsPage() {
     setMission(String(get("company_mission", "")));
     setVision(String(get("company_vision", "")));
     setCurrency(String(get("company_currency", "NGN")));
+    setAccent(String(get("company_accent", "#C9A66B")));
   }, [settings]);
 
   if (authLoading) return null;
