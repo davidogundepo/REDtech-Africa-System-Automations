@@ -11,6 +11,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useNavigate } from "react-router-dom";
 import { CommandPalette } from "@/components/shared/CommandPalette";
 import { PresenceIndicator } from "@/components/shared/PresenceIndicator";
+import { DemoModeToggle } from "@/components/shared/DemoModeToggle";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -227,6 +228,7 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
       </div>
       
       <div className="flex items-center gap-2 md:gap-4">
+        <div className="hidden lg:block"><DemoModeToggle /></div>
         {/* Toggle Copilot Button */}
         <Button 
           data-tour="header-ai"
