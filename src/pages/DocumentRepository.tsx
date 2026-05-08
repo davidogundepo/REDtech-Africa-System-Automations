@@ -709,10 +709,10 @@ const DocumentRepository = () => {
         </Tabs>
         
         <div className="flex items-center gap-2 mt-4 sm:mt-0 bg-muted/50 p-1 rounded-xl">
-           <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("grid")} className="h-8 rounded-lg">
+           <Button type="button" variant={viewMode === "grid" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("grid")} className="h-8 rounded-lg" aria-label="Grid view" aria-pressed={viewMode === "grid"}>
              <LayoutGrid className="w-4 h-4" />
            </Button>
-           <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("list")} className="h-8 rounded-lg">
+           <Button type="button" variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" onClick={() => setViewMode("list")} className="h-8 rounded-lg" aria-label="List view" aria-pressed={viewMode === "list"}>
              <List className="w-4 h-4" />
            </Button>
         </div>

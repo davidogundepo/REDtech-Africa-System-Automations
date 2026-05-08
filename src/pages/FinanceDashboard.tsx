@@ -1,6 +1,7 @@
 import { ViewerBanner } from "@/components/ViewerBanner";
 import { MotionPage } from "@/components/shared/MotionPage";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
+import { DatePicker } from "@/components/shared/DatePicker";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
@@ -429,17 +430,14 @@ const FinanceDashboard = () => {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-2xl border border-border/40 backdrop-blur-sm shadow-sm">
-            <div className="flex items-center gap-1.5">
-              <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
-              <div className="flex flex-col">
-                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-0.5">From</span>
-                <Input type="date" value={exportPeriodFrom} onChange={e => setExportPeriodFrom(e.target.value)} className="h-8 w-36 bg-transparent border-none text-xs font-bold focus-visible:ring-0 p-0 cursor-pointer" />
-              </div>
+            <div className="flex flex-col">
+              <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-0.5 px-1">From</span>
+              <DatePicker value={exportPeriodFrom} onChange={setExportPeriodFrom} placeholder="Start" triggerClassName="h-8 w-40 bg-transparent border-none text-xs font-bold focus-visible:ring-0" />
             </div>
             <div className="w-px h-8 bg-border/50" />
             <div className="flex flex-col">
-              <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-0.5">To</span>
-              <Input type="date" value={exportPeriodTo} onChange={e => setExportPeriodTo(e.target.value)} className="h-8 w-36 bg-transparent border-none text-xs font-bold focus-visible:ring-0 p-0 cursor-pointer" />
+              <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-0.5 px-1">To</span>
+              <DatePicker value={exportPeriodTo} onChange={setExportPeriodTo} placeholder="End" triggerClassName="h-8 w-40 bg-transparent border-none text-xs font-bold focus-visible:ring-0" />
             </div>
           </div>
 
@@ -525,7 +523,7 @@ const FinanceDashboard = () => {
                     <div><Label>Amount (NGN) *</Label><Input type="number" required min="0.01" step="0.01" value={newTx.amount} onChange={(e) => setNewTx({...newTx, amount: e.target.value})} /></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div><Label>Date *</Label><Input type="date" required value={newTx.date} onChange={(e) => setNewTx({...newTx, date: e.target.value})} /></div>
+                    <div><Label>Date *</Label><DatePicker value={newTx.date} onChange={(v) => setNewTx({...newTx, date: v})} /></div>
                     <div><Label>Category *</Label><Input required maxLength={120} value={newTx.category} onChange={(e) => setNewTx({...newTx, category: e.target.value})} placeholder="e.g., Retainer, AWS, Payroll" /></div>
                   </div>
                   <div><Label>Description</Label><Input maxLength={500} value={newTx.description} onChange={(e) => setNewTx({...newTx, description: e.target.value})} placeholder="Notes..." /></div>

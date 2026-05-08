@@ -25,6 +25,7 @@ import {
   Download, X, Sparkles
 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { DatePicker } from "@/components/shared/DatePicker";
 import { useAuth } from "@/lib/auth-context";
 import { Navigate } from "react-router-dom";
 
@@ -179,9 +180,9 @@ const OpsDashboard = () => {
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 bg-card p-1.5 rounded-lg border border-border shadow-lvl-1">
-            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-9 w-32 bg-transparent border-none text-[11px] font-semibold focus-visible:ring-0" />
+            <DatePicker value={dateFrom} onChange={setDateFrom} placeholder="From" triggerClassName="h-9 border-none bg-transparent text-[11px] font-semibold focus-visible:ring-0 px-2" className="w-36" />
             <span className="text-[10px] font-bold text-muted-foreground">TO</span>
-            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-9 w-32 bg-transparent border-none text-[11px] font-semibold focus-visible:ring-0" />
+            <DatePicker value={dateTo} onChange={setDateTo} placeholder="To" triggerClassName="h-9 border-none bg-transparent text-[11px] font-semibold focus-visible:ring-0 px-2" className="w-36" />
           </div>
 
           <Button onClick={handleExportOpsReport} variant="outline" className="border-primary/30 text-primary hover:bg-primary/10 h-10 rounded-lg font-semibold">
@@ -233,10 +234,7 @@ const OpsDashboard = () => {
                   <form onSubmit={handleCreate} className="flex-1 px-9 py-6 space-y-5 overflow-y-auto">
                     <div className="space-y-1.5">
                       <Label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Log Date</Label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="date" required value={newMetric.date} onChange={e => setNewMetric({ ...newMetric, date: e.target.value })} className="pl-10 h-11 bg-background rounded-lg" />
-                      </div>
+                      <DatePicker value={newMetric.date} onChange={(v) => setNewMetric({ ...newMetric, date: v })} triggerClassName="h-11 bg-background rounded-lg" />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

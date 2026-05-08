@@ -21,6 +21,7 @@ import { runPerformanceEngine } from "@/lib/performance-engine";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Navigate } from "react-router-dom";
+import { WeeklyAISummaryCard } from "@/components/staff/WeeklyAISummaryCard";
 
 // Error Boundary: if ANYTHING crashes, redirect to dashboard
 class StaffUtilisationErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -322,6 +323,65 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
           </CardContent>
         </Card>
       </div>
+
+      {/* 🔥 CAPACITY HEATMAP (#11) — instant per-person load visualisation */}
+      <Card className="mb-8 border-border/40 bg-card/60 backdrop-blur-xl shadow-lg overflow-hidden">
+        <CardHeader className="border-b border-border/30 pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg font-black">
+            <Activity className="h-5 w-5 text-primary" /> Capacity Heatmap
+            <Badge variant="outline" className="ml-2 text-[10px] font-bold uppercase tracking-wider">Live load</Badge>
+          </CardTitle>
+          <p className="text-xs text-muted-foreground font-medium">Each tile = one staff member. Colour intensity = active task count. Hover for details.</p>
+        </CardHeader>
+        <CardContent className="p-6">
+          {(filteredProfiles || []).length === 0 ? (
+            <p className="text-center text-muted-foreground py-8 text-sm">No staff in this view.</p>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-10 gap-2">
+              {(filteredProfiles || []).map((p: any) => {
+                const userTasks = (tasks || []).filter((t: any) => t.assigned_to === p.id);
+                const open = userTasks.filter((t: any) => t.status !== 'done').length;
+                const overdue = userTasks.filter((t: any) => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done').length;
+                const intensity = Math.min(open / 8, 1); // 0..1, saturates at 8 tasks
+                const bg = overdue > 0
+                  ? `hsl(0 80% ${Math.max(40, 70 - intensity * 30)}% / ${0.15 + intensity * 0.55})`
+                  : open === 0
+                    ? 'hsl(var(--muted) / 0.4)'
+                    : `hsl(var(--primary) / ${0.15 + intensity * 0.6})`;
+                const initials = (p.full_name || p.email || '?').split(' ').map((s: string) => s[0]).join('').slice(0, 2).toUpperCase();
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => setSelectedUser(p)}
+                    title={`${p.full_name || p.email}\n${open} open · ${overdue} overdue`}
+                    className="aspect-square rounded-xl border border-border/30 flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105 hover:shadow-md hover:border-primary/40 relative group"
+                    style={{ backgroundColor: bg }}
+                  >
+                    <span className="text-[10px] font-black text-foreground/80">{initials}</span>
+                    <span className="text-[9px] font-bold text-foreground/60">{open}</span>
+                    {overdue > 0 && (
+                      <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="flex items-center gap-4 mt-5 text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+            <div className="flex items-center gap-1.5"><div className="h-3 w-3 rounded bg-muted/40" /> Idle</div>
+            <div className="flex items-center gap-1.5"><div className="h-3 w-3 rounded" style={{ backgroundColor: 'hsl(var(--primary) / 0.4)' }} /> Active</div>
+            <div className="flex items-center gap-1.5"><div className="h-3 w-3 rounded" style={{ backgroundColor: 'hsl(var(--primary) / 0.85)' }} /> Loaded</div>
+            <div className="flex items-center gap-1.5"><div className="h-3 w-3 rounded bg-red-500/60" /> Overdue</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 🧠 AI WEEKLY SUMMARY (#11) — focused 7-day executive digest */}
+      <WeeklyAISummaryCard
+        scope={selectedDept === "all" ? "Global Workspace" : selectedDept}
+        tasks={departmentTasks}
+        profiles={filteredProfiles || []}
+      />
 
       <SwapCardWrapper 
         minHeight="800px"
@@ -724,7 +784,7 @@ Write a sophisticated, 2-2 sentence executive brief analyzing this performance. 
 
       {/* 🚀 DEEP DIVE PROFILE SIDEPANEL (SHEET) */}
       <Sheet open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <SheetContent className="w-full sm:max-w-md lg:max-w-xl overflow-y-auto p-0 border-l border-border/50">
+        <SheetContent className="w-full sm:max-w-2xl lg:max-w-3xl overflow-y-auto p-0 border-l border-border/50">
           {selectedUser && (
             <div className="flex flex-col h-full bg-background">
               {/* Header Header */}

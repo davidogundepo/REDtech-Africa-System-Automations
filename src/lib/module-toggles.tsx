@@ -140,6 +140,8 @@ export function ModuleToggleProvider({ children }: { children: ReactNode }) {
   // ── Initialise immediately from localStorage (no flash / no loading wait) ──
   const [disabledModules, setDisabledModules] = useState<ModuleKey[]>(readFromLocalStorage);
   const [loading, setLoading] = useState(false);
+  // Per-user overrides loaded from `user_module_overrides` (#12).
+  const [userDisabled, setUserDisabled] = useState<ModuleKey[]>([]);
 
   // ── On mount: try to hydrate from Supabase (cloud sync) ──────────────────
   useEffect(() => {
@@ -154,7 +156,26 @@ export function ModuleToggleProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  const isModuleEnabled = (key: ModuleKey) => !disabledModules.includes(key);
+  // Hydrate per-user overrides for the signed-in user
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { user } } = await (supabase as any).auth.getUser();
+        if (!user || cancelled) return;
+        const { data } = await (supabase as any)
+          .from("user_module_overrides")
+          .select("module_key, is_enabled")
+          .eq("user_id", user.id);
+        if (cancelled || !Array.isArray(data)) return;
+        setUserDisabled(data.filter((r: any) => r.is_enabled === false).map((r: any) => r.module_key as ModuleKey));
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const isModuleEnabled = (key: ModuleKey) =>
+    !disabledModules.includes(key) && !userDisabled.includes(key);
 
   const isModuleEnabledByPath = (path: string) => {
     const mod = ALL_MODULES.find(m => m.path === path);

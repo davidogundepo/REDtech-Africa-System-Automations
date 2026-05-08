@@ -632,3 +632,28 @@ main, [role="main"] {
   0%, 100% { box-shadow: 0 0 0 4px hsl(var(--primary) / 0.6), 0 0 0 8px hsl(var(--primary) / 0.18), 0 0 0 9999px hsl(20 18% 6% / 0.5) !important; }
   50%      { box-shadow: 0 0 0 4px hsl(var(--primary) / 0.85), 0 0 0 14px hsl(var(--primary) / 0.1), 0 0 0 9999px hsl(20 18% 6% / 0.5) !important; }
 }
+
+/* react-big-calendar — themed to match app tokens */
+.rbc-themed .rbc-calendar { font-family: inherit; color: hsl(var(--foreground)); }
+.rbc-themed .rbc-month-view, .rbc-themed .rbc-time-view, .rbc-themed .rbc-agenda-view {
+  background: transparent; border: 1px solid hsl(var(--border) / 0.5); border-radius: 12px; overflow: hidden;
+}
+.rbc-themed .rbc-header { background: hsl(var(--muted) / 0.4); color: hsl(var(--muted-foreground));
+  border-bottom: 1px solid hsl(var(--border) / 0.5); padding: 8px 4px; font-weight: 700; font-size: 11px;
+  letter-spacing: 0.08em; text-transform: uppercase; }
+.rbc-themed .rbc-day-bg + .rbc-day-bg, .rbc-themed .rbc-month-row + .rbc-month-row,
+.rbc-themed .rbc-time-content > * + * > *, .rbc-themed .rbc-time-header-content,
+.rbc-themed .rbc-time-content { border-color: hsl(var(--border) / 0.3); }
+.rbc-themed .rbc-off-range-bg { background: hsl(var(--muted) / 0.15); }
+.rbc-themed .rbc-today { background: hsl(var(--primary) / 0.06); }
+.rbc-themed .rbc-date-cell { padding: 4px 6px; font-size: 12px; font-weight: 600; }
+.rbc-themed .rbc-date-cell.rbc-now > a { background: hsl(var(--primary)); color: white;
+  border-radius: 999px; padding: 2px 8px; }
+.rbc-themed .rbc-event { box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+.rbc-themed .rbc-event:focus { outline: 2px solid hsl(var(--ring)); }
+.rbc-themed .rbc-show-more { color: hsl(var(--primary)); font-weight: 700; font-size: 10px; }
+.rbc-themed .rbc-agenda-view table.rbc-agenda-table { border-color: hsl(var(--border) / 0.4); }
+.rbc-themed .rbc-agenda-view table.rbc-agenda-table thead > tr > th,
+.rbc-themed .rbc-agenda-view table.rbc-agenda-table tbody > tr > td { border-color: hsl(var(--border) / 0.3); }
+.rbc-themed .rbc-addons-dnd .rbc-addons-dnd-resize-ns-anchor,
+.rbc-themed .rbc-addons-dnd .rbc-addons-dnd-resize-ew-anchor { display: none; }

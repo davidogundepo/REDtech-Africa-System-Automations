@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Clock, LogIn, LogOut, CalendarDays, Users, AlertTriangle, CheckCircle2, UserCheck, ShieldAlert, Star, TrendingUp, Building2, Home, Laptop, MapPin, Zap, Eye, Send, Mail, Download, Filter } from "lucide-react";
 import companyLogo from "@/assets/company-logo.png";
 import { MyDashboardCards, TeamOverviewCards, AnalyticsCards } from "@/components/attendance/AttendanceDashboard";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { isNigerianHoliday, getUpcomingHolidays } from "@/lib/nigerian-holidays";
 
 const WORK_MODES = [
@@ -423,15 +424,17 @@ const Attendance = () => {
 
               {(isAdmin || isSuperAdmin) && (
                 <TabsContent value="team-overview" className="mt-0 space-y-6 pb-6">
-                  <TeamOverviewCards 
-                    departmentBreakdown={departmentBreakdown}
-                    weeklyGridData={weeklyGridData}
-                    employeeOfMonth={employeeOfMonth}
-                    allRecords={allRecords}
-                    allProfiles={allProfiles}
-                    activeLeaves={activeLeaves}
-                    selectedDate={selectedDate}
-                  />
+                  <ErrorBoundary fallback={<Card className="p-8 text-center text-sm text-muted-foreground border-dashed">Team Overview hit a snag while loading. Refresh the page or try again in a moment.</Card>}>
+                    <TeamOverviewCards 
+                      departmentBreakdown={departmentBreakdown}
+                      weeklyGridData={weeklyGridData}
+                      employeeOfMonth={employeeOfMonth}
+                      allRecords={allRecords}
+                      allProfiles={allProfiles}
+                      activeLeaves={activeLeaves}
+                      selectedDate={selectedDate}
+                    />
+                  </ErrorBoundary>
                   
                   <Card className="border-border/40 shadow-sm overflow-hidden rounded-2xl">
                     <CardHeader className="bg-muted/30 border-b border-border/20 py-4 px-6 flex flex-row items-center justify-between">
@@ -497,12 +500,14 @@ const Attendance = () => {
 
               {(isAdmin || isSuperAdmin) && (
                 <TabsContent value="analytics" className="mt-0 space-y-6 pb-6">
-                  <AnalyticsCards 
-                    monthlyPerformanceData={monthlyPerformanceData}
-                    departmentBreakdown={departmentBreakdown}
-                    genderStats={genderStats}
-                    allProfiles={allProfiles}
-                  />
+                  <ErrorBoundary fallback={<Card className="p-8 text-center text-sm text-muted-foreground border-dashed">Analytics hit a snag while loading. Try refreshing.</Card>}>
+                    <AnalyticsCards 
+                      monthlyPerformanceData={monthlyPerformanceData}
+                      departmentBreakdown={departmentBreakdown}
+                      genderStats={genderStats}
+                      allProfiles={allProfiles}
+                    />
+                  </ErrorBoundary>
                 </TabsContent>
               )}
             </ScrollArea>

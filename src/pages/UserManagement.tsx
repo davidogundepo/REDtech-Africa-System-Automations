@@ -27,6 +27,8 @@ import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
 import { format, subDays } from "date-fns";
 import { DemoModeToggle } from "@/components/shared/DemoModeToggle";
+import { UserModuleOverridesPanel } from "@/components/users/UserModuleOverridesPanel";
+import { ShieldCheck } from "lucide-react";
 
 const roleBadgeColors: Record<string, string> = {
   super_admin: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
@@ -48,6 +50,7 @@ const UserManagement = () => {
   const { isSuperAdmin, profile: currentProfile, loading } = useAuth();
   const departments = useDepartmentNames();
   const { departments: allDepts, addDepartment, deleteDepartment, toggleDepartment } = useDepartments();
+  const [moduleAccessUser, setModuleAccessUser] = useState<any | null>(null);
 
   // Department Manager state
   const [newDeptName, setNewDeptName] = useState("");
@@ -883,6 +886,9 @@ const UserManagement = () => {
                           <DropdownMenuItem onClick={() => handleEdit(user)} className="cursor-pointer gap-2">
                             <Edit className="h-4 w-4" /> Edit Profile
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setModuleAccessUser(user)} className="cursor-pointer gap-2">
+                            <ShieldCheck className="h-4 w-4" /> Module Access
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={async () => {
                               try {
@@ -1081,6 +1087,7 @@ const UserManagement = () => {
               className="w-52 h-11 text-sm"
             />
             <Button
+              type="button"
               onClick={() => { if (newDeptName.trim()) { addDepartment(newDeptName); setNewDeptName(''); } }}
               className="bg-primary hover:bg-[#a66c4a] text-white font-black h-11 px-5 shadow-lg shadow-primary/20"
             >
@@ -1234,6 +1241,13 @@ const UserManagement = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Per-user module access overrides side panel (#12) */}
+      <UserModuleOverridesPanel
+        open={!!moduleAccessUser}
+        onOpenChange={(o) => !o && setModuleAccessUser(null)}
+        user={moduleAccessUser}
+      />
 
     </MotionPage>
   );

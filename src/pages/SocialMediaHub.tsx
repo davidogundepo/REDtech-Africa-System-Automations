@@ -256,118 +256,117 @@ const MediaRenderer = ({ urlStr, className = "" }: { urlStr?: string; className?
   );
 };
 
-// ─── Content Calendar with Drag-and-Drop ─────────────────────────
+// ─── Content Calendar — react-big-calendar swap (#10) ───────────────
+import { Calendar as BigCalendar, dateFnsLocalizer, View } from "react-big-calendar";
+import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
+import { parse, startOfWeek, getDay } from "date-fns";
+import { enUS } from "date-fns/locale/en-US";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
+
+const RBC_LOCALIZER = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek: () => startOfWeek(new Date(), { weekStartsOn: 0 }),
+  getDay,
+  locales: { "en-US": enUS },
+});
+const DnDCalendar: any = withDragAndDrop(BigCalendar as any);
+
 const ContentCalendar = ({ posts, onReschedule }: { posts: SocialPost[]; onReschedule?: (id: string, newDate: string) => void }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [draggingPost, setDraggingPost] = useState<SocialPost | null>(null);
-  const [dropTarget, setDropTarget] = useState<Date | null>(null);
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [view, setView] = useState<View>("month");
   const [confirmModal, setConfirmModal] = useState<{ post: SocialPost; newDate: Date } | null>(null);
-  const days = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) });
-  const startOffset = startOfMonth(currentMonth).getDay();
 
-  const getPostsForDay = (day: Date) =>
-    posts.filter(p => p.scheduled_date && isSameDay(parseISO(p.scheduled_date), day));
+  const events = posts
+    .filter(p => !!p.scheduled_date)
+    .map(p => {
+      const start = parseISO(p.scheduled_date);
+      const end = new Date(start.getTime() + 30 * 60 * 1000);
+      const plt = PLATFORMS.find(x => x.value === p.platform);
+      return {
+        id: p.id,
+        title: p.content?.slice(0, 40) || "New Post",
+        start,
+        end,
+        resource: { post: p, color: plt?.color || "#C4622D", platform: plt?.label || p.platform },
+      };
+    });
 
-  const handleDragStart = (e: React.DragEvent, post: SocialPost) => {
-    setDraggingPost(post);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragOver = (e: React.DragEvent, day: Date) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDropTarget(day);
-  };
-
-  const handleDrop = (e: React.DragEvent, day: Date) => {
-    e.preventDefault();
-    setDropTarget(null);
-    if (!draggingPost) return;
-    const isSame = draggingPost.scheduled_date && isSameDay(parseISO(draggingPost.scheduled_date), day);
-    if (isSame) { setDraggingPost(null); return; }
-    setConfirmModal({ post: draggingPost, newDate: day });
-    setDraggingPost(null);
+  const handleEventDrop = ({ event, start }: any) => {
+    const original = event.resource.post as SocialPost;
+    if (original.scheduled_date && isSameDay(parseISO(original.scheduled_date), start)) return;
+    setConfirmModal({ post: original, newDate: start });
   };
 
   const handleConfirmReschedule = () => {
     if (!confirmModal || !onReschedule) return;
     const newDateStr = format(confirmModal.newDate, "yyyy-MM-dd") + "T09:00";
     onReschedule(confirmModal.post.id, newDateStr);
-    toast.success(`"${confirmModal.post.content.slice(0, 30)}..." rescheduled to ${format(confirmModal.newDate, "d MMM yyyy")} ✅`);
+    toast.success(`"${confirmModal.post.content.slice(0, 30)}…" rescheduled to ${format(confirmModal.newDate, "d MMM yyyy")} ✅`);
     setConfirmModal(null);
   };
 
   return (
     <>
-      <Card className="border-primary/20 shadow-sm overflow-hidden">
-        <CardHeader className="bg-muted/30 border-b border-border/50 pb-4 pt-5">
-          <div className="flex items-center justify-between px-2">
-            <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
-              <Calendar className="h-5 w-5 text-primary"/> Content Calendar
-              <span className="text-xs text-muted-foreground font-normal ml-2">Drag posts to reschedule</span>
-            </CardTitle>
-            <div className="flex items-center gap-1 bg-background border rounded-lg p-1 shadow-sm">
-              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-muted" onClick={() => setCurrentMonth(m => subMonths(m, 1))}><ChevronLeft className="h-4 w-4"/></Button>
-              <span className="text-sm font-semibold w-32 text-center">{format(currentMonth, "MMMM yyyy")}</span>
-              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-muted" onClick={() => setCurrentMonth(m => addMonths(m, 1))}><ChevronRight className="h-4 w-4"/></Button>
+      <Card className="border-border/40 shadow-lg overflow-hidden bg-card/60 backdrop-blur-xl">
+        <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/40 pb-4 pt-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-2">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-black tracking-tight">Content Calendar</CardTitle>
+                <p className="text-[11px] text-muted-foreground font-medium">Drag posts to reschedule · {posts.length} scheduled</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1 bg-background/80 border border-border/60 rounded-xl p-1 shadow-sm">
+                {(["month", "week", "day", "agenda"] as View[]).map(v => (
+                  <Button key={v} type="button" variant="ghost" size="sm"
+                    onClick={() => setView(v)}
+                    className={`h-8 px-3 text-[11px] font-bold uppercase tracking-wider rounded-lg ${view === v ? "bg-primary text-white hover:bg-primary/90 hover:text-white" : "hover:bg-primary/10 hover:text-primary"}`}>
+                    {v}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1 bg-background/80 border border-border/60 rounded-xl p-1 shadow-sm">
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary" onClick={() => setCurrentDate(d => subMonths(d, 1))}><ChevronLeft className="h-4 w-4" /></Button>
+                <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-[11px] font-bold uppercase tracking-wider rounded-lg" onClick={() => setCurrentDate(new Date())}>Today</Button>
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary" onClick={() => setCurrentDate(d => addMonths(d, 1))}><ChevronRight className="h-4 w-4" /></Button>
+              </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="grid grid-cols-7 border-b border-border/50 bg-muted/10">
-            {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-              <div key={d} className="text-xs font-bold text-muted-foreground text-center py-3 uppercase tracking-wider">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 auto-rows-fr">
-            {Array.from({ length: startOffset }).map((_, i) => (
-              <div key={`empty-${i}`} className="min-h-[100px] border-r border-b border-border/30 bg-muted/5 pointer-events-none" />
-            ))}
-            {days.map(day => {
-              const dayPosts = getPostsForDay(day);
-              const today = isToday(day);
-              const isDropTarget = dropTarget && isSameDay(dropTarget, day);
-              return (
-                <div
-                  key={day.toISOString()}
-                  className={`min-h-[100px] border-r border-b border-border/30 p-1.5 flex flex-col transition-all ${!isSameMonth(day, currentMonth) ? "opacity-40 bg-muted/5" : ""} ${today ? "bg-primary/5" : ""} ${isDropTarget ? "bg-primary/15 ring-2 ring-inset ring-primary/50 scale-[0.99]" : "hover:bg-muted/40"}`}
-                  onDragOver={e => handleDragOver(e, day)}
-                  onDragLeave={() => setDropTarget(null)}
-                  onDrop={e => handleDrop(e, day)}
-                >
-                  <div className="flex justify-between items-start mb-1.5 px-1">
-                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${today ? "bg-primary text-white shadow-md shadow-primary/20" : "text-foreground"}`}>
-                      {format(day, "d")}
-                    </span>
-                    {dayPosts.length > 0 && (
-                      <span className="text-[9px] font-medium text-muted-foreground mt-1">{dayPosts.length} post{dayPosts.length > 1 ? 's' : ''}</span>
-                    )}
-                    {isDropTarget && (
-                      <span className="text-[9px] font-bold text-primary animate-pulse">Drop here</span>
-                    )}
-                  </div>
-                  <div className="flex-1 space-y-1 overflow-y-auto pr-0.5 custom-scrollbar">
-                    {dayPosts.slice(0, 3).map(p => {
-                      const plt = PLATFORMS.find(x => x.value === p.platform);
-                      return (
-                        <div
-                          key={p.id}
-                          draggable
-                          onDragStart={e => handleDragStart(e, p)}
-                          className="group relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-white border border-white/10 shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md cursor-grab active:cursor-grabbing active:opacity-60 active:scale-95 select-none"
-                          style={{ backgroundColor: plt?.color || "#C4622D" }}
-                          title={`Drag to reschedule: ${p.content?.slice(0, 50)}`}
-                        >
-                          {plt && <plt.icon className="h-2.5 w-2.5 flex-shrink-0 opacity-90"/>}
-                          <span className="text-[9px] font-medium truncate leading-tight tracking-tight drop-shadow-sm">{p.content?.slice(0, 24) || "New Post"}</span>
-                        </div>
-                      );
-                    })}
-                    {dayPosts.length > 3 && <div className="text-[8px] text-muted-foreground pl-1">+{dayPosts.length - 3} more</div>}
-                  </div>
-                </div>
-              );
-            })}
+        <CardContent className="p-2 sm:p-4">
+          <div className="rbc-themed" style={{ height: 640 }}>
+            <DnDCalendar
+              localizer={RBC_LOCALIZER}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              date={currentDate}
+              view={view}
+              onNavigate={(d: Date) => setCurrentDate(d)}
+              onView={(v: View) => setView(v)}
+              toolbar={false}
+              draggableAccessor={() => true}
+              onEventDrop={handleEventDrop}
+              eventPropGetter={(event: any) => ({
+                style: {
+                  backgroundColor: event.resource?.color || "hsl(var(--primary))",
+                  borderRadius: 6,
+                  border: "none",
+                  color: "white",
+                  fontWeight: 600,
+                  fontSize: 11,
+                  padding: "2px 6px",
+                },
+              })}
+              dayPropGetter={(date: Date) => isToday(date) ? { style: { backgroundColor: "hsl(var(--primary) / 0.06)" } } : {}}
+              popup
+            />
           </div>
         </CardContent>
       </Card>
@@ -391,10 +390,7 @@ const ContentCalendar = ({ posts, onReschedule }: { posts: SocialPost[]; onResch
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmReschedule}
-              className="rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-md shadow-primary/20"
-            >
+            <AlertDialogAction onClick={handleConfirmReschedule} className="rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-md shadow-primary/20">
               Confirm Reschedule
             </AlertDialogAction>
           </AlertDialogFooter>

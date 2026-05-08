@@ -363,30 +363,38 @@ const UserProfile = () => {
               </div>
 
               {/* Personalised Demographics Spread */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 pt-6 border-t border-border/40">
-                 <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/40">
-                    <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Contract</span>
-                    <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><UserCheck className="w-3.5 h-3.5 text-success shrink-0"/> Full-Time</span>
-                 </div>
-                 <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/40">
-                     <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Gender</span>
-                     <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><User className="w-3.5 h-3.5 text-info shrink-0"/> {(() => {
+              <div className="mt-6 pt-6 border-t border-border/40">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Profile Specs</p>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] font-bold text-primary hover:bg-primary/10 rounded-md" onClick={() => { setEditName(profile.full_name); setEditDialogOpen(true); }}>
+                    <Edit className="w-3 h-3 mr-1" /> Edit Specs
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-gradient-to-br from-success/5 to-transparent border border-success/20">
+                     <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Contract</span>
+                     <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><UserCheck className="w-3.5 h-3.5 text-success shrink-0"/> Full-Time</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-gradient-to-br from-info/5 to-transparent border border-info/20">
+                      <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Gender</span>
+                      <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><User className="w-3.5 h-3.5 text-info shrink-0"/> {(() => {
                         const fn = (profile.full_name || "").split(" ")[0].toLowerCase();
                         const femaleNames = ["ngozi","chioma","amara","adaeze","ada","funke","funmi","folake","yetunde","nneka","ify","joy","grace","blessing","mary","ruth","naomi","faith","hope","patience","esther","deborah","sarah","hannah","abigail","maryam","fatima","halima","aisha","zainab","aminat","taiwo","titi","tomi","bimpe","sade","bola","ronke"];
                         const maleNames = ["david","adebayo","emeka","chukwu","obinna","ikenna","oluwaseun","oluwadamilare","bamidele","femi","segun","tunde","obi","uche","chijioke","kalu","ifeanyi","nnamdi","chidi","ayo","bayo","ade","wale","jide","gbenga","sola","tobi","dele","kunle","akin","mohammed","ibrahim","musa","ahmed","yusuf","ola"];
                         if (femaleNames.includes(fn)) return "Female";
                         if (maleNames.includes(fn)) return "Male";
                         return "Not Specified";
-                     })()}</span>
-                 </div>
-                 <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/40">
-                    <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Start Date</span>
-                    <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><CalendarDays className="w-3.5 h-3.5 text-primary shrink-0"/> {format(new Date(profile.created_at), "MMM d, yyyy")}</span>
-                 </div>
-                 <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/40">
-                    <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Tenure</span>
-                    <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><Clock className="w-3.5 h-3.5 text-accent-gold shrink-0"/> {Math.max(1, Math.round(differenceInDays(new Date(), new Date(profile.created_at))/30))} Months</span>
-                 </div>
+                      })()}</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-gradient-to-br from-primary/5 to-transparent border border-primary/20">
+                     <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Start Date</span>
+                     <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><CalendarDays className="w-3.5 h-3.5 text-primary shrink-0"/> {format(new Date(profile.created_at), "MMM d, yyyy")}</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-gradient-to-br from-accent-gold/10 to-transparent border border-accent-gold/25">
+                     <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Tenure</span>
+                     <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><Clock className="w-3.5 h-3.5 text-accent-gold shrink-0"/> {Math.max(1, Math.round(differenceInDays(new Date(), new Date(profile.created_at))/30))} Months</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
