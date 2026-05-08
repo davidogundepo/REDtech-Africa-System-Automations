@@ -395,16 +395,23 @@ const DocumentRepository = () => {
     return '0 KB';
   };
 
-  const mockFolders = [
+  // Build folder hubs dynamically from real uploaded documents
+  const getDocsForDept = (dept: string) =>
+    allDocs
+      .filter((d: any) => (d.department || '').toLowerCase().includes(dept.toLowerCase()))
+      .slice(0, 5)
+      .map((d: any) => d.name);
+
+  const accessHubFolders = [
     { title: "Finance & Accounting", count: computeFolderCount("finance"), size: computeFolderSize("finance"), icon: <Building2 className="w-6 h-6 text-success"/>, color: "bg-success/10", border: "border-success/20",
-      docs: ["Expense Reimbursement Policy.pdf", "Petty Cash Guidelines.pdf", "Vendor Payment Terms.pdf", "Tax Compliance Manual.pdf", "Annual Budget Template.xlsx"] },
+      docs: getDocsForDept("finance") },
     { title: "Human Resources", count: computeFolderCount("hr") + computeFolderCount("human"), size: computeFolderSize("hr"), icon: <FileText className="w-6 h-6 text-info"/>, color: "bg-info/10", border: "border-info/20",
-      docs: ["Employee Handbook 2026.pdf", "Onboarding Checklist.pdf", "Code of Conduct.pdf", "Anti-Harassment Policy.pdf", "Performance Review Framework.pdf"] },
-    { title: "Company Policies", count: computeFolderCount("polic") + computeFolderCount("legal"), size: computeFolderSize("polic"), icon: <AlertCircle className="w-6 h-6 text-warning"/>, color: "bg-warning/10", border: "border-warning/20",
-      docs: ["Data Protection & NDPR Compliance.pdf", "Remote Work Policy.pdf", "Leave Allowance Policy.pdf", "IT Security Guidelines.pdf", "Whistleblower Protection Policy.pdf"] },
-    { title: "Brand Assets", count: computeFolderCount("brand") + computeFolderCount("market") + computeFolderCount("design"), size: computeFolderSize("brand"), icon: <FileImage className="w-6 h-6 text-gold"/>, color: "bg-gold/10", border: "border-gold/20",
-      docs: ["REDtech Brand Guidelines v3.pdf", "Logo Suite (All Formats).zip", "Social Media Templates.psd", "Presentation Master Deck.pptx", "Letterhead & Stationery.pdf"] },
-  ];
+      docs: getDocsForDept("hr") },
+    { title: "Operations", count: computeFolderCount("operation"), size: computeFolderSize("operation"), icon: <AlertCircle className="w-6 h-6 text-warning"/>, color: "bg-warning/10", border: "border-warning/20",
+      docs: getDocsForDept("operation") },
+    { title: "Marketing & Brand", count: computeFolderCount("market") + computeFolderCount("brand") + computeFolderCount("design"), size: computeFolderSize("market"), icon: <FileImage className="w-6 h-6 text-gold"/>, color: "bg-gold/10", border: "border-gold/20",
+      docs: getDocsForDept("market") },
+  ].filter(f => f.count > 0); // Only show folders that have actual documents
 
   if (isLoading) return (
     <div className="flex-1 w-full min-h-screen flex items-center justify-center bg-background">
@@ -671,7 +678,11 @@ const DocumentRepository = () => {
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {mockFolders.map((folder, i) => (
+          {accessHubFolders.length === 0 ? (
+            <div className="col-span-4 py-10 text-center text-sm text-muted-foreground border border-dashed border-border/50 rounded-xl">
+              No department folders yet — upload documents and tag them to a department to see them here.
+            </div>
+          ) : accessHubFolders.map((folder, i) => (
             <Card key={i} className={`bg-card shadow-sm hover:shadow-md transition-all border ${folder.border} group`}>
               <CardContent className="p-5">
                 <div className="flex items-start gap-4 mb-3">
@@ -684,7 +695,9 @@ const DocumentRepository = () => {
                   </div>
                 </div>
                 <div className="space-y-1.5 border-t border-border/40 pt-3">
-                  {folder.docs.map((doc, di) => (
+                  {folder.docs.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground italic">No files yet</p>
+                  ) : folder.docs.map((doc, di) => (
                     <div key={di} className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-0.5">
                       <FileText className="w-3 h-3 flex-shrink-0 text-primary" />
                       <span className="truncate font-medium">{doc}</span>

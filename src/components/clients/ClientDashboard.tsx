@@ -34,12 +34,11 @@ export const ClientDashboard = ({
   const winRate = totalLeads > 0 ? Math.round((wonDeals.length / totalLeads) * 100) : 0;
   const activeDeals = clients.filter(c => !["won", "lost"].includes(c.deal_status));
   
-  // Pipeline Value (Simulation: assuming each 'won' deal has a mock value since we don't have a value field yet)
-  // To make the charts look good, we generate deterministic mock values based on string length
-  const getSimulatedValue = (client: any) => (client.name.length * 1250) + (client.company?.length || 5) * 800;
+  // Pipeline Value — uses real total_invoiced from CRM, not simulation
+  const getClientValue = (client: any) => Number(client.total_invoiced || 0);
   
-  const totalPipelineValue = activeDeals.reduce((sum, c) => sum + getSimulatedValue(c), 0);
-  const totalWonValue = wonDeals.reduce((sum, c) => sum + getSimulatedValue(c), 0);
+  const totalPipelineValue = activeDeals.reduce((sum, c) => sum + getClientValue(c), 0);
+  const totalWonValue = wonDeals.reduce((sum, c) => sum + getClientValue(c), 0);
   const avgDealSize = wonDeals.length > 0 ? Math.round(totalWonValue / wonDeals.length) : 0;
 
   const handleCardClick = (status: string) => {
@@ -84,7 +83,7 @@ export const ClientDashboard = ({
     wonDeals.forEach(c => {
       if (c.assigned_to && repStats[c.assigned_to]) {
         repStats[c.assigned_to].wonDeals += 1;
-        repStats[c.assigned_to].value += getSimulatedValue(c);
+        repStats[c.assigned_to].value += getClientValue(c);
       }
     });
     
@@ -94,7 +93,7 @@ export const ClientDashboard = ({
       .slice(0, 5);
   }, [wonDeals, profiles]);
 
-  // Revenue Forecast (Mock time series based on created_at)
+  // Revenue Trend (real data from created_at of won clients)
   const monthlyRevenue = useMemo(() => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const currentYear = new Date().getFullYear();
@@ -102,16 +101,15 @@ export const ClientDashboard = ({
     return months.map((month, i) => {
       const monthStr = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
       const wonInMonth = wonDeals.filter(c => c.created_at.startsWith(monthStr));
-      const value = wonInMonth.reduce((sum, c) => sum + getSimulatedValue(c), 0);
+      const value = wonInMonth.reduce((sum, c) => sum + getClientValue(c), 0);
       return {
         month,
         revenue: value,
-        forecast: value === 0 && i > new Date().getMonth() ? Math.round(avgDealSize * 2) : value + (avgDealSize * 0.5) // Simple forecast logic
       };
     });
-  }, [wonDeals, avgDealSize]);
+  }, [wonDeals]);
 
-  // MRR Computation
+  // MRR — based on real won deal values
   const monthlyRecurringRevenue = useMemo(() => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const currentYear = new Date().getFullYear();
@@ -121,30 +119,18 @@ export const ClientDashboard = ({
       const monthStr = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
       const wonInMonth = wonDeals.filter(c => c.created_at.startsWith(monthStr));
       
-      const value = wonInMonth.reduce((sum, c) => sum + (getSimulatedValue(c) * 0.1), 0);
-      cumulative += value + (cumulative === 0 ? avgDealSize * 0.05 : cumulative * 0.05);
+      const value = wonInMonth.reduce((sum, c) => sum + (getClientValue(c) * 0.1), 0);
+      cumulative += value;
       
       return {
         month,
         mrr: i <= new Date().getMonth() ? Math.round(cumulative) : null,
-        projected: i >= new Date().getMonth() - 1 ? Math.round(cumulative * 1.08) : null
       };
     });
-  }, [wonDeals, avgDealSize]);
-
-  // CSAT Score simulation
-  const csatScores = useMemo(() => {
-    if (wonDeals.length === 0) return [];
-    return wonDeals.map(c => {
-      const score = 3.8 + ((c.name.length * 17) % 12) / 10; // Deterministic between 3.8 - 5.0
-      return {
-        id: c.id,
-        name: c.company || c.name,
-        score: Math.min(score, 5.0).toFixed(1),
-        industry: c.industry || "General"
-      }
-    }).sort((a, b) => parseFloat(b.score) - parseFloat(a.score)).slice(0, 5);
   }, [wonDeals]);
+
+  // CSAT — no real CSAT data yet, show empty state honestly
+  const csatScores: { id: string; name: string; score: string; industry: string }[] = [];
 
   // Format currency
   const formatMoney = (amount: number) => {
@@ -239,7 +225,6 @@ export const ClientDashboard = ({
                       <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                       <RechartsTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", fontSize: 12 }} />
                       <Area type="monotone" dataKey="revenue" name="Actual Revenue" stroke={BRAND} fillOpacity={1} fill="url(#colorRev)" strokeWidth={2.5} />
-                      <Area type="monotone" dataKey="forecast" name="Projected Forecast" stroke="#94a3b8" strokeDasharray="5 5" fill="none" strokeWidth={1.5} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -350,8 +335,7 @@ export const ClientDashboard = ({
                       <XAxis dataKey="month" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                       <RechartsTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", fontSize: 12 }} />
-                      <Bar dataKey="mrr" name="Actual MRR" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="projected" name="Projected MRR" fill="#94a3b8" opacity={0.3} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="mrr" name="MRR" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

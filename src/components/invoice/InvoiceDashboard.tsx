@@ -389,12 +389,20 @@ export const InvoiceDashboard = () => {
                             <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48 bg-card/95 backdrop-blur-xl border-border/50">
-                            {inv.url && inv.url !== '#' && !inv.url.startsWith('#') && (
+                            {inv.url && !inv.url.startsWith('#') && (
                               <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => window.open(inv.url, '_blank')}>
                                 <Eye className="w-4 h-4 text-muted-foreground" /> View PDF
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem className="cursor-pointer gap-2"><Download className="w-4 h-4 text-muted-foreground" /> Download</DropdownMenuItem>
+                            <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => {
+                              if (!inv.url || inv.url.startsWith('#')) return;
+                              const a = document.createElement('a');
+                              a.href = inv.url;
+                              a.download = `${inv.id}.pdf`;
+                              a.target = '_blank';
+                              a.click();
+                            }}>
+                              <Download className="w-4 h-4 text-muted-foreground" /> Download
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
