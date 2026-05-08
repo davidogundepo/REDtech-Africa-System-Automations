@@ -183,12 +183,7 @@ export const InvoiceGenerator = () => {
       }
 
       toast.success(`Invoice generated & saved! ${invoiceData.clientCompany || invoiceData.clientName} — ${invoiceData.currency || "₦"}${total.toLocaleString()}`);
-      // Audit + storage tally (estimated PDF size ~ 80KB per invoice page)
-      import("@/lib/activity").then(({ activity }) =>
-        activity.generated("invoice", invoiceData.invoiceNumber || crypto.randomUUID(),
-          `Invoice for ${invoiceData.clientCompany || invoiceData.clientName} (${invoiceData.currency || "₦"}${total.toLocaleString()})`,
-          80_000)
-      );
+      // (activity.generated is called inside the upload IIFE above with real bytes)
     },
     pageStyle: `
       @page {
