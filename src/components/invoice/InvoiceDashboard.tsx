@@ -155,32 +155,51 @@ export const InvoiceDashboard = () => {
         };
       });
 
-    // Top clients from CRM data
+    // Top clients from CRM data — real invoice count from transactions
+    const txCountByClient: Record<string, number> = {};
+    for (const tx of invoiceTransactions) {
+      const { client } = parseInvoiceDescription(tx.description || "");
+      const key = client.slice(0, 30).toLowerCase();
+      txCountByClient[key] = (txCountByClient[key] || 0) + 1;
+    }
     const topClients = clientsData
       .filter((c: any) => c.total_invoiced > 0)
       .slice(0, 5)
-      .map((c: any, i: number) => ({
-        name: c.company || c.name,
-        volume: Math.max(1, Math.ceil(c.total_invoiced / 500000)), // approximate
-        value: c.total_invoiced,
-        status: c.deal_status === "won" ? "retainer" : c.deal_status === "negotiation" ? "enterprise" : "ad-hoc",
-      }));
+      .map((c: any) => {
+        const nameKey = (c.company || c.name || "").slice(0, 30).toLowerCase();
+        const invoiceCount = txCountByClient[nameKey] || 0;
+        return {
+          name: c.company || c.name,
+          invoiceCount,  // real count from transactions
+          value: c.total_invoiced,
+          status: c.deal_status === "won" ? "retainer" : c.deal_status === "negotiation" ? "enterprise" : "ad-hoc",
+        };
+      });
 
-    // Invoice ledger from documents table
+    // Invoice ledger from documents table, cross-referenced with transactions for real amounts
     const pastInvoices = invoiceDocuments.map((doc: any) => {
       const nameMatch = doc.name?.match(/^(INV-\w+)/);
+      const invId = nameMatch?.[1] || "";
       const descParts = (doc.description || "").split("|").map((s: string) => s.trim());
       const statusPart = descParts.find((p: string) => ["Sent", "Draft", "Paid", "Overdue"].some(s => p.includes(s)));
       const clientPart = descParts[1] || doc.name?.split("—")?.[1]?.replace(".pdf", "").trim() || "Client";
       const amountPart = descParts[2]?.replace(/[^0-9.]/g, "");
       const currency = detectCurrency(descParts[2] || doc.name || "");
 
+      // Cross-reference transactions for real amount
+      const matchedTx = invId
+        ? invoiceTransactions.find((tx: any) => (tx.description || "").includes(invId))
+        : null;
+      const amount = matchedTx
+        ? Number(matchedTx.amount || 0)
+        : amountPart ? Number(amountPart) : 0;
+
       return {
-        id: nameMatch?.[1] || doc.name?.replace(".pdf", "") || `DOC-${doc.id?.slice(0, 6)}`,
+        id: invId || doc.name?.replace(".pdf", "") || `DOC-${doc.id?.slice(0, 6)}`,
         client: clientPart,
         date: doc.created_at ? format(new Date(doc.created_at), "yyyy-MM-dd") : "—",
         due: "—",
-        amount: amountPart ? Number(amountPart) : 0,
+        amount,
         currency,
         status: statusPart?.includes("Paid") ? "Paid" : statusPart?.includes("Overdue") ? "Overdue" : statusPart?.includes("Draft") ? "Draft" : "Sent",
         url: doc.url,
@@ -282,7 +301,7 @@ export const InvoiceDashboard = () => {
               </div>
               <div>
                 <h4 className="font-semibold text-sm">{client.name}</h4>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{client.volume} Invoices YTD</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{client.invoiceCount > 0 ? `${client.invoiceCount} Invoice${client.invoiceCount !== 1 ? 's' : ''} YTD` : 'No invoices yet'}</p>
               </div>
             </div>
             <div className="text-right">

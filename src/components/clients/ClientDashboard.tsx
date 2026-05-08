@@ -151,7 +151,16 @@ export const ClientDashboard = ({
           { label: "Pipeline Value", value: formatMoney(totalPipelineValue), icon: Activity, color: "text-info", status: "all" },
           { label: "Revenue Won", value: formatMoney(totalWonValue), icon: Zap, color: "text-primary", status: "won" },
           { label: "Avg Deal Size", value: formatMoney(avgDealSize), icon: Building2, color: "text-[hsl(var(--accent-gold))]", status: "all" },
-          { label: "Avg Close Time", value: "14 Days", icon: Clock, color: "text-muted-foreground", status: "all" },
+          { label: "Avg Close Time", value: (() => {
+            if (wonDeals.length === 0) return "No data";
+            const now = new Date();
+            const totalDays = wonDeals.reduce((sum, c) => {
+              const created = new Date(c.created_at);
+              return sum + Math.max(0, Math.floor((now.getTime() - created.getTime()) / 86400000));
+            }, 0);
+            const avg = Math.round(totalDays / wonDeals.length);
+            return avg < 2 ? `${avg} day` : `${avg} days`;
+          })(), icon: Clock, color: "text-muted-foreground", status: "all" },
         ].map((stat, i) => (
           <div
             key={i}

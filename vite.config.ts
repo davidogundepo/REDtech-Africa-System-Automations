@@ -16,40 +16,59 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    // Split heavy shared vendors into their own long-cache chunks so the
-    // main bundle stays small and updates to app code don't bust vendor cache.
     rollupOptions: {
       output: {
         manualChunks: (id) => {
           if (!id.includes("node_modules")) return undefined;
-          // CRITICAL: React must live in the same chunk as anything that
-          // reads React.forwardRef at module top-level (Radix, etc.) to
-          // avoid "Cannot read properties of undefined (reading 'forwardRef')"
-          // caused by chunk-evaluation ordering.
+
+          // React runtime — must be isolated, everything depends on it
           if (
             id.includes("/react/") ||
             id.includes("/react-dom/") ||
             id.includes("/scheduler/") ||
-            id.includes("react/jsx-runtime") ||
-            id.includes("@radix-ui")
-          ) return "vendor-core";
-          // Charting (Recharts + d3) is by far the heaviest dep
+            id.includes("react/jsx-runtime")
+          ) return "vendor-react";
+
+          // Radix UI — large set of headless primitives
+          if (id.includes("@radix-ui")) return "vendor-radix";
+
+          // Charting (Recharts + d3)
           if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
-          // PDF/print/export workflows
+
+          // PDF/print/export
           if (id.includes("jspdf") || id.includes("html2canvas") || id.includes("react-to-print")) return "vendor-pdf";
+
           // Date handling
           if (id.includes("date-fns")) return "vendor-date";
+
           // Animation runtime
           if (id.includes("framer-motion")) return "vendor-motion";
-          // Supabase client + auth
+
+          // Supabase client + react-query
           if (id.includes("@supabase") || id.includes("@tanstack/react-query")) return "vendor-data";
+
           // Icons
           if (id.includes("lucide-react")) return "vendor-icons";
-          // Everything else (router, utils, etc.) → vendor-core
-          return "vendor-core";
+
+          // Router
+          if (id.includes("react-router")) return "vendor-router";
+
+          // Attendance heatmap calendar (used in UserProfile + Leave)
+          if (id.includes("react-activity-calendar")) return "vendor-calendar";
+
+          // Excel export (used in Tasks, FinanceDashboard, OpsDashboard)
+          if (id.includes("/xlsx/") || id.includes("\\xlsx\\") || id.includes("node_modules/xlsx")) return "vendor-xlsx";
+
+          // Firebase (auth + firestore) — two packages: firebase + @firebase
+          if (id.includes("node_modules/firebase") || id.includes("node_modules/@firebase")) return "vendor-firebase";
+
+          // Everything else
+          return "vendor-misc";
         },
       },
     },
-    chunkSizeWarningLimit: 800,
+    chunkSizeWarningLimit: 600,
   },
+
+
 }));
