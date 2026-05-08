@@ -500,7 +500,7 @@ const UserManagement = () => {
                 <Clock className="h-4 w-4 mr-2" /> Shift Settings
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg shadow-2xl">
+            <DialogContent className="sm:max-w-3xl shadow-2xl">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 bg-gradient-to-r from-primary to-[hsl(var(--highlight))] bg-clip-text text-xl font-bold text-transparent">
                   <Clock className="h-5 w-5 text-primary" /> Global Shift Configuration
@@ -553,7 +553,7 @@ const UserManagement = () => {
                 <Bell className="h-4 w-4 mr-2" /> Admin Broadcast
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-3xl">
               <DialogHeader>
                 <DialogTitle>Send Global Notification</DialogTitle>
               </DialogHeader>
