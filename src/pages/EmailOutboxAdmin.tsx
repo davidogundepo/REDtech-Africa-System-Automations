@@ -15,6 +15,42 @@ import { format } from "date-fns";
 
 type Status = "all" | "pending" | "sent" | "dlq";
 
+const getRecipients = (row: any) => {
+  if (Array.isArray(row?.to_addresses)) return row.to_addresses.filter(Boolean);
+  if (typeof row?.to_email === "string" && row.to_email.trim()) return [row.to_email.trim()];
+  return [];
+};
+
+const getDueAt = (row: any) => row?.next_attempt_at || row?.scheduled_for || null;
+
+async function retryEmailOutboxRow(id: string) {
+  const now = new Date().toISOString();
+
+  const modernAttempt = await (supabase as any)
+    .from("email_outbox")
+    .update({
+      status: "pending",
+      attempts: 0,
+      next_attempt_at: now,
+      last_error: null,
+    })
+    .eq("id", id);
+
+  if (!modernAttempt.error) return;
+
+  const legacyAttempt = await (supabase as any)
+    .from("email_outbox")
+    .update({
+      status: "pending",
+      attempts: 0,
+      scheduled_for: now,
+      last_error: null,
+    })
+    .eq("id", id);
+
+  if (legacyAttempt.error) throw legacyAttempt.error;
+}
+
 export default function EmailOutboxAdmin() {
   const { isAdmin, isSuperAdmin, loading } = useAuth();
   const qc = useQueryClient();
@@ -48,15 +84,7 @@ export default function EmailOutboxAdmin() {
   });
 
   const retryMut = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from("email_outbox").update({
-        status: "pending",
-        attempts: 0,
-        next_attempt_at: new Date().toISOString(),
-        last_error: null,
-      }).eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: retryEmailOutboxRow,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["email-outbox"] }); qc.invalidateQueries({ queryKey: ["email-outbox-stats"] }); toast.success("Re-queued for delivery"); },
     onError: (e: any) => toast.error(e.message),
   });
@@ -73,7 +101,7 @@ export default function EmailOutboxAdmin() {
     try {
       const { data, error } = await supabase.functions.invoke("process-email-outbox", { body: {} });
       if (error) throw error;
-      toast.success(`Drain triggered — processed ${data?.processed ?? 0}`);
+      toast.success(`Drain triggered — ${data?.sent ?? 0} sent, ${data?.failed ?? 0} retrying, ${data?.dlq ?? 0} DLQ`);
       refetch();
       qc.invalidateQueries({ queryKey: ["email-outbox-stats"] });
     } catch (e: any) {
@@ -86,7 +114,7 @@ export default function EmailOutboxAdmin() {
 
   const filtered = rows.filter((r: any) => {
     if (!q) return true;
-    const hay = `${r.subject} ${(r.to_addresses || []).join(" ")} ${r.last_error || ""}`.toLowerCase();
+    const hay = `${r.subject} ${getRecipients(r).join(" ")} ${r.last_error || ""}`.toLowerCase();
     return hay.includes(q.toLowerCase());
   });
 
@@ -152,20 +180,28 @@ export default function EmailOutboxAdmin() {
               {filtered.map((r: any) => (
                 <div key={r.id} className="flex items-start justify-between gap-4 p-3 rounded-xl border hover:bg-muted/30 transition">
                   <div className="min-w-0 flex-1">
+                    {(() => {
+                      const recipients = getRecipients(r);
+                      const dueAt = getDueAt(r);
+                      return (
+                        <>
                     <div className="flex items-center gap-2 flex-wrap">
                       {statusBadge(r.status)}
                       <span className="font-semibold text-sm truncate">{r.subject}</span>
-                      <span className="text-xs text-muted-foreground">→ {(r.to_addresses || []).join(", ")}</span>
+                      <span className="text-xs text-muted-foreground">→ {recipients.join(", ") || "No recipient"}</span>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
                       <span>{format(new Date(r.created_at), "MMM d, HH:mm")}</span>
                       <span>Attempts: {r.attempts}/{r.max_attempts}</span>
                       {r.sent_at && <span>Sent: {format(new Date(r.sent_at), "HH:mm")}</span>}
-                      {r.status === "pending" && <span>Next: {format(new Date(r.next_attempt_at), "HH:mm")}</span>}
+                      {r.status === "pending" && dueAt && <span>Next: {format(new Date(dueAt), "HH:mm")}</span>}
                     </div>
                     {r.last_error && (
                       <div className="text-xs text-destructive mt-1 font-mono truncate" title={r.last_error}>⚠ {r.last_error}</div>
                     )}
+                        </>
+                      );
+                    })()}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {(r.status === "dlq" || r.status === "pending") && (

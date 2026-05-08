@@ -1,0 +1,16 @@
+project_id = "soehunvbcdzkcxtowxyi"
+
+[functions.seed-test-accounts]
+verify_jwt = false
+
+[functions.feedback-to-sheets]
+verify_jwt = false
+
+[functions.send-document-email]
+verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.process-email-outbox]
+verify_jwt = false

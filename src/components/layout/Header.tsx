@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { Bell, Check, Info, ShieldAlert, CheckCircle2, AlertTriangle, ArrowRight, BellRing, Sparkles, Search, Command } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { CommandPalette } from "@/components/shared/CommandPalette";
 import { PresenceIndicator } from "@/components/shared/PresenceIndicator";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -26,6 +26,7 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   
@@ -95,8 +96,11 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
         queryClient.invalidateQueries({ queryKey: ["leave_requests"] });
         queryClient.invalidateQueries({ queryKey: ["leave-requests"] });
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      .on("postgres_changes", { event: "*", schema: "public", table: "attendance_records" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["attendance-all"] });
+        queryClient.invalidateQueries({ queryKey: ["my-attendance"] });
+        queryClient.invalidateQueries({ queryKey: ["weekly-attendance"] });
+        queryClient.invalidateQueries({ queryKey: ["my-attendance-history"] });
       })
       .subscribe();
     return () => { (supabase as any).removeChannel(channel); };
@@ -165,17 +169,22 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
     if (!bugText.trim()) return toast.error("Please describe what needs improvement.");
     setSubmittingBug(true);
     try {
-      const { error } = await (supabase as any).from("tasks").insert({
-        title: `[SYSTEM FEEDBACK] ${bugType.toUpperCase().replace('-', ' ')}`,
-        description: `Submitted by ${profile?.full_name}:\n\n${bugText}`,
-        priority: 'high',
-        status: 'todo',
-        department: 'IT',
+      const { error } = await supabase.functions.invoke("feedback-to-sheets", {
+        body: {
+          email: profile?.email || "",
+          full_name: profile?.full_name || "",
+          role: profile?.role || "",
+          department: profile?.department || "",
+          page: location.pathname,
+          type: bugType,
+          message: bugText.trim(),
+        },
       });
       if (error) throw error;
       toast.success("Feedback submitted successfully. Thank you!", { style: { background: 'hsl(var(--primary))', color: 'white', border: 'none' } });
       setBugOpen(false);
       setBugText("");
+      setBugType("ui-bug");
     } catch (err) {
       console.error(err);
       toast.error("Failed to submit feedback.");

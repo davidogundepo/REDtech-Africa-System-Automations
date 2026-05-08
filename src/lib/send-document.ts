@@ -25,7 +25,45 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+async function readBooleanPlatformSetting(key: string, fallback: boolean) {
+  try {
+    const { data } = await (supabase as any)
+      .from("platform_settings")
+      .select("value")
+      .eq("key", key)
+      .maybeSingle();
+    return typeof data?.value === "boolean" ? data.value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function getCurrentUserRole() {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth?.user?.id;
+  if (!userId) return null;
+
+  const { data } = await (supabase as any)
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  return data?.role ?? null;
+}
+
 export async function sendDocumentByEmail(args: SendDocumentArgs) {
+  const role = await getCurrentUserRole();
+  const allowUserEmails = await readBooleanPlatformSetting("allow_user_emails", true);
+
+  if (!role) {
+    throw new Error("You need to be signed in to send documents.");
+  }
+
+  if (!allowUserEmails && role !== "admin" && role !== "super_admin") {
+    throw new Error("Document email sending is currently restricted to admins.");
+  }
+
   const contentBase64 = await blobToBase64(args.pdfBlob);
   const { data, error } = await (supabase as any).functions.invoke("send-document-email", {
     body: {

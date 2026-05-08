@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,16 +22,34 @@ interface SendInvoiceModalProps {
 const formatCurrency = (amount: number, currency: string) =>
   `${currency}${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-async function htmlToPdfBlob(node: HTMLElement, filename: string): Promise<Blob> {
-  const html2pdf = ((await import("html2pdf.js" as any)) as any).default;
-  const worker = html2pdf().set({
-    margin: 0,
-    filename,
-    image: { type: "jpeg", quality: 0.95 },
-    html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-  }).from(node);
-  return await worker.outputPdf("blob");
+async function htmlToPdfBlob(node: HTMLElement): Promise<Blob> {
+  const canvas = await html2canvas(node, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: "#ffffff",
+    logging: false,
+  });
+  const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const imgW = pageW;
+  const imgH = (canvas.height * pageW) / canvas.width;
+  const imgData = canvas.toDataURL("image/jpeg", 0.92);
+
+  let position = 0;
+  let remaining = imgH;
+
+  pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+  remaining -= pageH;
+
+  while (remaining > 0) {
+    position -= pageH;
+    pdf.addPage();
+    pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+    remaining -= pageH;
+  }
+
+  return pdf.output("blob");
 }
 
 export const SendInvoiceModal = ({ open, onOpenChange, invoiceData, printNode, onSent }: SendInvoiceModalProps) => {
@@ -74,7 +94,7 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoiceData, printNode, o
         </div>
       </div>`;
 
-      const pdfBlob = await htmlToPdfBlob(printNode, filename);
+      const pdfBlob = await htmlToPdfBlob(printNode);
       const ccList = cc.split(",").map(s => s.trim()).filter(Boolean);
       await sendDocumentByEmail({
         to: to.trim(),

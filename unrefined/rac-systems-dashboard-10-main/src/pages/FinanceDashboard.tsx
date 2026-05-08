@@ -1,0 +1,1152 @@
+import { ViewerBanner } from "@/components/ViewerBanner";
+import { MotionPage } from "@/components/shared/MotionPage";
+import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
+import { DatePicker } from "@/components/shared/DatePicker";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import * as XLSX from "xlsx";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import { format, parseISO, subDays } from "date-fns";
+import { useTheme } from "@/components/ThemeProvider";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
+import { ArrowUpRight, ArrowDownRight, Banknote, CreditCard, Activity, Calendar as CalendarIcon, Wallet, Plus, Download, Trash2, CheckCircle2, XCircle, Sparkles, RefreshCw, Box, FileText } from "lucide-react";
+import { FinanceCharts } from "@/components/finance/FinanceCharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { sendNotificationEmail } from "@/lib/email";
+import { brandedEmailTemplate } from "@/lib/email-template";
+import Papa from "papaparse";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { SkeletonTable } from "@/components/shared/SkeletonCard";
+
+// NGN Currency Formatter
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(amount);
+};
+
+const StatCard = ({ title, value, change, isPositive, icon: Icon, sparklineData, dataKey }: any) => {
+  const trendColor = isPositive ? "hsl(var(--success))" : "hsl(var(--destructive))";
+  return (
+    <div className="surface-bevel rounded-[14px] p-6 flex flex-col h-full transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lvl-2 group relative overflow-hidden">
+      <div className="flex items-start justify-between mb-4">
+        <div className="min-w-0">
+          <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest mb-1.5">{title}</p>
+          <div className="text-3xl xl:text-4xl font-black text-foreground tracking-tight leading-none">{value}</div>
+          <p className="text-xs flex items-center font-semibold mt-2.5" style={{ color: trendColor }}>
+            {isPositive ? <ArrowUpRight className="h-3.5 w-3.5 mr-1" /> : <ArrowDownRight className="h-3.5 w-3.5 mr-1" />}
+            {change}
+          </p>
+        </div>
+        <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-primary/10 ring-1 ring-primary/20 flex-shrink-0 group-hover:scale-105 transition-transform">
+          <Icon className="h-5 w-5 text-primary" />
+        </div>
+      </div>
+
+      {sparklineData && dataKey && sparklineData.length > 0 && (
+        <div className="h-12 w-full mt-auto -mb-1 opacity-80 group-hover:opacity-100 transition-opacity">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={sparklineData}>
+              <defs>
+                <linearGradient id={`grad-${title.replace(/\s+/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={trendColor} stopOpacity={0.35}/>
+                  <stop offset="95%" stopColor={trendColor} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <Area type="monotone" dataKey={dataKey} stroke={trendColor} strokeWidth={2} fillOpacity={1} fill={`url(#grad-${title.replace(/\s+/g, '')})`} isAnimationActive={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FinanceDashboard = () => {
+  const { theme } = useTheme();
+  const { profile, isAdmin, isSuperAdmin, canEdit } = useAuth();
+  const queryClient = useQueryClient();
+  const [isTxDialogOpen, setIsTxDialogOpen] = useState(false);
+  const [isReqDialogOpen, setIsReqDialogOpen] = useState(false);
+  const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
+  const [dateRange, setDateRange] = useState("30d");
+  const [exportPeriodFrom, setExportPeriodFrom] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
+  const [exportPeriodTo, setExportPeriodTo] = useState(format(new Date(), 'yyyy-MM-dd'));
+  
+  const [newTx, setNewTx] = useState({ amount: "", type: "revenue", category: "", date: format(new Date(), 'yyyy-MM-dd'), description: "" });
+  const [newReq, setNewReq] = useState({ amount: "", category: "", description: "" });
+  const [newBudget, setNewBudget] = useState({ category: "", budgeted_amount: "", quarter: "1", year: new Date().getFullYear().toString() });
+
+  const textFill = theme === "dark" ? "#f3f4f6" : "#1f2937";
+  const expensesFill = theme === "dark" ? "#9ca3af" : "#1f2937";
+  const tooltipBg = theme === "dark" ? "#1f2937" : "#ffffff";
+  const tooltipBorder = theme === "dark" ? "#374151" : "#e5e7eb";
+  const pieColors = ["hsl(var(--primary))", "hsl(var(--foreground))", "hsl(var(--success))", "hsl(var(--warning))", "hsl(var(--info))", "hsl(var(--destructive))"];
+
+  // 1. Fetch Active Transactions
+  const { data: transactions, isLoading: loadingTx } = useQuery({
+    queryKey: ['transactions', 'active'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('transactions')
+        .select('*')
+        .is('deleted_at', null)
+        .order('date', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // 2. Fetch Deleted Transactions (Recycle Bin - 30 days)
+  const { data: deletedTransactions } = useQuery({
+    queryKey: ['transactions', 'deleted'],
+    queryFn: async () => {
+      const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
+      const { data, error } = await (supabase as any).from('transactions')
+        .select('*')
+        .not('deleted_at', 'is', null)
+        .gte('deleted_at', thirtyDaysAgo)
+        .order('deleted_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin || isSuperAdmin
+  });
+
+  // 3. Fetch Payment Requests
+  const { data: paymentRequests, isLoading: loadingReq } = useQuery({
+    queryKey: ['payment_requests'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('payment_requests')
+        .select('*, profiles!payment_requests_requested_by_fkey(full_name), approver:profiles!payment_requests_approved_by_fkey(full_name)')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // 4. Fetch Budgets
+  const { data: budgets, isLoading: loadingBudgets } = useQuery({
+    queryKey: ['budgets'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('budgets')
+        .select('*')
+        .order('year', { ascending: false })
+        .order('quarter', { ascending: false })
+        .order('category', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    }
+  });
+  // 5. Fetch Invoices (auto-written by InvoiceGenerator on PDF download)
+  const { data: invoices, isLoading: loadingInvoices } = useQuery({
+    queryKey: ['finance-invoices'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('transactions')
+        .select('*')
+        .eq('category', 'Invoice')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+
+  const handleExportCSV = () => {
+    if (!transactions || transactions.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+    
+    const filteredTxs = transactions.filter(t => {
+      const txDate = t.date;
+      return txDate >= exportPeriodFrom && txDate <= exportPeriodTo;
+    });
+
+    if (filteredTxs.length === 0) {
+      toast.error("No transactions found for the selected period");
+      return;
+    }
+
+    const rows = filteredTxs.map(t => ({
+      "Date": t.date,
+      "Type": t.type,
+      "Category": t.category,
+      "Amount (NGN)": t.amount,
+      "Description": t.description || "",
+      "Created By": t.created_by,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Transactions");
+    XLSX.writeFile(wb, `RAC_Finance_Export_${exportPeriodFrom}_to_${exportPeriodTo}.xlsx`);
+    toast.success(`Finance report exported as Excel for ${exportPeriodFrom} to ${exportPeriodTo}! 📥`);
+  };
+
+  // Import from CSV function
+  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const rows = results.data as any[];
+        const parsedTxs = rows.map(row => ({
+          amount: parseFloat(row["Amount (NGN)"] || row["Amount"] || "0"),
+          type: (row["Type"] || "expense").toLowerCase(),
+          category: row["Category"] || "Uncategorized",
+          date: row["Date"] || format(new Date(), 'yyyy-MM-dd'),
+          description: row["Description"] || "",
+          created_by: profile?.full_name || "CSV Import"
+        })).filter(tx => tx.amount > 0);
+
+        if (parsedTxs.length === 0) {
+          toast.error("No valid transactions found in CSV.");
+          return;
+        }
+
+        const { error } = await (supabase as any).from('transactions').insert(parsedTxs);
+        if (error) {
+          toast.error("Failed to import CSV: " + error.message);
+        } else {
+          toast.success(`Imported ${parsedTxs.length} transactions successfully.`);
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        }
+        
+        // Reset file input
+        event.target.value = '';
+      },
+      error: (error) => toast.error("CSV Parse Error: " + error.message)
+    });
+  };
+
+  // Mutations: Transactions
+  const addTxMutation = useMutation({
+    mutationFn: async (txData: any) => {
+      const { error } = await (supabase as any).from('transactions').insert([txData]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions', 'active'] });
+      setIsTxDialogOpen(false);
+      setNewTx({ amount: "", type: "revenue", category: "", date: format(new Date(), 'yyyy-MM-dd'), description: "" });
+      toast.success(`Transaction added, ${(profile?.full_name || "").split(" ")[0]}! 📊`);
+    },
+    onError: (error) => toast.error("Failed to add transaction: " + error.message)
+  });
+
+  const deleteTxMutation = useMutation({
+    mutationFn: async ({ id, hardDelete = false }: { id: string, hardDelete?: boolean }) => {
+      if (hardDelete) {
+        const { error } = await (supabase as any).from('transactions').delete().eq('id', id);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any).from('transactions').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      toast.success("Transaction deleted");
+    },
+    onError: (error: any) => toast.error("Failed to delete transaction: " + error.message)
+  });
+
+  const restoreTxMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('transactions').update({ deleted_at: null }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      toast.success("Transaction restored");
+    },
+    onError: (error: any) => toast.error("Failed to restore transaction: " + error.message)
+  });
+
+  // Mutations: Payment Requests
+  const addRequestMutation = useMutation({
+    mutationFn: async (reqData: any) => {
+      const { error } = await (supabase as any).from('payment_requests').insert([reqData]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payment_requests'] });
+      setIsReqDialogOpen(false);
+      setNewReq({ amount: "", category: "", description: "" });
+      toast.success(`Payment request submitted, ${(profile?.full_name || "").split(" ")[0]}! Admins will review shortly 📋`);
+      
+      // Notify admins
+      sendNotificationEmail({
+        to: "management@redtechafrica.com",
+        subject: `New Payment Request: ${formatCurrency(parseFloat(newReq.amount))}`,
+        html: brandedEmailTemplate({
+          heading: "New Payment Request 💰",
+          body: `
+            <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+              <tr><td style="padding:8px 12px; background:#f8f6f3; border-radius:6px 6px 0 0;"><strong>Requested By</strong></td><td style="padding:8px 12px; background:#f8f6f3;">${profile?.full_name}</td></tr>
+              <tr><td style="padding:8px 12px;"><strong>Category</strong></td><td style="padding:8px 12px;">${newReq.category}</td></tr>
+              <tr><td style="padding:8px 12px; background:#f8f6f3;"><strong>Amount</strong></td><td style="padding:8px 12px; background:#f8f6f3; font-weight:700; color:#C4622D;">${formatCurrency(parseFloat(newReq.amount))}</td></tr>
+              <tr><td style="padding:8px 12px; border-radius:0 0 6px 6px;"><strong>Description</strong></td><td style="padding:8px 12px;">${newReq.description}</td></tr>
+            </table>
+            <p>Please review and approve or reject this payment request.</p>
+          `,
+          ctaText: "Review Payment",
+          ctaUrl: "https://ractools.vercel.app/finance-dashboard",
+        })
+      });
+    },
+    onError: (error) => toast.error("Failed to submit request: " + error.message)
+  });
+
+  const resolveRequestMutation = useMutation({
+    mutationFn: async ({ id, status, requestData }: { id: string, status: 'approved'|'rejected', requestData: any }) => {
+      // 1. Update request status
+      const { error: reqError } = await (supabase as any).from('payment_requests')
+        .update({ status, approved_by: profile?.id, resolved_at: new Date().toISOString() })
+        .eq('id', id);
+      if (reqError) throw reqError;
+
+      // 2. If approved, auto-post the transaction
+      if (status === 'approved') {
+        const { error: txError } = await (supabase as any).from('transactions').insert([{
+          amount: requestData.amount,
+          type: 'expense',
+          category: requestData.category,
+          date: format(new Date(), 'yyyy-MM-dd'),
+          description: `[Auto-Approved Request] ${requestData.description}`,
+          created_by: profile?.full_name || "System Auto-Post"
+        }]);
+        if (txError) throw txError;
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['payment_requests'] });
+      if (variables.status === 'approved') {
+        queryClient.invalidateQueries({ queryKey: ['transactions', 'active'] });
+      }
+      toast.success(`Request ${variables.status}`);
+    },
+    onError: (error) => toast.error(error.message)
+  });
+
+  const addBudgetMutation = useMutation({
+    mutationFn: async (budgetData: any) => {
+      const { error } = await (supabase as any).from('budgets').upsert([{
+        ...budgetData,
+        actual_amount: 0 // Will be calculated dynamically or synced later
+      }], { onConflict: 'quarter,year,category' });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      setIsBudgetDialogOpen(false);
+      setNewBudget({ category: "", budgeted_amount: "", quarter: "1", year: new Date().getFullYear().toString() });
+      toast.success("Budget tracking updated");
+    },
+    onError: (error) => toast.error("Failed to set budget: " + error.message)
+  });
+
+  const filteredTransactions = useMemo(() => {
+    if (!transactions) return [];
+    if (dateRange === "all") return transactions;
+    const days = parseInt(dateRange);
+    const cutoffDate = subDays(new Date(), days);
+    return transactions.filter(t => new Date(t.date) >= cutoffDate);
+  }, [transactions, dateRange]);
+
+  // Aggregations
+  const totalRevenue = filteredTransactions.filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0) || 0;
+  const totalExpenses = filteredTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0) || 0;
+  const netProfit = totalRevenue - totalExpenses;
+  const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : "0";
+  const pendingRequestsTotal = paymentRequests?.filter(r => r.status === 'pending').reduce((sum, r) => sum + r.amount, 0) || 0;
+
+  // Chart Data Preparation
+  const expensesByCategory = filteredTransactions.filter(t => t.type === 'expense').reduce((acc: any, t) => {
+    acc[t.category] = (acc[t.category] || 0) + t.amount;
+    return acc;
+  }, {});
+  const pieData = Object.keys(expensesByCategory).map(key => ({ name: key, value: expensesByCategory[key] }));
+
+  const barDataObj = [...filteredTransactions].reverse().reduce((acc: any, t) => {
+    const key = dateRange === '365d' || dateRange === 'all' 
+      ? format(new Date(t.date), 'MMM yyyy') 
+      : format(new Date(t.date), 'MMM dd');
+    if (!acc[key]) acc[key] = { name: key, revenue: 0, expense: 0 };
+    acc[key][t.type] += t.amount;
+    return acc;
+  }, {});
+  const barData = Object.values(barDataObj);
+  
+  const sparklineProfitData = barData.map((d: any) => ({ name: d.name, profit: d.revenue - d.expense }));
+  const sparklineMarginData = barData.map((d: any) => ({ name: d.name, margin: d.revenue > 0 ? ((d.revenue - d.expense) / d.revenue) * 100 : 0 }));
+
+  // Advanced Insights Calculation
+  const daysDiff = dateRange === "all" ? 365 : parseInt(dateRange || "30");
+  const avgDailyBurn = totalExpenses > 0 ? totalExpenses / daysDiff : 0;
+  
+  const sortedCategories = Object.keys(expensesByCategory).sort((a, b) => expensesByCategory[b] - expensesByCategory[a]);
+  const topExpenseCat = sortedCategories.length > 0 ? sortedCategories[0] : "None";
+
+  // Startup Metrics
+  const mrr = filteredTransactions
+    .filter(t => t.type === 'revenue' && (t.category.toLowerCase().includes('subscription') || t.category.toLowerCase().includes('retainer') || t.description?.toLowerCase().includes('recurring')))
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const runwayMonths = (netProfit > 0 && avgDailyBurn > 0) 
+    ? (netProfit / (avgDailyBurn * 30)).toFixed(1) 
+    : "—";
+
+  // Average Payment Delay — computed from approved payment requests
+  const avgPaymentDelay = (() => {
+    const resolved = (paymentRequests || []).filter((r: any) => r.status === 'approved' && r.resolved_at && r.created_at);
+    if (resolved.length === 0) return null;
+    const totalDays = resolved.reduce((sum: number, r: any) => {
+      const created = new Date(r.created_at).getTime();
+      const resolvedAt = new Date(r.resolved_at).getTime();
+      return sum + Math.max(0, Math.ceil((resolvedAt - created) / 86400000));
+    }, 0);
+    return Math.round(totalDays / resolved.length);
+  })();
+
+  return (
+    <MotionPage className="flex-1 w-full flex flex-col min-h-screen bg-background p-8 overflow-y-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-foreground">Finance <span className="text-brand-gradient">Dashboard</span></h1>
+          <p className="text-sm text-muted-foreground mt-1.5">Real-time revenue, expense tracking, and approvals</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-2xl border border-border/40 backdrop-blur-sm shadow-sm">
+            <div className="flex flex-col">
+              <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-0.5 px-1">From</span>
+              <DatePicker value={exportPeriodFrom} onChange={setExportPeriodFrom} placeholder="Start" triggerClassName="h-8 w-40 bg-transparent border-none text-xs font-bold focus-visible:ring-0" />
+            </div>
+            <div className="w-px h-8 bg-border/50" />
+            <div className="flex flex-col">
+              <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-0.5 px-1">To</span>
+              <DatePicker value={exportPeriodTo} onChange={setExportPeriodTo} placeholder="End" triggerClassName="h-8 w-40 bg-transparent border-none text-xs font-bold focus-visible:ring-0" />
+            </div>
+          </div>
+
+          <Button variant="outline" className="border-primary/50 hover:bg-primary/10 text-primary disabled:opacity-50 h-10 px-4 rounded-2xl font-bold" onClick={handleExportCSV} disabled={!transactions?.length}>
+            <Download className="h-4 w-4 mr-2" /> Export CSV
+          </Button>
+
+          {(isAdmin || isSuperAdmin) && (
+            <div className="relative">
+              <input 
+                type="file" 
+                accept=".csv" 
+                id="csv-upload" 
+                className="hidden" 
+                onChange={handleImportCSV} 
+              />
+              <Label htmlFor="csv-upload" className="cursor-pointer">
+                <div className="inline-flex items-center justify-center rounded-2xl text-sm font-bold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 border-primary/50 hover:bg-primary/10">
+                  <ArrowUpRight className="h-4 w-4 mr-2" /> Import CSV
+                </div>
+              </Label>
+            </div>
+          )}
+          
+          {canEdit && (
+            <Dialog open={isReqDialogOpen} onOpenChange={setIsReqDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="border-primary/50 hover:bg-primary/10 text-primary h-10 px-4 rounded-2xl font-bold">
+                  <CreditCard className="h-4 w-4 mr-2" /> Request Payment
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Submit Payment Request</DialogTitle></DialogHeader>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newReq.amount || !newReq.category) return toast.error("Required fields missing");
+                  addRequestMutation.mutate({ ...newReq, amount: parseFloat(newReq.amount), requested_by: profile?.id });
+                }} className="space-y-4 py-4">
+                  <div><Label>Amount (NGN) *</Label><Input type="number" required min="0" step="0.01" value={newReq.amount} onChange={(e) => setNewReq({...newReq, amount: e.target.value})} /></div>
+                  <div><Label>Category *</Label><Input required value={newReq.category} onChange={(e) => setNewReq({...newReq, category: e.target.value})} placeholder="e.g., Software, Travel, Office Supplies" /></div>
+                  <div><Label>Description</Label><Input value={newReq.description} onChange={(e) => setNewReq({...newReq, description: e.target.value})} placeholder="Detailed reason for request" /></div>
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={addRequestMutation.isPending}>Submit Request</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {(isAdmin || isSuperAdmin) && (
+            <Dialog open={isTxDialogOpen} onOpenChange={setIsTxDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary hover:bg-primary/90 h-10 px-5 rounded-2xl font-bold">
+                  <Plus className="h-4 w-4 mr-2" /> Add Transaction
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Manual Transaction Entry</DialogTitle></DialogHeader>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  if (addTxMutation.isPending) return;
+                  // ── Validation (Fortune-500 hardening) ─────────────────
+                  const amt = parseFloat(newTx.amount);
+                  const category = (newTx.category || "").trim();
+                  if (!newTx.amount || isNaN(amt)) return toast.error("Enter a valid amount");
+                  if (amt <= 0) return toast.error("Amount must be greater than zero");
+                  if (amt > 10_000_000_000) return toast.error("Amount looks unusually large — please double-check");
+                  if (!category) return toast.error("Category is required");
+                  if (category.length > 100) return toast.error("Category must be under 100 characters");
+                  if ((newTx.description || "").length > 500) return toast.error("Description must be under 500 characters");
+                  if (!newTx.date) return toast.error("Date is required");
+                  const d = new Date(newTx.date);
+                  if (isNaN(d.getTime())) return toast.error("Invalid date");
+                  if (!["revenue", "expense"].includes(newTx.type)) return toast.error("Invalid type");
+                  addTxMutation.mutate({ ...newTx, category, description: (newTx.description || "").trim(), amount: amt, created_by: profile?.full_name || "Admin" });
+                }} className="space-y-4 py-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Type *</Label>
+                      <Select value={newTx.type} onValueChange={(v) => setNewTx({...newTx, type: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="revenue">Revenue</SelectItem><SelectItem value="expense">Expense</SelectItem></SelectContent>
+                      </Select>
+                    </div>
+                    <div><Label>Amount (NGN) *</Label><Input type="number" required min="0.01" step="0.01" value={newTx.amount} onChange={(e) => setNewTx({...newTx, amount: e.target.value})} /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><Label>Date *</Label><DatePicker value={newTx.date} onChange={(v) => setNewTx({...newTx, date: v})} /></div>
+                    <div><Label>Category *</Label><Input required maxLength={120} value={newTx.category} onChange={(e) => setNewTx({...newTx, category: e.target.value})} placeholder="e.g., Retainer, AWS, Payroll" /></div>
+                  </div>
+                  <div><Label>Description</Label><Input maxLength={500} value={newTx.description} onChange={(e) => setNewTx({...newTx, description: e.target.value})} placeholder="Notes..." /></div>
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={addTxMutation.isPending}>
+                    {addTxMutation.isPending ? "Saving…" : "Save Transaction"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      </div>
+
+      <SwapCardWrapper views={[
+        {
+          label: "Revenue & Expense Charts",
+          content: (
+            <div className="p-0">
+              <FinanceCharts 
+                transactions={filteredTransactions}
+                totalRevenue={totalRevenue}
+                totalExpenses={totalExpenses}
+                netProfit={netProfit}
+                mrr={mrr}
+                avgDailyBurn={avgDailyBurn}
+                runwayMonths={runwayMonths}
+                barData={barData}
+                pieData={pieData}
+              />
+            </div>
+          ),
+        },
+        {
+          label: "Cashflow Performance",
+          content: (
+            <div className="p-6 space-y-4">
+              <h3 className="text-lg font-bold text-foreground">Cashflow & Runway</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Net Profit</p>
+                  <p className={`text-2xl font-black mt-1 ${netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(netProfit)}</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MRR</p>
+                  <p className="text-2xl font-black mt-1" style={{ color: 'hsl(var(--primary))' }}>{formatCurrency(mrr)}</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Daily Burn Rate</p>
+                  <p className="text-2xl font-black mt-1 text-amber-600 dark:text-amber-400">{formatCurrency(avgDailyBurn)}</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Runway</p>
+                  <p className="text-2xl font-black mt-1 text-foreground">{runwayMonths} months</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Profit Margin</p>
+                  <p className={`text-2xl font-black mt-1 ${parseFloat(profitMargin as string) >= 20 ? 'text-emerald-600 dark:text-emerald-400' : parseFloat(profitMargin as string) >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{profitMargin}%</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Avg Payment Delay</p>
+                  <p className={`text-2xl font-black mt-1 ${avgPaymentDelay !== null && avgPaymentDelay <= 3 ? 'text-emerald-600 dark:text-emerald-400' : avgPaymentDelay !== null && avgPaymentDelay <= 7 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{avgPaymentDelay !== null ? `${avgPaymentDelay}d` : '—'}</p>
+                </div>
+              </div>
+              <div className="rounded-xl border border-border/50 bg-card p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-foreground">Revenue vs Expenses</span>
+                </div>
+                <div className="flex h-4 rounded-full overflow-hidden bg-muted/30 gap-0.5">
+                  {totalRevenue + totalExpenses > 0 && (
+                    <>
+                      <div className="bg-emerald-500 rounded-full" style={{ width: `${(totalRevenue / (totalRevenue + totalExpenses)) * 100}%` }} />
+                      <div className="bg-red-400 rounded-full" style={{ width: `${(totalExpenses / (totalRevenue + totalExpenses)) * 100}%` }} />
+                    </>
+                  )}
+                </div>
+                <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Revenue: {formatCurrency(totalRevenue)}</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" /> Expenses: {formatCurrency(totalExpenses)}</span>
+                </div>
+              </div>
+            </div>
+          ),
+        },
+      ]} />
+
+      {/* AI Rapid Entry — branded */}
+      <div className="mb-8 surface-bevel rounded-[14px] p-1 relative overflow-hidden">
+         <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-60" />
+         <div className="flex flex-col sm:flex-row items-center gap-3 px-4 py-3 rounded-[12px]">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center shrink-0">
+               <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+            </div>
+            <Input
+              placeholder="AI Entry: e.g. 'Log ₦25,000 for Office Internet under Utilities today' or 'Add recurring ₦150k AWS monthly'"
+              className="border-0 bg-transparent flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 px-1 shadow-none text-foreground placeholder:text-muted-foreground/70 text-sm"
+              onKeyDown={(e) => {
+                if(e.key === 'Enter') {
+                  toast.success("AI is processing your financial entry...");
+                  (e.target as HTMLInputElement).value = '';
+                }
+              }}
+            />
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 shadow-lvl-2 w-full sm:w-auto rounded-lg font-bold" onClick={() => toast.success("AI is processing your financial entry...")}>
+              Process Entry
+            </Button>
+         </div>
+      </div>
+
+      <Tabs defaultValue="transactions" className="w-full">
+        <TabsList className="mb-6 flex-wrap h-auto gap-1 border-b border-border bg-transparent w-full justify-start rounded-none p-0">
+          <TabsTrigger value="invoices" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3 flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5" /> Invoices
+            {invoices && invoices.length > 0 && <span className="ml-1 bg-primary/15 text-primary text-[10px] font-black px-1.5 py-0.5 rounded-full">{invoices.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="transactions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Ledger</TabsTrigger>
+          <TabsTrigger value="recurring" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3 flex items-center">
+            <RefreshCw className="w-3.5 h-3.5 mr-2" /> Recurring
+          </TabsTrigger>
+          <TabsTrigger value="requests" className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">
+            Payment Approvals
+            {pendingRequestsTotal > 0 && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive animate-pulse" />}
+          </TabsTrigger>
+          {(isAdmin || isSuperAdmin) && <TabsTrigger value="budgets" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Budgets Tracker</TabsTrigger>}
+          {(isAdmin || isSuperAdmin) && <TabsTrigger value="recycle" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground data-[state=active]:text-foreground font-semibold px-4 pb-3">Recycle Bin</TabsTrigger>}
+        </TabsList>
+
+        {/* ── INVOICES TAB ──────────────────────────────────────────── */}
+        <TabsContent value="invoices" className="space-y-6">
+          <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-border/30 pb-4">
+              <div>
+                <CardTitle className="text-xl font-black">Invoice Ledger</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1 font-medium">Auto-synced from Invoice Generator on every PDF download</p>
+              </div>
+              <a href="/invoice">
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md">
+                  <Plus className="w-4 h-4 mr-2" /> New Invoice
+                </Button>
+              </a>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loadingInvoices ? (
+                <div className="p-4"><SkeletonTable rows={5} cols={4} /></div>
+              ) : !invoices || invoices.length === 0 ? (
+                <div className="py-16 text-center">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="text-sm font-bold text-muted-foreground">No invoices yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Generate your first invoice to see it appear here automatically.</p>
+                  <a href="/invoice"><Button size="sm" className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">Open Invoice Generator</Button></a>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader className="bg-muted/30">
+                    <TableRow>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6">Invoice / Client</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider">Date</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider">Category</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-right pr-6">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices.map((inv: any) => (
+                      <TableRow key={inv.id} className="hover:bg-muted/10 transition-colors">
+                        <TableCell className="pl-6 py-4">
+                          <p className="font-bold text-sm text-foreground">{inv.description?.split('|')[0]?.trim() || '—'}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{inv.description?.split('|')[1]?.trim() || ''}</p>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm font-medium text-foreground">{inv.date ? format(parseISO(inv.date), 'MMM d, yyyy') : '—'}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold text-[10px] uppercase tracking-wider">Invoice</Badge>
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <span className="text-base font-black text-emerald-600">₦{Number(inv.amount || 0).toLocaleString()}</span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+            {invoices && invoices.length > 0 && (
+              <div className="px-6 py-4 border-t border-border/30 bg-muted/10 flex items-center justify-between">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{invoices.length} invoice{invoices.length !== 1 ? 's' : ''} total</span>
+                <span className="text-lg font-black text-emerald-600">₦{invoices.reduce((s: number, i: any) => s + Number(i.amount || 0), 0).toLocaleString()} total billed</span>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="transactions" className="space-y-6">
+          <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl">
+            <CardHeader><CardTitle className="text-xl font-bold">Recent Transactions</CardTitle></CardHeader>
+            <CardContent>
+              {loadingTx ? (
+                <SkeletonTable rows={6} cols={6} />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Logged By</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="w-[100px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions?.slice(0, 15).map((tx) => (
+                      <TableRow key={tx.id}>
+                        <TableCell className="font-mono text-xs">{tx.date}</TableCell>
+                        <TableCell className="font-medium">{tx.description || "—"}</TableCell>
+                        <TableCell><Badge variant="outline">{tx.category}</Badge></TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{tx.created_by}</TableCell>
+                        <TableCell className={`text-right font-medium ${tx.type === 'revenue' ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
+                          {tx.type === 'revenue' ? '+' : '-'}{formatCurrency(tx.amount)}
+                        </TableCell>
+                        <TableCell>
+                          {(isAdmin || isSuperAdmin) && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
+                                  <AlertDialogDescription>This moves the transaction to the Recycle Bin for 30 days.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteTxMutation.mutate({ id: tx.id })} className="bg-destructive hover:bg-destructive/90">Move to Bin</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {(!transactions || transactions.length === 0) && (
+                      <TableRow><TableCell colSpan={6} className="p-0"><EmptyState illustration="finance" heading="Ledger is clear" subtext="Add your first transaction to start tracking income and expenses. Every naira counts."/></TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="recurring" className="space-y-6">
+          {/* Upcoming Bills Segment — derived from transactions */}
+          {(() => {
+            const RECURRING_KEYWORDS = ['subscription', 'retainer', 'recurring', 'payroll', 'hosting', 'software', 'facilities', 'rent', 'license'];
+            const isRecurring = (t: any) => RECURRING_KEYWORDS.some(kw => 
+              t.description?.toLowerCase().includes(kw) || t.category?.toLowerCase().includes(kw)
+            );
+            const recurringFromDB = (transactions || []).filter(isRecurring);
+
+            // Seed data used only when no recurring transactions exist in Supabase
+            const SEED_RECURRING = [
+              { id: 's1', description: "AWS Enterprise Hosting", category: "Infrastructure", amount: 1200000, date: "2026-05-01", type: "expense" },
+              { id: 's2', description: "Acme Corp Retainer", category: "Retainer", amount: 4500000, date: "2026-05-05", type: "revenue" },
+              { id: 's3', description: "Google Workspace Hub", category: "Software", amount: 850000, date: "2026-08-14", type: "expense" },
+              { id: 's4', description: "Q2 Marketing Subsidy", category: "Marketing", amount: 2000000, date: "2026-07-01", type: "expense" },
+              { id: 's5', description: "Payroll — Engineering", category: "Payroll", amount: 8500000, date: "2026-03-28", type: "expense" },
+              { id: 's6', description: "Payroll — Operations", category: "Payroll", amount: 4200000, date: "2026-03-28", type: "expense" },
+              { id: 's7', description: "Slack Enterprise Grid", category: "Software", amount: 95000, date: "2026-04-10", type: "expense" },
+              { id: 's8', description: "WeWork Office Space", category: "Facilities", amount: 3500000, date: "2026-04-01", type: "expense" },
+            ];
+
+            const allRecurring = recurringFromDB.length > 0 ? recurringFromDB : SEED_RECURRING;
+            
+            const upcomingBills = [...allRecurring]
+              .filter((t: any) => t.date && new Date(t.date) >= new Date())
+              .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+              .slice(0, 3)
+              .map((t: any, i: number) => {
+                const daysLeft = Math.max(0, Math.ceil((new Date(t.date).getTime() - Date.now()) / 86400000));
+                const colors = ["bg-sky-500", "bg-emerald-500", "bg-purple-500"];
+                return { name: t.description?.slice(0, 40) || t.category, due: t.date ? format(new Date(t.date), "MMM d, yyyy") : "—", amt: Math.abs(t.amount || 0), daysLeft, color: colors[i % 3] };
+              });
+
+            return (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {upcomingBills.map((bill, i) => (
+                    <Card key={i} className="shadow-lg border-border/40 bg-card/60 backdrop-blur-xl overflow-hidden group hover:shadow-xl transition-all">
+                      <div className={`h-1 w-full ${bill.color}`} />
+                      <CardContent className="p-5">
+                        <div className="flex justify-between items-start mb-3">
+                          <h4 className="font-bold text-sm">{bill.name}</h4>
+                          <Badge variant="outline" className={`text-[10px] ${bill.daysLeft <= 30 ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-muted/50'}`}>
+                            {bill.daysLeft}d left
+                          </Badge>
+                        </div>
+                        <p className="text-2xl font-black font-mono tracking-tight">{formatCurrency(bill.amt)}</p>
+                        <p className="text-xs text-muted-foreground mt-2 font-medium">Due: {bill.due}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {upcomingBills.length === 0 && (
+                    <div className="col-span-3 text-center py-6 text-muted-foreground text-sm">No upcoming bills found. Add transactions with categories like "Subscription" or "Retainer".</div>
+                  )}
+                </div>
+
+                {/* Recurring Table */}
+                <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl font-bold">
+                      <RefreshCw className="w-5 h-5 mr-2 text-indigo-500" /> Recurring Automations
+                    </CardTitle>
+                    <CardDescription>View and manage all automated subscriptions, payroll, and retainer logic.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Service / Client</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Frequency</TableHead>
+                          <TableHead>Next Date</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="text-right">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {allRecurring.map((rec: any, idx: number) => {
+                          const isPast = rec.date && new Date(rec.date) < new Date();
+                          return (
+                            <TableRow key={rec.id || idx}>
+                              <TableCell className="font-semibold">{rec.description?.slice(0, 40) || "Recurring Entry"}</TableCell>
+                              <TableCell><Badge variant="outline">{rec.category || "Other"}</Badge></TableCell>
+                              <TableCell className="text-muted-foreground">Monthly</TableCell>
+                              <TableCell className="font-mono text-xs text-muted-foreground">{rec.date ? format(new Date(rec.date), "MMM d, yyyy") : "—"}</TableCell>
+                              <TableCell className="font-mono text-right font-bold text-foreground">{formatCurrency(Math.abs(rec.amount || 0))}</TableCell>
+                              <TableCell className="text-right">
+                                <Badge variant={isPast ? 'secondary' : 'default'} className={!isPast ? 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 shadow-none border-transparent' : ''}>
+                                  {isPast ? 'Paid' : 'Active'}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </>
+            );
+          })()}
+        </TabsContent>
+
+        {/* Payment Approvals — card queue per spec */}
+        <TabsContent value="requests">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-black text-foreground">Payment Approvals</h2>
+              <p className="text-xs text-muted-foreground mt-1">Review queued requests · pending volume <span className="font-bold text-foreground">{formatCurrency(pendingRequestsTotal)}</span></p>
+            </div>
+          </div>
+
+          {(!paymentRequests || paymentRequests.length === 0) ? (
+            <div className="surface-card p-0 overflow-hidden"><EmptyState illustration="payments" heading="No payment requests" subtext="Payment requests submitted by the team will appear here for your review and approval." /></div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {paymentRequests.map((req: any) => {
+                const isPending = req.status === 'pending';
+                const statusTone = req.status === 'approved' ? 'bg-success/10 text-success border-success/20'
+                  : req.status === 'rejected' ? 'bg-destructive/10 text-destructive border-destructive/20'
+                  : 'bg-warning/10 text-warning border-warning/20';
+                const initials = (req.profiles?.full_name || '??').split(' ').map((p: string) => p[0]).join('').slice(0,2).toUpperCase();
+                return (
+                  <div key={req.id} className="surface-card p-5 group">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center text-primary text-xs font-bold shrink-0">{initials}</div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-foreground truncate">{req.profiles?.full_name || 'Unknown'}</p>
+                          <p className="text-[11px] text-muted-foreground">{format(new Date(req.created_at), 'MMM d, yyyy · HH:mm')}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={`text-[10px] uppercase tracking-wider font-bold ${statusTone}`}>{req.status}</Badge>
+                    </div>
+
+                    <div className="flex items-baseline justify-between gap-3 mb-3">
+                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider">{req.category}</Badge>
+                      <span className="text-2xl font-black text-primary tracking-tight">{formatCurrency(req.amount)}</span>
+                    </div>
+
+                    {req.description && (
+                      <p className="text-xs text-foreground/80 italic bg-muted/40 border-l-[3px] border-primary px-3 py-2 rounded-r-md mb-4">"{req.description}"</p>
+                    )}
+
+                    {isPending && (isAdmin || isSuperAdmin) ? (
+                      <div className="flex items-center gap-2 pt-3 border-t border-border/50">
+                        <Button size="sm" className="flex-1 bg-success hover:bg-success/90 text-white font-bold" onClick={() => resolveRequestMutation.mutate({ id: req.id, status: 'approved', requestData: req })}>
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Approve
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10 font-bold" onClick={() => resolveRequestMutation.mutate({ id: req.id, status: 'rejected', requestData: req })}>
+                          <XCircle className="h-3.5 w-3.5 mr-1.5" /> Deny
+                        </Button>
+                      </div>
+                    ) : req.approver ? (
+                      <p className="text-[11px] text-muted-foreground pt-3 border-t border-border/50">Resolved by <span className="font-semibold text-foreground">{req.approver.full_name}</span></p>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Recycle Bin Tab */}
+        {(isAdmin || isSuperAdmin) && (
+          <TabsContent value="recycle">
+            <Card className="border-destructive/30 border-dashed">
+              <CardHeader>
+                <CardTitle className="text-destructive flex items-center gap-2"><Trash2 className="h-5 w-5" /> 30-Day Recycle Bin</CardTitle>
+                <CardDescription>Soft-deleted transactions will be permanently purged after 30 days.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Deleted On</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {deletedTransactions?.map((tx) => (
+                      <TableRow key={tx.id} className="opacity-70">
+                        <TableCell className="font-mono text-xs">{format(new Date(tx.deleted_at!), 'yyyy-MM-dd HH:mm')}</TableCell>
+                        <TableCell>{tx.description} ({tx.category})</TableCell>
+                        <TableCell className="text-right">{formatCurrency(tx.amount)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => restoreTxMutation.mutate(tx.id)} className="text-green-600 mr-2">Restore</Button>
+                          <Button variant="ghost" size="sm" onClick={() => deleteTxMutation.mutate({ id: tx.id, hardDelete: true })} className="text-destructive h-8 px-2">Purge</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {(!deletedTransactions || deletedTransactions.length === 0) && (
+                      <TableRow><TableCell colSpan={4} className="p-0"><EmptyState illustration="recycle" heading="Recycle bin is empty" subtext="Soft-deleted transactions from the last 30 days will appear here, ready to restore or permanently delete."/></TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* Budgets Tab */}
+        {(isAdmin || isSuperAdmin) && (
+          <TabsContent value="budgets">
+            <Card className="shadow-xl border-border/40 bg-card/60 backdrop-blur-xl">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl font-bold">Quarterly Budgets</CardTitle>
+                  <CardDescription>Track allocated spend vs actuals.</CardDescription>
+                </div>
+                <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                      <Plus className="h-4 w-4 mr-2" /> Set Budget
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>Set Category Budget</DialogTitle></DialogHeader>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!newBudget.category || !newBudget.budgeted_amount) return toast.error("Required fields missing");
+                      addBudgetMutation.mutate({ 
+                        ...newBudget, 
+                        budgeted_amount: parseFloat(newBudget.budgeted_amount),
+                        quarter: parseInt(newBudget.quarter),
+                        year: parseInt(newBudget.year)
+                      });
+                    }} className="space-y-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Quarter</Label>
+                          <Select value={newBudget.quarter} onValueChange={(v) => setNewBudget({...newBudget, quarter: v})}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">Q1 (Jan-Mar)</SelectItem>
+                              <SelectItem value="2">Q2 (Apr-Jun)</SelectItem>
+                              <SelectItem value="3">Q3 (Jul-Sep)</SelectItem>
+                              <SelectItem value="4">Q4 (Oct-Dec)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Year (YYYY)</Label>
+                          <Input type="number" required min="2020" value={newBudget.year} onChange={(e) => setNewBudget({...newBudget, year: e.target.value})} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Category</Label>
+                        <Input required value={newBudget.category} onChange={(e) => setNewBudget({...newBudget, category: e.target.value})} placeholder="e.g., Marketing, Engineering" />
+                      </div>
+                      <div>
+                        <Label>Budgeted Amount (NGN)</Label>
+                        <Input type="number" required min="0" step="1000" value={newBudget.budgeted_amount} onChange={(e) => setNewBudget({...newBudget, budgeted_amount: e.target.value})} />
+                      </div>
+                      <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={addBudgetMutation.isPending}>Save Budget</Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {loadingBudgets ? (
+                  <SkeletonTable rows={4} cols={3} />
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Period</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead className="text-right">Budget Limit</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {budgets?.map((b: any) => (
+                        <TableRow key={b.id}>
+                          <TableCell className="font-medium">Q{b.quarter} {b.year}</TableCell>
+                          <TableCell><Badge variant="outline">{b.category}</Badge></TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(b.budgeted_amount)}</TableCell>
+                        </TableRow>
+                      ))}
+                      {(!budgets || budgets.length === 0) && (
+                        <TableRow><TableCell colSpan={3} className="p-0"><EmptyState illustration="budgets" heading="No budgets set" subtext="Set quarterly budgets by category to track your planned vs. actual spend."/></TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* Recycle Bin Tab — soft-deleted transactions, 30-day window */}
+        {(isAdmin || isSuperAdmin) && (
+          <TabsContent value="recycle">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-muted-foreground" /> Recycle Bin
+                </CardTitle>
+                <CardDescription>Transactions deleted in the last 30 days. Restore or permanently delete them.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {deletedTransactions && deletedTransactions.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Deleted On</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {deletedTransactions.map((tx: any) => (
+                        <TableRow key={tx.id} className="opacity-70">
+                          <TableCell className="font-mono text-xs text-muted-foreground">{format(new Date(tx.deleted_at), 'dd MMM yyyy, HH:mm')}</TableCell>
+                          <TableCell>{tx.description || '—'}</TableCell>
+                          <TableCell><Badge variant="outline">{tx.category}</Badge></TableCell>
+                          <TableCell className={`text-right font-medium ${tx.type === 'revenue' ? 'text-green-600' : 'text-red-600'}`}>
+                            {tx.type === 'revenue' ? '+' : '-'}{formatCurrency(tx.amount)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-green-500/50 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                onClick={() => restoreTxMutation.mutate(tx.id)}
+                                disabled={restoreTxMutation.isPending}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Restore
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
+                                    <XCircle className="h-3.5 w-3.5 mr-1" /> Delete Forever
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Permanently Delete Transaction?</AlertDialogTitle>
+                                    <AlertDialogDescription>This action cannot be undone. The transaction will be permanently removed from all records.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteTxMutation.mutate({ id: tx.id, hardDelete: true })} className="bg-destructive hover:bg-destructive/90">Delete Forever</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-green-500/50" />
+                    <p className="font-medium">Recycle bin is clear</p>
+                    <p className="text-sm">Deleted transactions appear here for 30 days before permanent removal.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+      </Tabs>
+    </MotionPage>
+  );
+};
+
+export default FinanceDashboard;

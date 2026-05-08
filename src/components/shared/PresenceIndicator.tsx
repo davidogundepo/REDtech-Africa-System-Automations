@@ -5,6 +5,7 @@ import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
+import { usePlatformSettings } from "@/lib/platform-settings";
 
 /**
  * PresenceIndicator
@@ -14,7 +15,16 @@ import { useAuth } from "@/lib/auth-context";
  */
 export function PresenceIndicator() {
   const { profile } = useAuth();
+  const { get, loading } = usePlatformSettings();
   const online = useTeamPresence();
+  const presenceVisibleToAll = get<boolean>("presence_visible_to_all", true);
+  const canSeePresence =
+    profile?.role === "super_admin" ||
+    profile?.role === "admin" ||
+    (!loading && presenceVisibleToAll);
+
+  if (!profile || !canSeePresence) return null;
+
   const others = online.filter((u) => u.user_id !== profile?.id);
   const count = others.length;
 

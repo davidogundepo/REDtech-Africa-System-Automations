@@ -41,6 +41,7 @@ const TeamDirectory = lazy(() => import("./pages/TeamDirectory"));
 const PartnershipGenerator = lazy(() => import("./pages/PartnershipGenerator"));
 const ActivityHistory = lazy(() => import("./pages/ActivityHistory"));
 const PlatformSettings = lazy(() => import("./pages/PlatformSettings"));
+const EmailOutboxAdmin = lazy(() => import("./pages/EmailOutboxAdmin"));
 
 
 /**
@@ -122,6 +123,7 @@ const AppRoutes = () => (
               <Route path="/partnerships" element={<PartnershipGenerator />} />
               <Route path="/activity" element={<ActivityHistory />} />
               <Route path="/platform-settings" element={<PlatformSettings />} />
+              <Route path="/email-outbox" element={<EmailOutboxAdmin />} />
               <Route path="/departments" element={<Navigate to="/users#departments" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

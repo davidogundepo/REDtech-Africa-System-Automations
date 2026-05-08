@@ -28,13 +28,13 @@ export function UserModuleOverridesPanel({ open, onOpenChange, user }: UserModul
     (async () => {
       const { data, error } = await (supabase as any)
         .from("user_module_overrides")
-        .select("module_key, is_blocked")
+        .select("module_key, is_enabled")
         .eq("user_id", user.id);
       if (error) {
         console.warn(error);
       }
       const set = new Set<ModuleKey>(
-        (data || []).filter((r: any) => r.is_blocked).map((r: any) => r.module_key as ModuleKey),
+        (data || []).filter((r: any) => r.is_enabled === false).map((r: any) => r.module_key as ModuleKey),
       );
       setBlocked(set);
       setOriginalBlocked(new Set(set));
@@ -73,7 +73,7 @@ export function UserModuleOverridesPanel({ open, onOpenChange, user }: UserModul
         const rows = Array.from(blocked).map((module_key) => ({
           user_id: user.id,
           module_key,
-          is_blocked: true,
+          is_enabled: false,
         }));
         const { error: insErr } = await (supabase as any)
           .from("user_module_overrides")

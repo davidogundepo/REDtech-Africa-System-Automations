@@ -300,11 +300,11 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
       const routes: Record<string, string> = {
         'attendance': '/attendance',
         'task': '/tasks',
-        'utilisation': '/staff-utilisation',
-        'finance': '/finance',
+        'utilisation': '/utilisation',
+        'finance': '/finance-dashboard',
         'social': '/social',
         'leave': '/leave',
-        'dashboard': '/dashboard',
+        'dashboard': '/',
         'profile': '/profile',
         'client': '/clients'
       };

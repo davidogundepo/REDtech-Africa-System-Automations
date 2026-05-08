@@ -1,0 +1,24 @@
+import { InvoiceGenerator } from "@/components/invoice/InvoiceGenerator";
+import { useAuth } from "@/lib/auth-context";
+import { ViewerRestricted } from "@/components/ViewerRestricted";
+import { MotionPage } from "@/components/shared/MotionPage";
+
+const Index = () => {
+  const { isViewer } = useAuth();
+
+  if (isViewer) {
+    return (
+      <MotionPage className="flex-1 min-h-screen bg-background p-8 overflow-y-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold" style={{ color: 'hsl(var(--primary))' }}>Invoice Generator</h1>
+          <p className="text-muted-foreground mt-2">Auto-generate recurring invoices with live preview and PDF export</p>
+        </div>
+        <ViewerRestricted action="create, edit, or download invoices" />
+      </MotionPage>
+    );
+  }
+
+  return <MotionPage className="flex-1 flex flex-col min-h-screen overflow-y-auto"><InvoiceGenerator /></MotionPage>;
+};
+
+export default Index;

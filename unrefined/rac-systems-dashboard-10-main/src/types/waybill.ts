@@ -1,0 +1,72 @@
+export interface WaybillItem {
+  id: string;
+  description: string;
+  quantity: number;
+}
+
+export interface WaybillData {
+  // Company Info
+  companyName: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyPhone2?: string;
+  companyEmail: string;
+  companyWebsite: string;
+  
+  // Waybill Meta
+  waybillNumber: string;
+  waybillDate: string;
+  
+  // Supplier Info
+  supplierName: string;
+  supplierEmail: string;
+  supplierPhone: string;
+  supplierPhone2?: string;
+  
+  // Delivery Info
+  deliveredTo: string;
+  deliveryDepartment?: string;
+  deliveryOrganization?: string;
+  deliveryAddress: string;
+  attentionTo?: string;
+  deliveryMethod: 'Vehicle' | 'Courier' | 'Hand Delivery' | 'Air Freight' | 'Sea Freight' | 'Other';
+  customDeliveryMethod?: string;
+  
+  // Items
+  items: WaybillItem[];
+  
+  // Additional Fields
+  remarks?: string;
+  receiverName?: string;
+  receiverSignatureDate?: string;
+  
+  // Branding
+  companyLogo?: string;
+  accentColor: string;
+  
+  // Toggles
+  showRemarks: boolean;
+  showReceiverSection: boolean;
+  showWebsite: boolean;
+  showThankYouMessage: boolean;
+  thankYouMessage: string;
+}
+
+export const defaultWaybillInfo: Partial<WaybillData> = {
+  companyName: "REDtech Africa Consulting",
+  companyAddress: "Trocadero Square, The Rock Drive, Lekki Phase 1",
+  companyPhone: "+234 818 969 6614",
+  companyEmail: "hello@redtechafrica.com",
+  companyWebsite: "www.redtechafrica.com",
+  supplierName: "REDtech Africa Consulting LTD",
+  supplierEmail: "hello@redtechafrica.com",
+  supplierPhone: "+234 818 969 6614",
+  supplierPhone2: "+234 703 298 0038",
+  deliveryMethod: 'Vehicle',
+  showRemarks: true,
+  showReceiverSection: true,
+  showWebsite: true,
+  showThankYouMessage: true,
+  thankYouMessage: "Thank You",
+  accentColor: "hsl(var(--primary))",
+};

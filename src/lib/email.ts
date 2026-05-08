@@ -49,25 +49,45 @@ export interface EnqueueEmailInput {
 export const enqueueEmail = async (input: EnqueueEmailInput): Promise<string | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    const { data, error } = await (supabase as any)
-      .from('email_outbox')
-      .insert({
-        to_email: input.to,
-        subject: input.subject,
-        html: input.html,
-        from_email: input.from ?? 'no-reply@momms.co.uk',
-        reply_to: input.replyTo ?? null,
-        scheduled_for: (input.scheduledFor ?? new Date()).toISOString(),
-        metadata: input.metadata ?? {},
-        created_by: user?.id ?? null,
-      })
-      .select('id')
-      .single();
-    if (error) {
-      console.error('enqueueEmail error:', error);
+    const dueAt = (input.scheduledFor ?? new Date()).toISOString();
+    const outbox = (supabase as any).from('email_outbox');
+
+    const tryInsert = async (payload: Record<string, unknown>) => {
+      const { data, error } = await outbox.insert(payload).select('id').single();
+      return { data, error };
+    };
+
+    const modernAttempt = await tryInsert({
+      to_addresses: [input.to],
+      cc_addresses: [],
+      subject: input.subject,
+      html: input.html,
+      text_body: null,
+      next_attempt_at: dueAt,
+      created_by: user?.id ?? null,
+    });
+
+    if (!modernAttempt.error) {
+      return modernAttempt.data?.id ?? null;
+    }
+
+    const legacyAttempt = await tryInsert({
+      to_email: input.to,
+      subject: input.subject,
+      html: input.html,
+      from_email: input.from ?? 'no-reply@momms.co.uk',
+      reply_to: input.replyTo ?? null,
+      scheduled_for: dueAt,
+      metadata: input.metadata ?? {},
+      created_by: user?.id ?? null,
+    });
+
+    if (legacyAttempt.error) {
+      console.error('enqueueEmail error:', modernAttempt.error, legacyAttempt.error);
       return null;
     }
-    return data?.id ?? null;
+
+    return legacyAttempt.data?.id ?? null;
   } catch (e) {
     console.error('enqueueEmail exception:', e);
     return null;

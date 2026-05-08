@@ -45,8 +45,24 @@ export async function logActivity(args: LogActivityArgs): Promise<void> {
   }
 }
 
+async function readBooleanPlatformSetting(key: string, fallback: boolean) {
+  try {
+    const { data } = await (supabase as any)
+      .from("platform_settings")
+      .select("value")
+      .eq("key", key)
+      .maybeSingle();
+    return typeof data?.value === "boolean" ? data.value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /** Inserts an in-app notification when a user crosses 80% / 95% quota. */
 async function checkStorageAlert(userId: string) {
+  const alertsEnabled = await readBooleanPlatformSetting("storage_alerts_enabled", true);
+  if (!alertsEnabled) return;
+
   const { data: q } = await (supabase as any)
     .from("user_storage_quota")
     .select("used_bytes, quota_bytes, last_alert_level")
