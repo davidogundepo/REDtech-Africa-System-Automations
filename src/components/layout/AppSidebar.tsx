@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import companyLogo from "@/assets/company-logo.png";
 import { useModuleToggles } from "@/lib/module-toggles";
-import { Settings2 } from "lucide-react";
+import { Settings2, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ALL_MODULES, type ModuleKey } from "@/lib/module-toggles";
 import { PremiumToggle } from "@/components/ui/premium-toggle";
@@ -59,6 +59,7 @@ const adminModules = [
   { title: "User Management", icon: Shield, path: "/users" },
   { title: "Departments", icon: Building2, path: "/departments" },
   { title: "Activity Log", icon: History, path: "/activity" },
+  { title: "Email Outbox", icon: Mail, path: "/email-outbox" },
   { title: "Platform Settings", icon: Settings2, path: "/platform-settings" },
 ];
 

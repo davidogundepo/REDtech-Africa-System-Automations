@@ -8,6 +8,7 @@ import { FileDown, Loader2, Eye, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { renderAndUploadPdf } from "@/lib/upload-pdf";
 
 const getInitialWaybillData = (): WaybillData => {
   const today = new Date();
@@ -78,16 +79,30 @@ export const WaybillGenerator = () => {
         if (error) console.error("Failed to save waybill to transactions:", error);
       });
 
-      // Auto-push to Document Repository
-      (supabase as any).from("documents").insert({
-        name: `WB${waybillData.waybillNumber} — ${waybillData.deliveredTo}.pdf`,
-        type: "pdf",
-        size: "~1KB",
-        url: `#waybill-${waybillData.waybillNumber}`,
-        department: "Operations",
-        created_by: profile?.full_name || "System",
-      }).then(({ error }: any) => {
-        if (error) console.error("Failed to auto-save waybill to documents:", error);
+      // ── Upload real PDF to Storage + push to Document Repository ──────
+      const pdfFilename = `WB${waybillData.waybillNumber}-${waybillData.deliveredTo}.pdf`;
+      renderAndUploadPdf(printRef.current, pdfFilename, profile?.id).then((uploaded) => {
+        const docUrl = uploaded?.url || `#waybill-${waybillData.waybillNumber}`;
+        const docSize = uploaded ? `${(uploaded.bytes / 1024).toFixed(0)}KB` : "~1KB";
+        const realBytes = uploaded?.bytes || 70_000;
+
+        (supabase as any).from("documents").insert({
+          name: `WB${waybillData.waybillNumber} — ${waybillData.deliveredTo}.pdf`,
+          type: "pdf",
+          size: docSize,
+          url: docUrl,
+          department: "Operations",
+          created_by: profile?.full_name || "System",
+        }).then(({ error }: any) => {
+          if (error) console.error("Failed to auto-save waybill to documents:", error);
+        });
+
+        // Audit + storage tally with REAL byte size
+        import("@/lib/activity").then(({ activity }) =>
+          activity.generated("waybill", waybillData.waybillNumber || crypto.randomUUID(),
+            `Waybill to ${waybillData.deliveredTo} (${itemCount} item${itemCount !== 1 ? "s" : ""})`,
+            realBytes)
+        );
       });
 
       // ── Smart Recipient Sync ──────────────────────────────────────────────
@@ -134,11 +149,6 @@ export const WaybillGenerator = () => {
       }
 
       toast.success(`Waybill generated & saved! Delivery to ${waybillData.deliveredTo} — ${itemCount} item${itemCount !== 1 ? 's' : ''}`);
-      import("@/lib/activity").then(({ activity }) =>
-        activity.generated("waybill", waybillData.waybillNumber || crypto.randomUUID(),
-          `Waybill to ${waybillData.deliveredTo} (${itemCount} item${itemCount !== 1 ? "s" : ""})`,
-          70_000)
-      );
     },
     pageStyle: `
       @page {

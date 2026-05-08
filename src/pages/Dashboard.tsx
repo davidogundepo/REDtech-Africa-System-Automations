@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MotionPage } from "@/components/shared/MotionPage";
 import { format, formatDistanceToNow } from "date-fns";
 import { useCompany } from "@/lib/use-company";
+import { useModuleToggles } from "@/lib/module-toggles";
 import { toast } from "sonner";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
@@ -174,12 +175,25 @@ interface ActivityItem {
   meta: string;
   when: string;
   initials: string;
+  sortAt: number;
 }
 
 const dotByType: Record<ActivityItem["type"], string> = {
   task: "bg-info",
   client: "bg-primary",
   leave: "bg-warning",
+};
+
+const DAY_MS = 86_400_000;
+
+const getPeriodDays = (period: "today" | "this-week" | "this-month" | "this-quarter") =>
+  period === "today" ? 1 : period === "this-week" ? 7 : period === "this-month" ? 30 : 90;
+
+const getPeriodStart = (period: "today" | "this-week" | "this-month" | "this-quarter") => {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - (getPeriodDays(period) - 1));
+  return start;
 };
 
 function ActivityRow({ item }: { item: ActivityItem }) {
@@ -205,10 +219,12 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 /* ───────────────────────── Page ───────────────────────── */
 
 const Dashboard = () => {
-  const { profile, loading: authLoading } = useAuth();
+  const { profile, loading: authLoading, isAdmin, isSuperAdmin } = useAuth();
   const { name: companyName, formatMoney: fmtCurrency } = useCompany();
+  const { isModuleEnabledByPath } = useModuleToggles();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const visibleModules = useMemo(() => modules.filter(m => isModuleEnabledByPath(m.path)), [isModuleEnabledByPath]);
   // Period filter for header — controls KPI trend window. Persisted in localStorage
   // so the user's preference survives page refresh.
   const [period, setPeriod] = useState<"today" | "this-week" | "this-month" | "this-quarter">(() => {
@@ -217,6 +233,11 @@ const Dashboard = () => {
   });
   useEffect(() => { try { localStorage.setItem("rac.dash.period", period); } catch {} }, [period]);
   const periodLabel = period === "today" ? "Today" : period === "this-week" ? "This week" : period === "this-month" ? "This month" : "This quarter";
+  const rangeDays = getPeriodDays(period);
+  const rangeStart = useMemo(() => getPeriodStart(period), [period]);
+  const rangeStartIsoTs = rangeStart.toISOString();
+  const rangeStartIsoDate = format(rangeStart, "yyyy-MM-dd");
+  const periodTaskLabel = period === "today" ? "Tasks Completed Today" : `Tasks Completed ${periodLabel}`;
 
   /* Live counts */
   const { data: taskCount = 0 } = useQuery({
@@ -232,15 +253,14 @@ const Dashboard = () => {
     queryFn: async () =>
       (await (supabase as any).from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "pending")).count || 0,
   });
-  const { data: tasksDoneToday = 0 } = useQuery({
-    queryKey: ["dash-tasks-done-today"],
+  const { data: tasksCompleted = 0 } = useQuery({
+    queryKey: ["dash-tasks-completed", period],
     queryFn: async () => {
-      const start = new Date(); start.setHours(0, 0, 0, 0);
       const { count } = await (supabase as any)
         .from("tasks")
         .select("*", { count: "exact", head: true })
         .in("status", ["done", "completed"])
-        .gte("updated_at", start.toISOString());
+        .gte("updated_at", rangeStartIsoTs);
       return count || 0;
     },
   });
@@ -275,48 +295,118 @@ const Dashboard = () => {
         id: `t-${t.id}`, type: "task", initials: initials(t.title),
         title: t.title, meta: `task · ${t.status}`,
         when: formatDistanceToNow(new Date(t.updated_at), { addSuffix: true }),
+        sortAt: new Date(t.updated_at).getTime(),
       }));
       (clientsRes.data || []).forEach((c: any) => items.push({
         id: `c-${c.id}`, type: "client", initials: initials(c.name),
         title: c.name, meta: c.company ? `new client · ${c.company}` : "new client",
         when: formatDistanceToNow(new Date(c.created_at), { addSuffix: true }),
+        sortAt: new Date(c.created_at).getTime(),
       }));
       (leaveRes.data || []).forEach((l: any) => items.push({
         id: `l-${l.id}`, type: "leave", initials: "LV",
         title: `Leave request · ${l.leave_type}`, meta: l.status,
         when: formatDistanceToNow(new Date(l.created_at), { addSuffix: true }),
+        sortAt: new Date(l.created_at).getTime(),
       }));
 
       return items
-        .sort((a, b) => b.when.localeCompare(a.when))
+        .sort((a, b) => b.sortAt - a.sortAt)
         .slice(0, 10);
     },
   });
 
-  /* Sparkline + chart data (synthesized 30-day series, deterministic) */
+  /* Trend data derived from live transactions, tasks, clients and profile scores */
+  const { data: trendSource } = useQuery({
+    queryKey: ["dash-trend-source", period],
+    queryFn: async () => {
+      const [transactionsRes, tasksRes, clientsRes, profilesRes] = await Promise.all([
+        (supabase as any)
+          .from("transactions")
+          .select("amount, type, date, deleted_at")
+          .is("deleted_at", null)
+          .gte("date", rangeStartIsoDate),
+        (supabase as any)
+          .from("tasks")
+          .select("status, updated_at")
+          .gte("updated_at", rangeStartIsoTs),
+        (supabase as any)
+          .from("clients")
+          .select("created_at")
+          .gte("created_at", rangeStartIsoTs),
+        (supabase as any)
+          .from("profiles")
+          .select("performance_score")
+          .neq("is_active", false),
+      ]);
+
+      return {
+        transactions: transactionsRes.data || [],
+        tasks: tasksRes.data || [],
+        clients: clientsRes.data || [],
+        profiles: profilesRes.data || [],
+      };
+    },
+  });
+
   const trendData = useMemo(() => {
-    const make = (seed: number, base: number, vol: number) =>
-      Array.from({ length: 30 }, (_, i) => {
-        const t = i / 29;
-        const noise = Math.sin(seed + i * 0.7) * vol + Math.cos(seed * 1.3 + i * 0.31) * vol * 0.6;
-        const drift = base * (0.92 + t * 0.18);
-        return { x: format(new Date(Date.now() - (29 - i) * 86_400_000), "MMM d"), y: Math.max(0, drift + noise) };
-      });
+    const days = Array.from({ length: rangeDays }, (_, index) => {
+      const day = new Date(rangeStart.getTime() + index * DAY_MS);
+      return {
+        key: format(day, "yyyy-MM-dd"),
+        label: format(day, rangeDays > 31 ? "MMM d" : "MMM d"),
+      };
+    });
+
+    const revenueByDay: Record<string, number> = {};
+    const expenseByDay: Record<string, number> = {};
+    const tasksByDay: Record<string, number> = {};
+    const clientsByDay: Record<string, number> = {};
+
+    for (const tx of trendSource?.transactions || []) {
+      const key = typeof tx.date === "string" ? tx.date.slice(0, 10) : "";
+      if (!key) continue;
+      if (tx.type === "revenue") revenueByDay[key] = (revenueByDay[key] || 0) + Number(tx.amount || 0);
+      if (tx.type === "expense") expenseByDay[key] = (expenseByDay[key] || 0) + Number(tx.amount || 0);
+    }
+
+    for (const task of trendSource?.tasks || []) {
+      if (!["done", "completed"].includes((task.status || "").toLowerCase())) continue;
+      const key = typeof task.updated_at === "string" ? task.updated_at.slice(0, 10) : "";
+      if (!key) continue;
+      tasksByDay[key] = (tasksByDay[key] || 0) + 1;
+    }
+
+    for (const client of trendSource?.clients || []) {
+      const key = typeof client.created_at === "string" ? client.created_at.slice(0, 10) : "";
+      if (!key) continue;
+      clientsByDay[key] = (clientsByDay[key] || 0) + 1;
+    }
+
+    const avgEfficiency =
+      (trendSource?.profiles || []).length > 0
+        ? Math.round(
+            (trendSource?.profiles || []).reduce((sum: number, p: any) => sum + Number(p.performance_score ?? 100), 0) /
+            (trendSource?.profiles || []).length,
+          )
+        : 0;
+
     return {
-      revenue: make(2.1, 480_000, 80_000),
-      clients: make(3.7, 18, 4),
-      tasks: make(1.4, 11, 3),
-      efficiency: make(4.2, 78, 6),
+      revenue: days.map((day) => ({ x: day.label, y: revenueByDay[day.key] || 0 })),
+      expenses: days.map((day) => ({ x: day.label, y: expenseByDay[day.key] || 0 })),
+      clients: days.map((day) => ({ x: day.label, y: clientsByDay[day.key] || 0 })),
+      tasks: days.map((day) => ({ x: day.label, y: tasksByDay[day.key] || 0 })),
+      efficiency: avgEfficiency,
     };
-  }, []);
+  }, [rangeDays, rangeStart, trendSource]);
 
   const revVsExp = useMemo(
     () => trendData.revenue.map((d, i) => ({
       x: d.x,
       revenue: d.y,
-      expenses: Math.max(0, d.y * 0.62 + Math.sin(i * 0.5) * 30_000),
+      expenses: trendData.expenses[i]?.y || 0,
     })),
-    [trendData.revenue],
+    [trendData.expenses, trendData.revenue],
   );
 
   const taskDonut = useMemo(() => {
@@ -326,10 +416,10 @@ const Dashboard = () => {
     const todo = (t["todo"] || 0) + (t["pending"] || 0);
     const review = t["review"] || 0;
     return [
-      { name: "Done", value: done || 12, color: "hsl(var(--success))" },
-      { name: "In progress", value: inprog || 7, color: "hsl(var(--primary))" },
-      { name: "To do", value: todo || 5, color: "hsl(var(--muted-foreground))" },
-      { name: "Review", value: review || 2, color: "hsl(var(--accent-gold))" },
+      { name: "Done", value: done, color: "hsl(var(--success))" },
+      { name: "In progress", value: inprog, color: "hsl(var(--primary))" },
+      { name: "To do", value: todo, color: "hsl(var(--muted-foreground))" },
+      { name: "Review", value: review, color: "hsl(var(--accent-gold))" },
     ];
   }, [tasksByStatus]);
 
@@ -346,7 +436,7 @@ const Dashboard = () => {
 
   /* KPI values */
   const totalRevenue = trendData.revenue.reduce((a, b) => a + b.y, 0);
-  const efficiency = Math.round(trendData.efficiency[trendData.efficiency.length - 1].y);
+  const efficiency = trendData.efficiency;
 
   return (
     <MotionPage className="flex-1 w-full p-6 md:p-8 max-w-[1600px] mx-auto">
@@ -405,24 +495,21 @@ const Dashboard = () => {
           label="Total Revenue"
           value={totalRevenue}
           format={(v) => fmtCurrency(Math.round(v))}
-          trend={{ delta: 8.4, suffix: "vs last 30d" }}
           spark={trendData.revenue}
           sparkColor="hsl(var(--primary))"
           badgeIcon={Receipt}
         />
         <KpiCard
-          label="Active Clients"
+          label="Clients"
           value={clientCount}
-          trend={{ delta: 3.1 }}
           spark={trendData.clients}
           sparkColor="hsl(var(--info))"
           badgeIcon={Users}
         />
         <KpiCard
-          label="Tasks Today"
-          value={tasksDoneToday}
+          label={periodTaskLabel}
+          value={tasksCompleted}
           format={(v) => `${Math.round(v)} done`}
-          trend={{ delta: tasksDoneToday > 0 ? 12.5 : -4.0, suffix: "vs yesterday" }}
           spark={trendData.tasks}
           sparkColor="hsl(var(--success))"
           badgeIcon={CheckSquare}
@@ -431,8 +518,6 @@ const Dashboard = () => {
           label="Efficiency Score"
           value={efficiency}
           format={(v) => `${Math.round(v)}%`}
-          trend={{ delta: 2.7 }}
-          spark={trendData.efficiency}
           sparkColor="hsl(var(--accent-gold))"
           badgeIcon={Target}
         />
@@ -514,7 +599,7 @@ const Dashboard = () => {
           <div className="flex items-start justify-between mb-4">
             <div>
               <h2 className="text-h3 font-semibold text-foreground">Revenue vs Expenses</h2>
-              <p className="text-[12px] text-muted-foreground mt-0.5">Last 30 days · projected baseline</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">{periodLabel} · live transactions</p>
             </div>
             <div className="flex items-center gap-3 text-[11px] font-semibold">
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> Revenue</span>
@@ -625,7 +710,7 @@ const Dashboard = () => {
         </div>
       </section>
 
-      {/* ░░░░░ App hub (kept, restyled) ░░░░░ */}
+      {/* ░░░░░ App hub (module-aware) ░░░░░ */}
       <section className="surface-card p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -633,12 +718,12 @@ const Dashboard = () => {
             <h2 className="text-h3 font-semibold text-foreground">Application hub</h2>
           </div>
           <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold">
-            {modules.length} apps
+            {visibleModules.length} apps
           </Badge>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {modules.map((m) => (
+          {visibleModules.map((m) => (
             <NavLink
               key={m.path}
               to={m.path}

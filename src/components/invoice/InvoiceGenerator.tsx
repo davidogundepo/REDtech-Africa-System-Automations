@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvoiceDashboard } from "./InvoiceDashboard";
 import { ResponsiveInvoicePreview } from "./ResponsiveInvoicePreview";
 import { SendInvoiceModal } from "./SendInvoiceModal";
+import { renderAndUploadPdf } from "@/lib/upload-pdf";
 
 const getInitialInvoiceData = (): InvoiceData => {
   const today = new Date();
@@ -90,17 +91,31 @@ export const InvoiceGenerator = () => {
         if (error) console.error("Failed to save invoice to transactions:", error);
       });
 
-      // Auto-push to Document Repository so invoice appears in the repo
-      (supabase as any).from("documents").insert({
-        name: `${invoiceData.invoiceNumber} — ${invoiceData.clientCompany || invoiceData.clientName}.pdf`,
-        type: "pdf",
-        size: `${Math.ceil(total / 100000)}KB`,
-        url: `#invoice-${invoiceData.invoiceNumber}`,
-        department: "Finance",
-        created_by: profile?.full_name || "System",
-        description: `Invoice — Sent | ${invoiceData.clientCompany || invoiceData.clientName} | ${invoiceData.currency}${total.toLocaleString()}`,
-      }).then(({ error }: any) => {
-        if (error) console.error("Failed to auto-save invoice to documents:", error);
+      // ── Upload real PDF to Storage + push to Document Repository ──────
+      const pdfFilename = `${invoiceData.invoiceNumber}-${invoiceData.clientCompany || invoiceData.clientName}.pdf`;
+      renderAndUploadPdf(printRef.current, pdfFilename, profile?.id).then((uploaded) => {
+        const docUrl = uploaded?.url || `#invoice-${invoiceData.invoiceNumber}`;
+        const docSize = uploaded ? `${(uploaded.bytes / 1024).toFixed(0)}KB` : `${Math.ceil(total / 100000)}KB`;
+        const realBytes = uploaded?.bytes || 80_000;
+
+        (supabase as any).from("documents").insert({
+          name: `${invoiceData.invoiceNumber} — ${invoiceData.clientCompany || invoiceData.clientName}.pdf`,
+          type: "pdf",
+          size: docSize,
+          url: docUrl,
+          department: "Finance",
+          created_by: profile?.full_name || "System",
+          description: `Invoice — Sent | ${invoiceData.clientCompany || invoiceData.clientName} | ${invoiceData.currency}${total.toLocaleString()}`,
+        }).then(({ error }: any) => {
+          if (error) console.error("Failed to auto-save invoice to documents:", error);
+        });
+
+        // Audit + storage tally with REAL byte size
+        import("@/lib/activity").then(({ activity }) =>
+          activity.generated("invoice", invoiceData.invoiceNumber || crypto.randomUUID(),
+            `Invoice for ${invoiceData.clientCompany || invoiceData.clientName} (${invoiceData.currency || "₦"}${total.toLocaleString()})`,
+            realBytes)
+        );
       });
 
       // ── Smart Client Sync ─────────────────────────────────────────────────
@@ -161,12 +176,6 @@ export const InvoiceGenerator = () => {
       }
 
       toast.success(`Invoice generated & saved! ${invoiceData.clientCompany || invoiceData.clientName} — ${invoiceData.currency || "₦"}${total.toLocaleString()}`);
-      // Audit + storage tally (estimated PDF size ~ 80KB per invoice page)
-      import("@/lib/activity").then(({ activity }) =>
-        activity.generated("invoice", invoiceData.invoiceNumber || crypto.randomUUID(),
-          `Invoice for ${invoiceData.clientCompany || invoiceData.clientName} (${invoiceData.currency || "₦"}${total.toLocaleString()})`,
-          80_000)
-      );
     },
     pageStyle: `
       @page {

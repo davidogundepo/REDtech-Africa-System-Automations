@@ -77,7 +77,7 @@ const Leave = () => {
   const [filterDept, setFilterDept] = useState<string>("all");
   const [balances, setBalances] = useState<any[]>([]);
   const [teamProfiles, setTeamProfiles] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState('my-leave');
+  // activeTab removed — showMyLeave is the actual toggle
   const [creditDaysDialog, setCreditDaysDialog] = useState(false);
   const [creditTarget, setCreditTarget] = useState<any>(null);
   const [creditDays, setCreditDays] = useState("1");

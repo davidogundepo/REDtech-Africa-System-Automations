@@ -24,5 +24,8 @@ dist-ssr
 *.sw?
 .vercel
 .env*.local
+.env
+.env.development
+.env.production
 images/
 pages_uiux_examples_and_instructions.md
