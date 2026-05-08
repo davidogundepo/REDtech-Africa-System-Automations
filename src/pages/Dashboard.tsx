@@ -18,6 +18,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { useCompany } from "@/lib/use-company";
 import { useModuleToggles } from "@/lib/module-toggles";
 import { toast } from "sonner";
+import { COMPLETED_STATUSES } from "@/lib/task-utils";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
@@ -259,7 +260,7 @@ const Dashboard = () => {
       const { count } = await (supabase as any)
         .from("tasks")
         .select("*", { count: "exact", head: true })
-        .in("status", ["done", "completed"])
+        .in("status", Array.from(COMPLETED_STATUSES))
         .gte("updated_at", rangeStartIsoTs);
       return count || 0;
     },
@@ -371,7 +372,7 @@ const Dashboard = () => {
     }
 
     for (const task of trendSource?.tasks || []) {
-      if (!["done", "completed"].includes((task.status || "").toLowerCase())) continue;
+      if (!COMPLETED_STATUSES.has((task.status || "").toLowerCase())) continue;
       const key = typeof task.updated_at === "string" ? task.updated_at.slice(0, 10) : "";
       if (!key) continue;
       tasksByDay[key] = (tasksByDay[key] || 0) + 1;

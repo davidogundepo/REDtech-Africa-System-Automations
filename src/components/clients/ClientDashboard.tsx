@@ -141,7 +141,7 @@ export const ClientDashboard = ({
 
   // Format currency
   const formatMoney = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(amount);
   };
 
   const getInitials = (name: string) => (name || "U").split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
