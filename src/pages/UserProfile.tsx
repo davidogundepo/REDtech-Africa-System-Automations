@@ -2,6 +2,8 @@ import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { isTaskCompleted } from "@/lib/task-utils";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -129,9 +131,10 @@ const UserProfile = () => {
     }
 
     toast.success(`Looking good, ${profile.full_name.split(" ")[0]}! Photo updated 📸`);
+    // Invalidate all profile-related queries so sidebar and auth context update reactively
     queryClient.invalidateQueries({ queryKey: ["profiles"] });
-    // Force reload to update sidebar avatar and auth context
-    setTimeout(() => window.location.reload(), 500);
+    queryClient.invalidateQueries({ queryKey: ["auth-profile"] });
+    queryClient.invalidateQueries({ queryKey: ["my-tasks-profile"] });
   };
 
   const updateNameMutation = useMutation({
@@ -149,7 +152,7 @@ const UserProfile = () => {
 
   // ── Performance Scoring ──
   const totalTasks = tasks?.length || 0;
-  const completedTasks = tasks?.filter((t: any) => t.status === "completed").length || 0;
+  const completedTasks = tasks?.filter((t: any) => isTaskCompleted(t.status)).length || 0;
   const overdueTasks = tasks?.filter((t: any) => t.status === "overdue").length || 0;
   const inProgressTasks = tasks?.filter((t: any) => t.status === "in-progress").length || 0;
   const pendingTasks = tasks?.filter((t: any) => t.status === "pending").length || 0;

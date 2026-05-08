@@ -41,26 +41,13 @@ export default function ActivityHistory() {
   const [actionFilter, setActionFilter] = useState<string>("all");
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["activity-log", scope, isDemo],
+    queryKey: ["activity-log", scope],
     queryFn: async () => {
       let q = (supabase as any).from("activity_log").select("*").order("created_at", { ascending: false }).limit(500);
       if (scope === "mine" && profile?.id) q = q.eq("user_id", profile.id);
       const { data, error } = await q;
       if (error) throw error;
-      const real = data || [];
-      if (isDemo && real.length < 6) {
-        const now = Date.now();
-        const demo = [
-          { id: "demo-1", action: "generate", entity_type: "invoice", description: "Invoice #INV-2026-014 — Stellar Logistics", size_bytes: 184320, created_at: new Date(now - 1000*60*12).toISOString(), user_id: profile?.id },
-          { id: "demo-2", action: "send_email", entity_type: "invoice", description: "Sent invoice to ops@stellar.co", size_bytes: 184320, created_at: new Date(now - 1000*60*15).toISOString(), user_id: profile?.id },
-          { id: "demo-3", action: "upload", entity_type: "document", description: "Q2 Pitch Deck v3.pdf", size_bytes: 2_412_038, created_at: new Date(now - 1000*60*60*2).toISOString(), user_id: profile?.id },
-          { id: "demo-4", action: "create", entity_type: "client", description: "Added new client: Aurora Foods", size_bytes: 0, created_at: new Date(now - 1000*60*60*5).toISOString(), user_id: profile?.id },
-          { id: "demo-5", action: "update", entity_type: "task", description: "Marked 'Quarterly review' as complete", size_bytes: 0, created_at: new Date(now - 1000*60*60*9).toISOString(), user_id: profile?.id },
-          { id: "demo-6", action: "generate", entity_type: "waybill", description: "Waybill #WB-208 — Lagos → Abuja", size_bytes: 96256, created_at: new Date(now - 1000*60*60*24).toISOString(), user_id: profile?.id },
-        ];
-        return [...real, ...demo];
-      }
-      return real;
+      return data || [];
     },
   });
 

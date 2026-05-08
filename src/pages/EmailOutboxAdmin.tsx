@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mail, RefreshCw, RotateCw, Trash2, AlertTriangle, CheckCircle2, Clock3, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { EmailOutboxRow } from "@/lib/email";
 
 type Status = "all" | "pending" | "sent" | "dlq";
 
@@ -30,7 +31,7 @@ async function retryEmailOutboxRow(id: string) {
       attempts: 0,
       next_attempt_at: new Date().toISOString(),
       last_error: null,
-    })
+    } satisfies Partial<EmailOutboxRow>)
     .eq("id", id);
 
   if (error) throw error;

@@ -52,6 +52,43 @@ const OpsDashboard = () => {
     },
   });
 
+  // Real: expense transactions for spending breakdown
+  const { data: expenseTransactions } = useQuery({
+    queryKey: ["ops-expense-transactions"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("type", "expense")
+        .order("date", { ascending: false })
+        .limit(500);
+      return data || [];
+    },
+  });
+
+  // Real: tasks grouped by assignee for performance leaderboard
+  const { data: allTasks } = useQuery({
+    queryKey: ["ops-all-tasks"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tasks")
+        .select("id, assigned_to, assigned_to_user_id, status, priority")
+        .limit(1000);
+      return data || [];
+    },
+  });
+
+  // Real: profiles for name lookup
+  const { data: profilesList } = useQuery({
+    queryKey: ["ops-profiles-list"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, department");
+      return data || [];
+    },
+  });
+
   const addMetricMutation = useMutation({
     mutationFn: async (payload: any) => {
       const { error } = await supabase.from("ops_metrics").insert([payload]);
@@ -115,24 +152,81 @@ const OpsDashboard = () => {
   const optimalDays = metrics?.filter((m: any) => m.issues === 0).length || 0;
   const avgIssues = metrics && metrics.length > 0 ? (totalIssues / metrics.length).toFixed(1) : "0";
 
+  // Real: performance KPIs derived from ops_metrics
+  const efficiencyRate = totalDeliveries > 0 ? Math.round(((totalDeliveries - totalIssues) / totalDeliveries) * 100) : null;
+  const onTimeRate = metrics && metrics.length > 0 ? Math.round((optimalDays / metrics.length) * 100) : null;
+
+  // Real: leaderboard from tasks grouped by assignee
+  const staffLeaderboard = useMemo(() => {
+    if (!allTasks || allTasks.length === 0 || !profilesList) return [];
+    const profileMap: Record<string, { name: string; dept: string }> = {};
+    profilesList.forEach((p: any) => { profileMap[p.id] = { name: p.full_name, dept: p.department || "—" }; });
+
+    const byStaff: Record<string, { name: string; dept: string; total: number; done: number }> = {};
+    allTasks.forEach((t: any) => {
+      const key = t.assigned_to_user_id || t.assigned_to || "unknown";
+      const info = profileMap[t.assigned_to_user_id] || { name: t.assigned_to || "Unknown", dept: "—" };
+      if (!byStaff[key]) byStaff[key] = { name: info.name, dept: info.dept, total: 0, done: 0 };
+      byStaff[key].total++;
+      const doneStatuses = new Set(["completed", "done", "approved", "Completed", "Done"]);
+      if (doneStatuses.has(t.status)) byStaff[key].done++;
+    });
+
+    return Object.values(byStaff)
+      .filter(s => s.name && s.name !== "Unknown" && s.total > 0)
+      .map(s => ({
+        name: s.name,
+        dept: s.dept,
+        tasks: s.total,
+        efficiency: s.total > 0 ? Math.round((s.done / s.total) * 100) : 0,
+        rating: s.total > 0 && (s.done / s.total) >= 0.9 ? "Exceptional" :
+                (s.done / s.total) >= 0.75 ? "Strong" :
+                (s.done / s.total) >= 0.6 ? "Good" : "Developing",
+        tone: s.total > 0 && (s.done / s.total) >= 0.9 ? "success" :
+              (s.done / s.total) >= 0.75 ? "info" :
+              (s.done / s.total) >= 0.6 ? "warning" : "destructive",
+      }))
+      .sort((a, b) => b.efficiency - a.efficiency)
+      .slice(0, 10);
+  }, [allTasks, profilesList]);
+
+
   // Sparklines (last 7 entries)
   const recent = (metrics || []).slice(-7);
   const sparkDeliveries = recent.map((m: any) => ({ v: m.deliveries }));
   const sparkIssues = recent.map((m: any) => ({ v: m.issues }));
 
-  // Synthesised charts when no real data
-  const spendingData = [
-    { name: "Fuel & Fleet", value: 450000, color: "hsl(var(--info))" },
-    { name: "Maintenance", value: 120000, color: "hsl(var(--warning))" },
-    { name: "Salaries", value: 890000, color: "hsl(var(--success))" },
-    { name: "Marketing", value: 210000, color: "hsl(var(--primary))" },
-  ];
-  const crmYieldData = [
-    { month: "Jan", crm: 45, ads: 32 },
-    { month: "Feb", crm: 52, ads: 35 },
-    { month: "Mar", crm: 48, ads: 30 },
-    { month: "Apr", crm: 61, ads: 42 },
-  ];
+  // Real: spending breakdown from expense transactions by category
+  const spendingData = useMemo(() => {
+    if (!expenseTransactions || expenseTransactions.length === 0) return [];
+    const categoryMap: Record<string, number> = {};
+    expenseTransactions.forEach((t: any) => {
+      const cat = t.category || t.description?.split(" ")[0] || "Other";
+      categoryMap[cat] = (categoryMap[cat] || 0) + (t.amount || 0);
+    });
+    const colors = ["hsl(var(--info))", "hsl(var(--warning))", "hsl(var(--success))", "hsl(var(--primary))", "hsl(var(--destructive))"];
+    return Object.entries(categoryMap)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }));
+  }, [expenseTransactions]);
+
+  // Real: ops success rate by month from ops_metrics (deliveries vs issues ratio)
+  const opsYieldData = useMemo(() => {
+    if (!metrics || metrics.length === 0) return [];
+    const monthMap: Record<string, { deliveries: number; issues: number }> = {};
+    metrics.forEach((m: any) => {
+      const month = format(new Date(m.date), "MMM");
+      if (!monthMap[month]) monthMap[month] = { deliveries: 0, issues: 0 };
+      monthMap[month].deliveries += m.deliveries || 0;
+      monthMap[month].issues += m.issues || 0;
+    });
+    return Object.entries(monthMap).map(([month, { deliveries, issues }]) => ({
+      month,
+      successRate: deliveries > 0 ? Math.round(((deliveries - issues) / deliveries) * 100) : 0,
+      issueRate: deliveries > 0 ? Math.round((issues / deliveries) * 100) : 0,
+    }));
+  }, [metrics]);
 
   const tooltipBg = theme === "dark" ? "hsl(var(--card))" : "#fff";
   const tooltipBorder = "hsl(var(--border))";
@@ -390,6 +484,7 @@ const OpsDashboard = () => {
               </h3>
               <p className="text-xs text-muted-foreground mb-5">Quarterly OpEx segmentation</p>
               <div className="flex-1 min-h-[280px]">
+              {spendingData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={spendingData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={4} dataKey="value">
@@ -398,36 +493,47 @@ const OpsDashboard = () => {
                     <Tooltip formatter={(value: any) => `₦${value.toLocaleString()}`} contentStyle={{ backgroundColor: tooltipBg, borderRadius: "10px", border: `1px solid ${tooltipBorder}`, fontSize: 12, fontWeight: 600 }} />
                   </PieChart>
                 </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm">
+                  <EmptyState illustration="ops" heading="No expense data" subtext="Record expense transactions with categories to populate this breakdown." />
+                </div>
+              )}
               </div>
-              <div className="grid grid-cols-2 gap-2 mt-3">
-                {spendingData.map(s => (
-                  <div key={s.name} className="flex items-center gap-2 bg-card border border-border p-2.5 rounded-md">
-                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate">{s.name}</p>
-                      <p className="text-xs font-bold">₦{s.value.toLocaleString()}</p>
+              {spendingData.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  {spendingData.map(s => (
+                    <div key={s.name} className="flex items-center gap-2 bg-card border border-border p-2.5 rounded-md">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate">{s.name}</p>
+                        <p className="text-xs font-bold">₦{s.value.toLocaleString()}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="surface-bevel rounded-[14px] p-6 flex flex-col">
               <h3 className="text-base font-semibold flex items-center gap-2 mb-1">
                 <TrendingUp className="w-4 h-4 text-primary" /> Strategic Yield
               </h3>
-              <p className="text-xs text-muted-foreground mb-5">ROI on key operational channels</p>
+              <p className="text-xs text-muted-foreground mb-5">Delivery success rate by month from ops metrics</p>
               <div className="flex-1 min-h-[320px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={crmYieldData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: textFill, fontSize: 11, fontWeight: 600 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: textFill, fontSize: 11, fontWeight: 600 }} />
-                    <Tooltip contentStyle={{ backgroundColor: tooltipBg, borderRadius: "10px", border: `1px solid ${tooltipBorder}`, fontSize: 12, fontWeight: 600 }} />
-                    <Bar dataKey="crm" name="CRM Channels" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="ads" name="Paid Ads" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {opsYieldData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={opsYieldData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: textFill, fontSize: 11, fontWeight: 600 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: textFill, fontSize: 11, fontWeight: 600 }} unit="%" />
+                      <Tooltip contentStyle={{ backgroundColor: tooltipBg, borderRadius: "10px", border: `1px solid ${tooltipBorder}`, fontSize: 12, fontWeight: 600 }} formatter={(v: any) => `${v}%`} />
+                      <Bar dataKey="successRate" name="Success Rate" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="issueRate" name="Issue Rate" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyState illustration="ops" heading="No ops data yet" subtext="Log shift metrics to see monthly success rates." />
+                )}
               </div>
             </div>
           </div>
@@ -532,10 +638,10 @@ const OpsDashboard = () => {
         {/* PERFORMANCE */}
         <TabsContent value="performance" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-            <BevelKPI title="Avg Efficiency" value="87%" change="+6.4%" trend="up" icon={Target} accent="primary" />
-            <BevelKPI title="Tasks Completed" value={totalDeliveries || 127} change="+14%" trend="up" icon={CheckCircle} accent="success" />
-            <BevelKPI title="On-Time Rate" value="93%" change="+2.1%" trend="up" icon={Clock} accent="info" />
-            <BevelKPI title="Issue Resolution" value="4.2h" change="-22%" trend="up" icon={Activity} accent="primary" />
+            <BevelKPI title="Avg Efficiency" value={efficiencyRate !== null ? `${efficiencyRate}%` : "—"} change={efficiencyRate !== null ? `${efficiencyRate}% success` : "No data yet"} trend="up" icon={Target} accent="primary" />
+            <BevelKPI title="Tasks Completed" value={totalDeliveries || "—"} change={totalDeliveries > 0 ? "+from ops log" : "No data yet"} trend="up" icon={CheckCircle} accent="success" />
+            <BevelKPI title="On-Time Rate" value={onTimeRate !== null ? `${onTimeRate}%` : "—"} change={onTimeRate !== null ? `${optimalDays} optimal days` : "No data yet"} trend="up" icon={Clock} accent="info" />
+            <BevelKPI title="Avg Issues / Day" value={avgIssues} change={parseFloat(avgIssues) === 0 ? "Zero issues" : `${avgIssues} avg`} trend={parseFloat(avgIssues) < 2 ? "up" : "down"} icon={Activity} accent="primary" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -547,58 +653,54 @@ const OpsDashboard = () => {
                 <p className="text-xs text-muted-foreground mt-0.5">Staff efficiency for current review period</p>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-muted/40 border-b border-border">
-                    <tr>
-                      <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Team Member</th>
-                      <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Department</th>
-                      <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Tasks</th>
-                      <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Efficiency</th>
-                      <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Rating</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {[
-                      { name: "Oluwaseun Bakare", dept: "Engineering", tasks: 42, efficiency: 94, rating: "Exceptional", tone: "success" },
-                      { name: "Chidinma Okafor", dept: "Operations", tasks: 38, efficiency: 91, rating: "Exceptional", tone: "success" },
-                      { name: "Ibrahim Musa", dept: "Marketing", tasks: 31, efficiency: 87, rating: "Strong", tone: "info" },
-                      { name: "Aisha Bello", dept: "Finance", tasks: 28, efficiency: 85, rating: "Strong", tone: "info" },
-                      { name: "Emeka Nwankwo", dept: "Engineering", tasks: 25, efficiency: 78, rating: "Good", tone: "warning" },
-                      { name: "Folake Adeyemi", dept: "Operations", tasks: 22, efficiency: 72, rating: "Developing", tone: "warning" },
-                    ].map((staff, i) => (
-                      <tr key={i} className="transition-colors">
-                        <td className="px-6 py-3.5">
-                          <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[11px]">
-                              {staff.name.split(" ").map(n => n[0]).join("")}
-                            </div>
-                            <span className="font-semibold text-sm">{staff.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-3.5">
-                          <Badge variant="outline" className="font-semibold text-[10px] uppercase tracking-wider">{staff.dept}</Badge>
-                        </td>
-                        <td className="px-6 py-3.5 font-bold text-sm">{staff.tasks}</td>
-                        <td className="px-6 py-3.5">
-                          <div className="flex items-center gap-3 min-w-[120px]">
-                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-1000 bg-${staff.tone}`}
-                                style={{ width: `${staff.efficiency}%` }}
-                              />
-                            </div>
-                            <span className="font-bold text-sm w-10 text-right">{staff.efficiency}%</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-3.5">
-                          <Badge variant="outline" className={`font-semibold text-[10px] uppercase tracking-wider bg-${staff.tone}/10 text-${staff.tone} border-${staff.tone}/20`}>
-                            {staff.rating}
-                          </Badge>
-                        </td>
+                {staffLeaderboard.length > 0 ? (
+                  <table className="w-full text-left">
+                    <thead className="bg-muted/40 border-b border-border">
+                      <tr>
+                        <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Team Member</th>
+                        <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Department</th>
+                        <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Tasks</th>
+                        <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Efficiency</th>
+                        <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Rating</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {staffLeaderboard.map((staff, i) => (
+                        <tr key={i} className="transition-colors">
+                          <td className="px-6 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[11px]">
+                                {staff.name.split(" ").map((n: string) => n[0]).join("")}
+                              </div>
+                              <span className="font-semibold text-sm">{staff.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-3.5">
+                            <Badge variant="outline" className="font-semibold text-[10px] uppercase tracking-wider">{staff.dept || "—"}</Badge>
+                          </td>
+                          <td className="px-6 py-3.5 font-bold text-sm">{staff.tasks}</td>
+                          <td className="px-6 py-3.5">
+                            <div className="flex items-center gap-3 min-w-[120px]">
+                              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full transition-all duration-1000 bg-${staff.tone}`} style={{ width: `${staff.efficiency}%` }} />
+                              </div>
+                              <span className="font-bold text-sm w-10 text-right">{staff.efficiency}%</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-3.5">
+                            <Badge variant="outline" className={`font-semibold text-[10px] uppercase tracking-wider bg-${staff.tone}/10 text-${staff.tone} border-${staff.tone}/20`}>
+                              {staff.rating}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="p-12">
+                    <EmptyState illustration="tasks" heading="No task assignments yet" subtext="Assign tasks to team members to see performance rankings here." />
+                  </div>
+                )}
               </div>
             </div>
 

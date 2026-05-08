@@ -108,7 +108,15 @@ export const ClientDashboard = ({
     });
   }, [wonDeals]);
 
-  // MRR — real invoiced value per month for won deals (10% assumed recurring)
+  // Called 'thisMonthRevenue' instead of MRR because there is no recurring subscription model.
+  const thisMonthRevenue = useMemo(() => {
+    const now = new Date();
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const wonThisMonth = wonDeals.filter(c => (c.created_at || '').startsWith(monthStr));
+    return wonThisMonth.reduce((sum, c) => sum + getRealValue(c), 0);
+  }, [wonDeals]);
+
+  // Month-by-month cumulative won revenue for trend chart (no fake MRR % applied)
   const monthlyRecurringRevenue = useMemo(() => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const currentYear = new Date().getFullYear();
@@ -117,8 +125,8 @@ export const ClientDashboard = ({
     let cumulative = 0;
     return months.map((month, i) => {
       const monthStr = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
-      const wonInMonth = wonDeals.filter(c => (c.created_at || "").startsWith(monthStr));
-      const value = wonInMonth.reduce((sum, c) => sum + getRealValue(c) * 0.1, 0);
+      const wonInMonth = wonDeals.filter(c => (c.created_at || '').startsWith(monthStr));
+      const value = wonInMonth.reduce((sum, c) => sum + getRealValue(c), 0);
       cumulative += value;
       return {
         month,
@@ -335,7 +343,7 @@ export const ClientDashboard = ({
           className="border-border/40 shadow-sm"
           views={[
             {
-              label: "Monthly Recurring Revenue (MRR)",
+              label: "Monthly Won Revenue",
               content: (
                 <div className="h-[220px] mt-2">
                   <ResponsiveContainer width="100%" height="100%">
@@ -344,7 +352,7 @@ export const ClientDashboard = ({
                       <XAxis dataKey="month" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                       <RechartsTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", fontSize: 12 }} />
-                      <Bar dataKey="mrr" name="Actual MRR" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="mrr" name="Won Revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="projected" name="Projected MRR" fill="#94a3b8" opacity={0.3} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>

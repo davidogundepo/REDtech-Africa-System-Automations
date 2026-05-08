@@ -1,5 +1,29 @@
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Local schema type for email_outbox rows.
+ * Mirrors the current DB schema — update here if columns change.
+ * Using a local type (not generated) because email_outbox is managed
+ * outside the main Supabase type generation cycle.
+ */
+export interface EmailOutboxRow {
+  id: string;
+  to_addresses: string[];
+  cc_addresses: string[];
+  subject: string;
+  html: string | null;
+  text_body: string | null;
+  status: "pending" | "sent" | "dlq" | "failed";
+  attempts: number;
+  next_attempt_at: string | null;
+  last_error: string | null;
+  created_by: string | null;
+  created_at: string;
+  sent_at: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+
 export interface EmailPayload {
   to: string | string[];
   subject: string;
@@ -61,7 +85,7 @@ export const enqueueEmail = async (input: EnqueueEmailInput): Promise<string | n
         text_body:     null,
         next_attempt_at: dueAt,
         created_by:    user?.id ?? null,
-      })
+      } satisfies Partial<EmailOutboxRow>)
       .select('id')
       .single();
 
