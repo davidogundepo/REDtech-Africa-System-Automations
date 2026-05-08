@@ -395,23 +395,47 @@ const DocumentRepository = () => {
     return '0 KB';
   };
 
-  // Build folder hubs dynamically from real uploaded documents
-  const getDocsForDept = (dept: string) =>
-    allDocs
-      .filter((d: any) => (d.department || '').toLowerCase().includes(dept.toLowerCase()))
-      .slice(0, 5)
-      .map((d: any) => d.name);
+  // Live-derived Access Hubs — grouped by department from real uploaded documents
+  const KNOWN_HUBS = [
+    { key: "finance",     title: "Finance & Accounting",  keywords: ["finance", "accounting", "invoice", "waybill"],   color: "bg-success/10",     border: "border-success/20",     icon: <Building2 className="w-6 h-6 text-success"/> },
+    { key: "hr",          title: "Human Resources",        keywords: ["hr", "human", "people", "leave", "attendance"],  color: "bg-info/10",        border: "border-info/20",        icon: <FileText className="w-6 h-6 text-info"/> },
+    { key: "operations",  title: "Operations",             keywords: ["operations", "ops", "delivery"],                  color: "bg-warning/10",     border: "border-warning/20",     icon: <AlertCircle className="w-6 h-6 text-warning"/> },
+    { key: "marketing",   title: "Brand & Marketing",      keywords: ["brand", "market", "design", "social"],           color: "bg-gold/10",        border: "border-gold/20",        icon: <FileImage className="w-6 h-6 text-gold"/> },
+    { key: "general",     title: "General",                keywords: [],                                                  color: "bg-primary/10",     border: "border-primary/20",     icon: <FolderOpen className="w-6 h-6 text-primary"/> },
+  ];
 
-  const accessHubFolders = [
-    { title: "Finance & Accounting", count: computeFolderCount("finance"), size: computeFolderSize("finance"), icon: <Building2 className="w-6 h-6 text-success"/>, color: "bg-success/10", border: "border-success/20",
-      docs: getDocsForDept("finance") },
-    { title: "Human Resources", count: computeFolderCount("hr") + computeFolderCount("human"), size: computeFolderSize("hr"), icon: <FileText className="w-6 h-6 text-info"/>, color: "bg-info/10", border: "border-info/20",
-      docs: getDocsForDept("hr") },
-    { title: "Operations", count: computeFolderCount("operation"), size: computeFolderSize("operation"), icon: <AlertCircle className="w-6 h-6 text-warning"/>, color: "bg-warning/10", border: "border-warning/20",
-      docs: getDocsForDept("operation") },
-    { title: "Marketing & Brand", count: computeFolderCount("market") + computeFolderCount("brand") + computeFolderCount("design"), size: computeFolderSize("market"), icon: <FileImage className="w-6 h-6 text-gold"/>, color: "bg-gold/10", border: "border-gold/20",
-      docs: getDocsForDept("market") },
-  ].filter(f => f.count > 0); // Only show folders that have actual documents
+  const liveFolders = KNOWN_HUBS.map(hub => {
+    const hubDocs = allDocs.filter((d: any) => {
+      const dept = (d.department || "general").toLowerCase();
+      if (hub.key === "general") {
+        // general catches docs with null / "all" / "general" department not matching other hubs
+        const matchedOther = KNOWN_HUBS.filter(h => h.key !== "general").some(h =>
+          h.keywords.some(kw => dept.includes(kw))
+        );
+        return !matchedOther && (dept === "general" || dept === "all" || dept === "");
+      }
+      return hub.keywords.some(kw => dept.includes(kw));
+    });
+    const totalBytes = hubDocs.reduce((sum: number, f: any) => {
+      const sizeStr = f.size || "0";
+      const num = parseFloat(sizeStr);
+      if (sizeStr.includes("GB")) return sum + num * 1024 * 1024 * 1024;
+      if (sizeStr.includes("MB")) return sum + num * 1024 * 1024;
+      if (sizeStr.includes("KB")) return sum + num * 1024;
+      return sum + (isNaN(num) ? 0 : num);
+    }, 0);
+    const sizeLabel = totalBytes >= 1024*1024*1024 ? `${(totalBytes/(1024*1024*1024)).toFixed(1)} GB`
+      : totalBytes >= 1024*1024 ? `${(totalBytes/(1024*1024)).toFixed(0)} MB`
+      : totalBytes > 0 ? `${(totalBytes/1024).toFixed(0)} KB` : "0 KB";
+    return {
+      ...hub,
+      count: hubDocs.length,
+      size: sizeLabel,
+      docs: hubDocs.slice(0, 5).map((d: any) => d.name), // real filenames
+      hasFiles: hubDocs.length > 0,
+    };
+  }).filter(h => h.hasFiles); // hide empty hubs
+
 
   if (isLoading) return (
     <div className="flex-1 w-full min-h-screen flex items-center justify-center bg-background">
@@ -678,11 +702,9 @@ const DocumentRepository = () => {
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {accessHubFolders.length === 0 ? (
-            <div className="col-span-4 py-10 text-center text-sm text-muted-foreground border border-dashed border-border/50 rounded-xl">
-              No department folders yet — upload documents and tag them to a department to see them here.
-            </div>
-          ) : accessHubFolders.map((folder, i) => (
+          {liveFolders.length === 0 ? (
+            <p className="col-span-full text-sm text-muted-foreground text-center py-6 italic">No documents uploaded yet. Files will appear here once added.</p>
+          ) : liveFolders.map((folder, i) => (
             <Card key={i} className={`bg-card shadow-sm hover:shadow-md transition-all border ${folder.border} group`}>
               <CardContent className="p-5">
                 <div className="flex items-start gap-4 mb-3">
@@ -695,9 +717,7 @@ const DocumentRepository = () => {
                   </div>
                 </div>
                 <div className="space-y-1.5 border-t border-border/40 pt-3">
-                  {folder.docs.length === 0 ? (
-                    <p className="text-[11px] text-muted-foreground italic">No files yet</p>
-                  ) : folder.docs.map((doc, di) => (
+                  {folder.docs.map((doc, di) => (
                     <div key={di} className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-0.5">
                       <FileText className="w-3 h-3 flex-shrink-0 text-primary" />
                       <span className="truncate font-medium">{doc}</span>
@@ -964,7 +984,7 @@ const DocumentRepository = () => {
           </DialogHeader>
           <div className="px-8 py-6 space-y-5 max-h-[60vh] overflow-y-auto">
             {/* Existing Folders */}
-            {mockFolders.map((folder, idx) => (
+            {liveFolders.map((folder, idx) => (
               <div key={idx} className={`group relative rounded-2xl border ${folder.border} bg-background/50 hover:bg-background/80 transition-all overflow-hidden`}>
                 <div className={`absolute top-0 left-0 w-1.5 h-full ${folder.border.replace('border-', 'bg-').replace('/20', '')}`} />
                 <div className="p-5 pl-6">
@@ -1086,7 +1106,7 @@ const DocumentRepository = () => {
           {/* Footer */}
           <div className="px-8 py-5 bg-muted/20 border-t border-border/40 flex items-center justify-between">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              {mockFolders.length} Access Hubs • {mockFolders.reduce((s, f) => s + f.count, 0)} Total Files
+              {liveFolders.length} Access Hubs • {liveFolders.reduce((s, f) => s + f.count, 0)} Total Files
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setManageFoldersOpen(false)} className="rounded-xl h-10 font-bold">

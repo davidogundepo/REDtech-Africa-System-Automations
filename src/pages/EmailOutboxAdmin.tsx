@@ -17,38 +17,23 @@ type Status = "all" | "pending" | "sent" | "dlq";
 
 const getRecipients = (row: any) => {
   if (Array.isArray(row?.to_addresses)) return row.to_addresses.filter(Boolean);
-  if (typeof row?.to_email === "string" && row.to_email.trim()) return [row.to_email.trim()];
   return [];
 };
 
-const getDueAt = (row: any) => row?.next_attempt_at || row?.scheduled_for || null;
+const getDueAt = (row: any) => row?.next_attempt_at || null;
 
 async function retryEmailOutboxRow(id: string) {
-  const now = new Date().toISOString();
-
-  const modernAttempt = await (supabase as any)
+  const { error } = await (supabase as any)
     .from("email_outbox")
     .update({
       status: "pending",
       attempts: 0,
-      next_attempt_at: now,
+      next_attempt_at: new Date().toISOString(),
       last_error: null,
     })
     .eq("id", id);
 
-  if (!modernAttempt.error) return;
-
-  const legacyAttempt = await (supabase as any)
-    .from("email_outbox")
-    .update({
-      status: "pending",
-      attempts: 0,
-      scheduled_for: now,
-      last_error: null,
-    })
-    .eq("id", id);
-
-  if (legacyAttempt.error) throw legacyAttempt.error;
+  if (error) throw error;
 }
 
 export default function EmailOutboxAdmin() {
