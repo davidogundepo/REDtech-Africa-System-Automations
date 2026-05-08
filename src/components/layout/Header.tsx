@@ -228,6 +228,7 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
       </div>
       
       <div className="flex items-center gap-2 md:gap-4">
+        <div className="hidden lg:block"><DemoModeToggle /></div>
         {/* Toggle Copilot Button */}
         <Button 
           data-tour="header-ai"
