@@ -530,7 +530,7 @@ const Clients = () => {
           </TabsList>
 
           <div className="flex-1 min-h-0">
-            <ScrollArea className="h-full pr-4 -mr-4">
+            <div className="h-full overflow-y-auto pr-1">
               <TabsContent value="pipeline" className="mt-0 space-y-6 pb-6">
                 <ClientDashboard clients={clients} profiles={profiles} onMetricClick={handleMetricClick} />
 
@@ -546,13 +546,14 @@ const Clients = () => {
                   />
                 ) : (
                 <>
-                {/* Kanban View — horizontally scrollable, drag-and-drop enabled */}
-                <div className="overflow-x-auto pb-4 -mx-2 px-2">
-                  <div className="flex gap-4" style={{ minWidth: `${columns.length * 240}px` }}>
+                {/* Kanban View — horizontally scrollable */}
+                <div className="overflow-x-auto pb-4 -mx-2 px-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <div className="flex gap-4" style={{ minWidth: `${Math.max(columns.length * 280, 900)}px` }}>
                   {columns.map(column => (
                     <div 
                       key={column.id} 
-                      className="flex flex-col h-full min-h-[400px] shrink-0 w-[260px]"
+                      className="flex flex-col h-full min-h-[400px] shrink-0"
+                      style={{ width: '260px', minWidth: '240px' }}
                       onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-primary/40', 'rounded-2xl'); }}
                       onDragLeave={(e) => { e.currentTarget.classList.remove('ring-2', 'ring-primary/40', 'rounded-2xl'); }}
                       onDrop={async (e) => {
@@ -741,7 +742,7 @@ const Clients = () => {
                 </Card>
                 )}
               </TabsContent>
-            </ScrollArea>
+            </div>
           </div>
         </Tabs>
       </div>

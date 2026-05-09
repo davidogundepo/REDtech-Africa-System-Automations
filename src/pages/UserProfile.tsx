@@ -398,9 +398,6 @@ const UserProfile = () => {
               <div className="mt-6 pt-6 border-t border-border/40">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Profile Specs</p>
-                  <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] font-bold text-primary hover:bg-primary/10 rounded-md" onClick={() => { setEditName(profile.full_name); setEditDialogOpen(true); }}>
-                    <Edit className="w-3 h-3 mr-1" /> Edit Specs
-                  </Button>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-gradient-to-br from-success/5 to-transparent border border-success/20">

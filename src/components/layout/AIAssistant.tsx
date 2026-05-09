@@ -250,7 +250,7 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
     let staff: any[] = [];
     try {
       const [tasksRes, leavesRes, staffRes] = await Promise.all([
-        (supabase as any).from('tasks').select('title, status, priority').eq('user_id', profile?.id).in('status', ['todo', 'in_progress']).limit(5),
+        (supabase as any).from('tasks').select('title, status, priority').or(`assigned_to_user_id.eq.${profile?.id},assigned_to.eq.${profile?.full_name}`).in('status', ['pending', 'in-progress']).limit(5),
         (supabase as any).from('leave_requests').select('status, leave_type').eq('user_id', profile?.id).eq('status', 'pending').limit(1),
         (supabase as any).from('profiles').select('full_name, department, email, role, performance_score').limit(50),
       ]);
@@ -325,7 +325,7 @@ export const AIAssistant = ({ isOpen, setIsOpen }: AIAssistantProps) => {
 
     // ⚡ 0ms LATENCY SUGESTION BYPASS (Skips Google Gemini's 2-second LLM processing time)
     if (lowerInput === 'list my tasks' || lowerInput === 'what are my tasks') {
-       const { data } = await (supabase as any).from('tasks').select('title, status, priority').eq('user_id', profile?.id).in('status', ['todo', 'in_progress']).limit(10);
+       const { data } = await (supabase as any).from('tasks').select('title, status, priority').or(`assigned_to_user_id.eq.${profile?.id},assigned_to.eq.${profile?.full_name}`).in('status', ['pending', 'in-progress']).limit(10);
        const tasksText = data?.length 
             ? `Here are your current active tasks:\n\n${data.map((t: any) => `- **${t.title}** (${t.priority})`).join('\n')}\n`
             : "You have no active tasks currently.";

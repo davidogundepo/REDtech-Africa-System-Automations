@@ -252,7 +252,7 @@ export const TeamOverviewCards = ({
               content: (() => {
                 // Parse GPS coordinates stored in clock-in notes as [📌 lat, lng]
                 const geoPattern = /\[📌\s*(-?\d+\.\d+),\s*(-?\d+\.\d+)\]/;
-                const staffWithGPS = allRecords
+                const staffWithGPS = (allRecords || [])
                   .map((r: any) => {
                     const match = r.notes?.match(geoPattern);
                     if (!match) return null;
