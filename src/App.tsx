@@ -42,6 +42,11 @@ const PartnershipGenerator = lazy(() => import("./pages/PartnershipGenerator"));
 const ActivityHistory = lazy(() => import("./pages/ActivityHistory"));
 const PlatformSettings = lazy(() => import("./pages/PlatformSettings"));
 const EmailOutboxAdmin = lazy(() => import("./pages/EmailOutboxAdmin"));
+const HRLayout = lazy(() => import("./pages/hr/HRLayout"));
+const HROverview = lazy(() => import("./pages/hr/HROverview"));
+const HRRecruitment = lazy(() => import("./pages/hr/HRRecruitment"));
+const HRPerformance = lazy(() => import("./pages/hr/HRPerformance"));
+const HRLearning = lazy(() => import("./pages/hr/HRLearning"));
 
 
 /**
@@ -124,6 +129,12 @@ const AppRoutes = () => (
               <Route path="/activity" element={<ActivityHistory />} />
               <Route path="/platform-settings" element={<PlatformSettings />} />
               <Route path="/email-outbox" element={<EmailOutboxAdmin />} />
+              <Route path="/hr" element={<ModuleGuard path="/hr"><HRLayout /></ModuleGuard>}>
+                <Route index element={<HROverview />} />
+                <Route path="recruitment" element={<HRRecruitment />} />
+                <Route path="performance" element={<HRPerformance />} />
+                <Route path="learning" element={<HRLearning />} />
+              </Route>
               <Route path="/departments" element={<Navigate to="/users#departments" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
