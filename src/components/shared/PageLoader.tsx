@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 /**
@@ -24,23 +25,94 @@ export function PageLoader({ label = "Loading…" }: { label?: string }) {
 }
 
 /**
- * FullScreenLoader — for top-level boundaries (auth gate, app shell).
+ * SplashScreen — Gmail-style branded reveal shown while auth resolves.
+ *
+ * Phases:
+ *  0-600ms  : logo scales + fades in, progress bar sweeps across
+ *  600ms+   : sits visible, progress bar loops subtly
+ *  on ready : whole overlay fades out + scales up slightly (exits)
  */
 export function FullScreenLoader({ label = "Preparing your workspace" }: { label?: string }) {
+  const [exiting, setExiting] = useState(false);
+  const [gone, setGone] = useState(false);
+
+  // After a minimum display time, start the exit animation
+  useEffect(() => {
+    // Give auth at least 800ms of splash so the reveal always plays fully
+    const minDisplay = setTimeout(() => setExiting(true), 800);
+    return () => clearTimeout(minDisplay);
+  }, []);
+
+  // Remove from DOM after exit animation finishes (400ms)
+  useEffect(() => {
+    if (!exiting) return;
+    const t = setTimeout(() => setGone(true), 450);
+    return () => clearTimeout(t);
+  }, [exiting]);
+
+  if (gone) return null;
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-5 text-center">
-        <div className="relative">
-          <div className="absolute inset-0 rounded-full bg-primary/30 blur-2xl animate-pulse" />
-          <div className="relative h-14 w-14 rounded-full bg-card border border-border/60 shadow-lg flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+    <>
+      {/* Keyframe styles injected inline so no extra CSS file needed */}
+      <style>{`
+        @keyframes rac-logo-in {
+          0%   { opacity: 0; transform: scale(0.82); }
+          60%  { opacity: 1; transform: scale(1.03); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes rac-bar-fill {
+          0%   { width: 0%; opacity: 1; }
+          70%  { width: 85%; opacity: 1; }
+          100% { width: 100%; opacity: 0; }
+        }
+        @keyframes rac-splash-out {
+          0%   { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(1.04); }
+        }
+        .rac-logo-anim   { animation: rac-logo-in 0.65s cubic-bezier(0.22,1,0.36,1) forwards; }
+        .rac-bar-anim    { animation: rac-bar-fill 1.8s cubic-bezier(0.4,0,0.2,1) forwards; }
+        .rac-splash-exit { animation: rac-splash-out 0.4s cubic-bezier(0.4,0,1,1) forwards; }
+      `}</style>
+
+      <div
+        className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background ${
+          exiting ? "rac-splash-exit" : ""
+        }`}
+      >
+        {/* Logo block */}
+        <div className="rac-logo-anim flex flex-col items-center gap-5">
+          {/* Logo image */}
+          <div className="relative">
+            <div className="absolute inset-0 rounded-2xl bg-primary/15 blur-2xl scale-125" />
+            <img
+              src="/company-logo.png"
+              alt="REDtech Africa"
+              className="relative h-20 w-auto object-contain drop-shadow-xl"
+              onError={(e) => {
+                // Fallback to text wordmark if image fails
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          </div>
+
+          {/* Wordmark + tagline */}
+          <div className="text-center space-y-1">
+            <p className="text-lg font-bold tracking-tight text-foreground">
+              REDtech Africa
+            </p>
+            <p className="text-xs text-muted-foreground tracking-[0.18em] uppercase">
+              {label}
+            </p>
           </div>
         </div>
-        <div>
-          <p className="text-sm font-semibold tracking-tight text-foreground">RAC Automations</p>
-          <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+
+        {/* Gmail-style thin progress bar at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-transparent overflow-hidden">
+          <div className="rac-bar-anim h-full bg-primary rounded-full" />
         </div>
       </div>
-    </div>
+    </>
   );
 }
+
