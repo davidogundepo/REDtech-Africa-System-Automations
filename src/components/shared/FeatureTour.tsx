@@ -4,6 +4,11 @@ import "driver.js/dist/driver.css";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 
+// ───────────────────────────────────────────────────
+// TOUR KILL SWITCH — flip to true to re-enable the onboarding tour
+const TOUR_ENABLED = false;
+// ───────────────────────────────────────────────────
+
 const TOUR_STORAGE_PREFIX = "rta-feature-tour-v2:";
 const TOUR_RESET_TITLE = "[SYSTEM_TOUR_RESET]";
 
@@ -179,6 +184,8 @@ export function FeatureTour() {
   }, []);
 
   useEffect(() => {
+    // Tour is disabled — flip TOUR_ENABLED to true to re-enable
+    if (!TOUR_ENABLED) return;
     if (loading || !user || !profile || ranRef.current) return;
     ranRef.current = true;
 
@@ -236,8 +243,9 @@ export function FeatureTour() {
   return null;
 }
 
-/** Manual replay — call from anywhere (e.g. sidebar button). */
+/** Manual replay — disabled while TOUR_ENABLED = false. */
 export function startFeatureTour(firstName = "there", role?: Role) {
+  if (!TOUR_ENABLED) return;
   // If the sidebar nav isn't in the DOM (e.g. called from /auth), bail
   const hasSidebar = !!document.querySelector('[data-tour="nav-dashboard"]');
   if (!hasSidebar) {

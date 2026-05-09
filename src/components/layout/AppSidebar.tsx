@@ -594,16 +594,7 @@ export function AppSidebar() {
             <ModuleManagerDialogContent disabledModules={disabledModules} toggleModule={toggleModule} />
           </Dialog>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-sidebar-foreground/65 hover:text-primary hover:bg-primary/10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-0"
-          onClick={() => startFeatureTour((profile?.full_name || "there").split(" ")[0], profile?.role as any)}
-          title="Replay onboarding tour"
-        >
-          <PlayCircle className="h-4 w-4 shrink-0" style={{ marginRight: isCollapsed ? 0 : '0.5rem' }} />
-          {!isCollapsed && <span>Replay Tour</span>}
-        </Button>
+        {/* Replay Tour button hidden — tour currently disabled */}
         <Button
           variant="ghost"
           size="sm"
