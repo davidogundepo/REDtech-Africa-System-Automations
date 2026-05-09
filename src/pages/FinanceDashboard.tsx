@@ -71,6 +71,83 @@ const StatCard = ({ title, value, change, isPositive, icon: Icon, sparklineData,
   );
 };
 
+const AiEntryBar = ({ addTxMutation, profile, formatCurrency }: any) => {
+  const [aiEntryText, setAiEntryText] = useState('');
+  const [aiParsing, setAiParsing] = useState(false);
+
+  const handleAiEntry = async () => {
+    const raw = aiEntryText.trim();
+    if (!raw) return;
+    setAiParsing(true);
+    try {
+      // Extract amount — supports ₦, NGN, or bare number
+      const amtMatch = raw.match(/(?:₦|NGN|#)?\s?([\d,]+(?:\.\d{1,2})?)/i);
+      if (!amtMatch) { toast.error("Couldn't find an amount. Try: 'Log ₦25,000 for AWS under Utilities'"); return; }
+      const amount = parseFloat(amtMatch[1].replace(/,/g, ''));
+      if (!amount || isNaN(amount) || amount <= 0) { toast.error("Amount must be a positive number."); return; }
+
+      const rawLower = raw.toLowerCase();
+      const isRevenue = /\b(revenue|income|earned|received|retainer|payment received|invoice paid)\b/.test(rawLower);
+      const type = isRevenue ? 'revenue' : 'expense';
+
+      let category = 'General';
+      const catMatch = raw.match(/(?:for|under|category:?)\s+([A-Za-z0-9 &/-]+?)(?:\s+(?:today|yesterday|on|in|from|\d)|$)/i);
+      if (catMatch) category = catMatch[1].trim().replace(/\s+/g, ' ');
+
+      let date = format(new Date(), 'yyyy-MM-dd');
+      if (/yesterday/i.test(raw)) {
+        const d = new Date(); d.setDate(d.getDate() - 1);
+        date = format(d, 'yyyy-MM-dd');
+      } else {
+        const dateMatch = raw.match(/\b(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\b/);
+        if (dateMatch) {
+          const parsed = new Date(dateMatch[1]);
+          if (!isNaN(parsed.getTime())) date = format(parsed, 'yyyy-MM-dd');
+        }
+      }
+
+      await addTxMutation.mutateAsync({
+        amount, type, category, date,
+        description: raw.slice(0, 200),
+        created_by: profile?.full_name || 'AI Entry',
+      });
+      setAiEntryText('');
+      toast.success(`✅ Logged ${type === 'revenue' ? '+' : '-'}${formatCurrency(amount)} under "${category}"`);
+    } catch (err: any) {
+      toast.error('AI entry failed: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setAiParsing(false);
+    }
+  };
+
+  return (
+    <div className="mb-8 surface-bevel rounded-[14px] p-1 relative overflow-hidden">
+      <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-60" />
+      <div className="flex flex-col sm:flex-row items-center gap-3 px-4 py-3 rounded-[12px]">
+        <div className="h-9 w-9 rounded-xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center shrink-0">
+          <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+        </div>
+        <Input
+          value={aiEntryText}
+          onChange={(e) => setAiEntryText(e.target.value)}
+          placeholder="AI Entry: e.g. 'Log ₦25,000 for Office Internet under Utilities today'"
+          className="border-0 bg-transparent flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 px-1 shadow-none text-foreground placeholder:text-muted-foreground/70 text-sm"
+          onKeyDown={(e) => { if (e.key === 'Enter' && !aiParsing) handleAiEntry(); }}
+          disabled={aiParsing}
+        />
+        <Button
+          size="sm"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 shadow-lvl-2 w-full sm:w-auto rounded-lg font-bold"
+          onClick={handleAiEntry}
+          disabled={aiParsing || !aiEntryText.trim()}
+        >
+          {aiParsing ? 'Processing…' : 'Process Entry'}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const FinanceDashboard = () => {
   const { theme } = useTheme();
   const { profile, isAdmin, isSuperAdmin, canEdit } = useAuth();
@@ -610,27 +687,7 @@ const FinanceDashboard = () => {
       ]} />
 
       {/* AI Rapid Entry — branded */}
-      <div className="mb-8 surface-bevel rounded-[14px] p-1 relative overflow-hidden">
-         <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-60" />
-         <div className="flex flex-col sm:flex-row items-center gap-3 px-4 py-3 rounded-[12px]">
-            <div className="h-9 w-9 rounded-xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center shrink-0">
-               <Sparkles className="h-4 w-4 text-primary animate-pulse" />
-            </div>
-            <Input
-              placeholder="AI Entry: e.g. 'Log ₦25,000 for Office Internet under Utilities today' or 'Add recurring ₦150k AWS monthly'"
-              className="border-0 bg-transparent flex-1 focus-visible:ring-0 focus-visible:ring-offset-0 px-1 shadow-none text-foreground placeholder:text-muted-foreground/70 text-sm"
-              onKeyDown={(e) => {
-                if(e.key === 'Enter') {
-                  toast.success("AI is processing your financial entry...");
-                  (e.target as HTMLInputElement).value = '';
-                }
-              }}
-            />
-            <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 shadow-lvl-2 w-full sm:w-auto rounded-lg font-bold" onClick={() => toast.success("AI is processing your financial entry...")}>
-              Process Entry
-            </Button>
-         </div>
-      </div>
+      <AiEntryBar addTxMutation={addTxMutation} profile={profile} formatCurrency={formatCurrency} />
 
       <Tabs defaultValue="transactions" className="w-full">
         <TabsList className="mb-6 flex-wrap h-auto gap-1 border-b border-border bg-transparent w-full justify-start rounded-none p-0">

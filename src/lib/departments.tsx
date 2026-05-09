@@ -13,6 +13,7 @@ interface DepartmentContextType {
   departments: Department[];
   activeDepartments: Department[];
   loading: boolean;
+  error: Error | null;
   refresh: () => Promise<void>;
   addDepartment: (name: string, color?: string) => Promise<void>;
   deleteDepartment: (id: string) => Promise<void>;
@@ -23,6 +24,7 @@ const DepartmentContext = createContext<DepartmentContextType>({
   departments: [],
   activeDepartments: [],
   loading: false,
+  error: null,
   refresh: async () => {},
   addDepartment: async () => {},
   deleteDepartment: async () => {},
@@ -41,14 +43,20 @@ function colorFor(name: string, idx: number): string {
 export function DepartmentProvider({ children }: { children: ReactNode }) {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const { data } = await (supabase as any)
+      const { data, error: supabaseError } = await (supabase as any)
         .from('departments')
         .select('id, name, is_hidden, sort_order, created_at')
         .order('sort_order')
         .order('name');
+      
+      if (supabaseError) throw supabaseError;
+
       const mapped: Department[] = (data || []).map((d: any, i: number) => ({
         id: d.id,
         name: d.name,
@@ -57,8 +65,8 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
         createdAt: d.created_at,
       }));
       setDepartments(mapped);
-    } catch {
-      // ignore
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to fetch departments'));
     } finally {
       setLoading(false);
     }
@@ -88,7 +96,7 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
   const activeDepartments = departments.filter(d => d.isActive);
 
   return (
-    <DepartmentContext.Provider value={{ departments, activeDepartments, loading, refresh, addDepartment, deleteDepartment, toggleDepartment }}>
+    <DepartmentContext.Provider value={{ departments, activeDepartments, loading, error, refresh, addDepartment, deleteDepartment, toggleDepartment }}>
       {children}
     </DepartmentContext.Provider>
   );

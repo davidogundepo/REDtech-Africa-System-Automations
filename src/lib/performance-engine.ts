@@ -61,7 +61,7 @@ export async function runPerformanceEngine(superAdminId: string): Promise<{
   const oldestStr = oldest.toISOString().split("T")[0];
 
   const { data: attendance } = await (supabase as any)
-    .from("attendance")
+    .from("attendance_records")
     .select("user_id, date, status")
     .gte("date", oldestStr);
 

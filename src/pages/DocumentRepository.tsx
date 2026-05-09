@@ -247,7 +247,6 @@ const DocumentRepository = () => {
         file_path: fileName,
         file_size: file.size,
         mime_type: file.type || null,
-        category: inferDocumentType(file.name, file.type),
         department,
         uploaded_by: profile?.id || null,
       }]);
@@ -268,7 +267,6 @@ const DocumentRepository = () => {
         file_path: linkData.url,
         file_size: 0,
         mime_type: 'text/uri-list',
-        category: 'link',
         department: linkData.department,
         uploaded_by: profile?.id || null,
       }]);

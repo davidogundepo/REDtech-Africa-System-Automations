@@ -192,12 +192,25 @@ const Attendance = () => {
       return `${Math.floor(avgMinutes / 60)}:${String(Math.floor(avgMinutes % 60)).padStart(2, "0")}`;
     };
 
+    // Compute real average hours from clock_in/clock_out pairs
+    const recordsWithHours = myHistoryRecords.filter(r => r.clock_in && r.clock_out);
+    let avgHoursStr = "—";
+    if (recordsWithHours.length > 0) {
+      const totalMs = recordsWithHours.reduce((acc, r) => {
+        return acc + (new Date(r.clock_out!).getTime() - new Date(r.clock_in!).getTime());
+      }, 0);
+      const avgMs = totalMs / recordsWithHours.length;
+      const avgH = Math.floor(avgMs / (1000 * 60 * 60));
+      const avgM = Math.floor((avgMs % (1000 * 60 * 60)) / (1000 * 60));
+      avgHoursStr = `${avgH}h ${avgM}m`;
+    }
+
     const onTimeRate = Math.round((myHistoryRecords.filter(r => r.status === "present").length / myHistoryRecords.length) * 100);
     
     return {
       avgIn: avgTime(validIns),
       avgOut: avgTime(validOuts),
-      avgHours: "8.2h", // Simplified for now
+      avgHours: avgHoursStr,
       onTimeRate,
     };
   }, [myHistoryRecords]);

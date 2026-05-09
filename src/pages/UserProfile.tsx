@@ -193,11 +193,40 @@ const UserProfile = () => {
 
   const scoreBadge = getScoreBadge(performanceScore);
 
-  // MOCK DATA FOR GAMIFICATION & HOURS
-  const currentStreak = 14; 
-  const bestStreak = 45;
-  const rewardPoints = 185; 
-  
+  // ── Gamification — computed from real data ──
+  const { currentStreak, bestStreak, rewardPoints } = useMemo(() => {
+    const records = (attendance || []).slice().sort(
+      (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    // Current streak: consecutive present/late days from most recent
+    let streak = 0;
+    for (const r of records) {
+      if (r.status === 'present' || r.status === 'late') streak++;
+      else break;
+    }
+
+    // Best streak: longest run of present/late in history
+    const sorted = records.slice().reverse(); // oldest first
+    let best = 0;
+    let running = 0;
+    for (const r of sorted) {
+      if (r.status === 'present' || r.status === 'late') {
+        running++;
+        if (running > best) best = running;
+      } else {
+        running = 0;
+      }
+    }
+
+    // Reward points: 2pts per present day + 1pt per completed task
+    const presentDays = records.filter((r: any) => r.status === 'present').length;
+    const pts = presentDays * 2 + completedTasks;
+
+    return { currentStreak: streak, bestStreak: best, rewardPoints: pts };
+  }, [attendance, completedTasks]);
+
+
   const workHoursData = [
     { day: 'M', hours: 8.5 },
     { day: 'T', hours: 9.2 },

@@ -57,7 +57,6 @@ const businessModules = [
 const adminModules = [
   { title: "Staff Utilisation", icon: UserCog, path: "/utilisation" },
   { title: "User Management", icon: Shield, path: "/users" },
-  { title: "Departments", icon: Building2, path: "/departments" },
   { title: "Activity Log", icon: History, path: "/activity" },
   { title: "Email Outbox", icon: Mail, path: "/email-outbox" },
   { title: "Platform Settings", icon: Settings2, path: "/platform-settings" },
@@ -614,20 +613,12 @@ export function AppSidebar() {
           {!isCollapsed && <span>Log Out</span>}
         </Button>
         {!isCollapsed && (
-          <>
-            <p className="text-[11px] text-sidebar-foreground/45 text-center">
-              Made with ❤️ by{" "}
-              <a href="https://www.linkedin.com/in/davidogundepo/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">David</a>
-              {" "}&{" "}
-              <a href="https://www.linkedin.com/in/olu-sowunmi/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Dolamu</a>
-            </p>
-            <div className="flex items-center justify-center gap-1.5 text-[10px] text-sidebar-foreground/40 mt-1">
-              <kbd className="px-1.5 py-0.5 rounded border border-sidebar-border bg-sidebar-accent text-[10px] text-sidebar-foreground/70">
-                {typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘K' : 'Ctrl+K'}
-              </kbd>
-              <span>to search</span>
-            </div>
-          </>
+          <div className="flex items-center justify-center gap-1.5 text-[10px] text-sidebar-foreground/40 mt-1">
+            <kbd className="px-1.5 py-0.5 rounded border border-sidebar-border bg-sidebar-accent text-[10px] text-sidebar-foreground/70">
+              {typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘K' : 'Ctrl+K'}
+            </kbd>
+            <span>to search</span>
+          </div>
         )}
         </>
         )}
