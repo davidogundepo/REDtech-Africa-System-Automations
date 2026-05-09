@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useJobOpenings, useCandidates, useInterviews, useHRMutation, useProfilesLite, CANDIDATE_STAGES, STAGE_LABEL, type CandidateStage } from "@/lib/hr";
 import { useDepartments } from "@/lib/departments";
 import { useAuth } from "@/lib/auth-context";
+import { handleCandidateHired } from "@/lib/hr-integrations";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Briefcase, Trash2, CalendarPlus, FileText } from "lucide-react";
+import { Plus, Briefcase, Trash2, CalendarPlus, FileText, Upload } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import { format } from "date-fns";
 
 export default function HRRecruitment() {
@@ -114,7 +117,7 @@ export default function HRRecruitment() {
         ) : filteredCands.length === 0 ? (
           <EmptyHint icon={FileText} title="No candidates match these filters" hint="Adjust filters or add a candidate." />
         ) : (
-          <PipelineBoard candidates={filteredCands} canManage={canManage} profiles={profiles.data ?? []} />
+          <PipelineBoard candidates={filteredCands} canManage={canManage} profiles={profiles.data ?? []} jobs={jobs.data ?? []} />
         )}
       </Card>
     </div>
@@ -151,8 +154,30 @@ function DeleteBtn({ table, id, keys }: { table: string; id: string; keys: strin
 }
 
 // ─────────── Pipeline board ───────────
-function PipelineBoard({ candidates, canManage, profiles }: { candidates: any[]; canManage: boolean; profiles: any[] }) {
+function PipelineBoard({ candidates, canManage, profiles, jobs }: { candidates: any[]; canManage: boolean; profiles: any[]; jobs: any[] }) {
   const m = useHRMutation("hr_candidates", ["hr_candidates"]);
+
+  const onChangeStage = async (cand: any, newStage: string) => {
+    m.mutate({ op: "update", row: { id: cand.id, stage: newStage } });
+
+    // When a candidate is marked hired, auto-create onboarding tasks
+    if (newStage === "hired") {
+      const job = jobs.find((j: any) => j.id === cand.job_opening_id);
+      const hm = profiles.find((p: any) => p.id === job?.hiring_manager);
+      handleCandidateHired({
+        candidateName: cand.full_name,
+        jobTitle: job?.title ?? "Unknown Role",
+        department: job?.department ?? null,
+        hiringManagerId: hm?.id ?? null,
+        hiringManagerName: hm?.full_name ?? null,
+        hiringManagerEmail: hm?.email ?? null,
+        createdById: null,
+      }).then(() => {
+        toast.success(`🎉 ${cand.full_name} hired! Onboarding tasks created in Task Tracker.`);
+      });
+    }
+  };
+
   return (
     <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
       {CANDIDATE_STAGES.map((stage) => {
@@ -166,7 +191,7 @@ function PipelineBoard({ candidates, canManage, profiles }: { candidates: any[];
             <div className="space-y-2">
               {items.map((c) => (
                 <CandidateCard key={c.id} cand={c} canManage={canManage} profiles={profiles}
-                  onChangeStage={(newStage) => m.mutate({ op: "update", row: { id: c.id, stage: newStage } })} />
+                  onChangeStage={(newStage) => onChangeStage(c, newStage)} />
               ))}
             </div>
           </div>
@@ -355,17 +380,38 @@ function NewJobDialog({ departments, profiles, createdBy }: any) {
 // ─────────── New Candidate ───────────
 function NewCandidateDialog({ jobs, createdBy }: any) {
   const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const m = useHRMutation("hr_candidates", ["hr_candidates"]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [source, setSource] = useState("");
-  const [cv, setCv] = useState("");
+  const [cvUrl, setCvUrl] = useState("");
+  const [cvFileName, setCvFileName] = useState("");
   const [job, setJob] = useState<string>(jobs[0]?.id ?? "");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleCvUpload = async (file: File) => {
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `hr/cvs/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("documents").upload(path, file, { upsert: true });
+    if (error) { toast.error("CV upload failed: " + error.message); setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from("documents").getPublicUrl(path);
+    setCvUrl(urlData.publicUrl);
+    setCvFileName(file.name);
+    setUploading(false);
+    toast.success("CV uploaded ✓");
+  };
+
   const submit = () => {
     if (!name.trim() || !job) return;
-    m.mutate({ op: "insert", row: { full_name: name, email: email || null, phone: phone || null, source: source || null, cv_url: cv || null, job_opening_id: job, created_by: createdBy } }, { onSuccess: () => { setOpen(false); setName(""); setEmail(""); setPhone(""); setSource(""); setCv(""); } });
+    m.mutate(
+      { op: "insert", row: { full_name: name, email: email || null, phone: phone || null, source: source || null, cv_url: cvUrl || null, job_opening_id: job, created_by: createdBy } },
+      { onSuccess: () => { setOpen(false); setName(""); setEmail(""); setPhone(""); setSource(""); setCvUrl(""); setCvFileName(""); } }
+    );
   };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><Button variant="outline"><Plus className="mr-1 h-4 w-4" />Add candidate</Button></DialogTrigger>
@@ -382,9 +428,20 @@ function NewCandidateDialog({ jobs, createdBy }: any) {
           <div><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
           <div><Label>Phone</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
           <div><Label>Source</Label><Input value={source} onChange={(e) => setSource(e.target.value)} placeholder="LinkedIn / Referral" /></div>
-          <div><Label>CV URL</Label><Input value={cv} onChange={(e) => setCv(e.target.value)} placeholder="https://…" /></div>
+          <div>
+            <Label>CV / Resume</Label>
+            <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCvUpload(f); }} />
+            <div className="mt-1 flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" disabled={uploading}
+                onClick={() => fileRef.current?.click()}>
+                <Upload className="mr-1 h-3.5 w-3.5" />{uploading ? "Uploading…" : "Upload CV"}
+              </Button>
+              {cvFileName && <span className="truncate text-xs text-muted-foreground">{cvFileName}</span>}
+            </div>
+          </div>
         </div>
-        <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={submit}>Add</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={submit} disabled={uploading}>Add</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

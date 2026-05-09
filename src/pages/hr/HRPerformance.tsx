@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useReviewCycles, useGoals, useReviews, useHRMutation, useProfilesLite } from "@/lib/hr";
 import { useAuth } from "@/lib/auth-context";
+import { notifyReviewDeadline } from "@/lib/hr-integrations";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Target, Trash2, Star } from "lucide-react";
+import { Plus, Target, Trash2, Star, Bell } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import { format } from "date-fns";
 
 export default function HRPerformance() {
@@ -40,12 +42,33 @@ export default function HRPerformance() {
             {cycles.data!.map((c) => {
               const active = (cycleId === c.id);
               return (
-                <button key={c.id} onClick={() => setActiveCycle(c.id)}
-                  className={`rounded-xl border px-4 py-2 text-left text-sm transition-colors ${active ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/50"}`}>
-                  <p className="font-semibold">{c.name}</p>
-                  <p className="text-xs text-muted-foreground">{format(new Date(c.starts_on),"PP")} → {format(new Date(c.ends_on),"PP")}</p>
-                  <Badge className="mt-1" variant="outline">{c.status}</Badge>
-                </button>
+                <div key={c.id} className="relative">
+                  <button onClick={() => setActiveCycle(c.id)}
+                    className={`w-full rounded-xl border px-4 py-2 text-left text-sm transition-colors ${active ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/50"}`}>
+                    <p className="font-semibold">{c.name}</p>
+                    <p className="text-xs text-muted-foreground">{format(new Date(c.starts_on),"PP")} → {format(new Date(c.ends_on),"PP")}</p>
+                    <Badge className="mt-1" variant="outline">{c.status}</Badge>
+                  </button>
+                  {canManage && c.status === "active" && (
+                    <Button
+                      size="icon" variant="ghost"
+                      className="absolute right-1 top-1 h-7 w-7"
+                      title="Send deadline reminder to all reviewers"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const reviewerIds = (reviews.data ?? [])
+                          .filter((r: any) => r.cycle_id === c.id && r.status === "draft" && r.reviewer_id)
+                          .map((r: any) => r.reviewer_id as string)
+                          .filter((id, i, arr) => arr.indexOf(id) === i);
+                        if (!reviewerIds.length) { toast.info("No pending reviewers to notify."); return; }
+                        await notifyReviewDeadline(c.id, c.name, c.ends_on, reviewerIds);
+                        toast.success(`Reminder sent to ${reviewerIds.length} reviewer(s).`);
+                      }}
+                    >
+                      <Bell className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               );
             })}
           </div>

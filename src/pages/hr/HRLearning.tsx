@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLearningPrograms, useEnrollments, useHRMutation, useProfilesLite } from "@/lib/hr";
 import { useDepartments } from "@/lib/departments";
 import { useAuth } from "@/lib/auth-context";
+import { markLearningOverdue } from "@/lib/hr-integrations";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, GraduationCap, Users } from "lucide-react";
+import { Plus, Trash2, GraduationCap, Users, Upload, AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
 export default function HRLearning() {
   const { profile, isAdmin, isSuperAdmin } = useAuth();
@@ -33,7 +36,21 @@ export default function HRLearning() {
             <h2 className="text-xl font-bold">Learning programs</h2>
             <p className="text-sm text-muted-foreground">{programs.data?.length ?? 0} program(s).</p>
           </div>
-          {canManage && <NewProgramDialog departments={activeDepartments} profiles={profiles.data ?? []} createdBy={profile?.id ?? null} />}
+          {canManage && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline" size="sm"
+                onClick={async () => {
+                  const count = await markLearningOverdue();
+                  if (count === 0) toast.info("No overdue enrollments found.");
+                  else toast.success(`${count} enrollment(s) marked overdue and notified.`);
+                }}
+              >
+                <AlertTriangle className="mr-1 h-3.5 w-3.5 text-amber-500" />Mark Overdue
+              </Button>
+              <NewProgramDialog departments={activeDepartments} profiles={profiles.data ?? []} createdBy={profile?.id ?? null} />
+            </div>
+          )}
         </div>
         {programs.isLoading ? <Skeleton className="mt-4 h-12" /> :
           (programs.data ?? []).length === 0 ? <Empty title="No programs yet" hint="Create your first training program." /> :
@@ -136,6 +153,9 @@ function ProgramEnrollmentsCard({ programId, profiles, canManage }: any) {
                       </SelectContent>
                     </Select>
                   )}
+                  {e.status === "completed" && (
+                    <CertUploadBtn enrollmentId={e.id} existingUrl={e.certificate_url} />
+                  )}
                   {canManage && <DeleteSm table="hr_learning_enrollments" id={e.id} keys={["hr_enrollments"]} />}
                 </div>
               </li>
@@ -169,6 +189,43 @@ function EnrollDialog({ programId, profiles, onClose, existing }: any) {
         <DialogFooter><Button onClick={onClose}>Done</Button></DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Certificate upload button — shown on completed enrollment rows
+function CertUploadBtn({ enrollmentId, existingUrl }: { enrollmentId: string; existingUrl?: string | null }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const m = useHRMutation("hr_learning_enrollments", ["hr_enrollments"]);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    const path = `hr/certificates/${enrollmentId}-${file.name}`;
+    const { error } = await supabase.storage.from("documents").upload(path, file, { upsert: true });
+    if (error) { toast.error("Upload failed: " + error.message); setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from("documents").getPublicUrl(path);
+    m.mutate({ op: "update", row: { id: enrollmentId, certificate_url: urlData.publicUrl } });
+    setUploading(false);
+    toast.success("Certificate uploaded ✓");
+  };
+
+  return (
+    <>
+      <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+      <Button
+        size="icon" variant={existingUrl ? "default" : "outline"}
+        className="h-7 w-7" disabled={uploading}
+        title={existingUrl ? "Replace certificate" : "Upload certificate"}
+        onClick={() => fileRef.current?.click()}
+      >
+        <Upload className="h-3.5 w-3.5" />
+      </Button>
+      {existingUrl && (
+        <a href={existingUrl} target="_blank" rel="noreferrer"
+          className="text-xs text-primary underline">View</a>
+      )}
+    </>
   );
 }
 
