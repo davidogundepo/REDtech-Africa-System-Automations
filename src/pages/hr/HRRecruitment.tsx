@@ -4,6 +4,7 @@ import { useDepartments } from "@/lib/departments";
 import { useAuth } from "@/lib/auth-context";
 import { handleCandidateHired } from "@/lib/hr-integrations";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -391,15 +392,27 @@ function NewCandidateDialog({ jobs, createdBy }: any) {
   const [job, setJob] = useState<string>(jobs[0]?.id ?? "");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const qc = useQueryClient();
+  const selectedJob = jobs.find((j: any) => j.id === job);
+
   const handleCvUpload = async (file: File) => {
     setUploading(true);
-    const ext = file.name.split(".").pop();
     const path = `hr/cvs/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("documents").upload(path, file, { upsert: true });
     if (error) { toast.error("CV upload failed: " + error.message); setUploading(false); return; }
     const { data: urlData } = supabase.storage.from("documents").getPublicUrl(path);
     setCvUrl(urlData.publicUrl);
     setCvFileName(file.name);
+    // Register in Enterprise Drive so it appears in Document Repository
+    await (supabase as any).from("documents").insert({
+      name: `[HR/CV] ${file.name}`,
+      file_path: path,
+      file_size: file.size,
+      mime_type: file.type || "application/octet-stream",
+      department: selectedJob?.department ?? null,
+      uploaded_by: createdBy ?? null,
+    });
+    qc.invalidateQueries({ queryKey: ["documents"] });
     setUploading(false);
     toast.success("CV uploaded ✓");
   };

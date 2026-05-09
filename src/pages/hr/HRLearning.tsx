@@ -4,6 +4,7 @@ import { useDepartments } from "@/lib/departments";
 import { useAuth } from "@/lib/auth-context";
 import { markLearningOverdue } from "@/lib/hr-integrations";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -196,6 +197,8 @@ function EnrollDialog({ programId, profiles, onClose, existing }: any) {
 function CertUploadBtn({ enrollmentId, existingUrl }: { enrollmentId: string; existingUrl?: string | null }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const m = useHRMutation("hr_learning_enrollments", ["hr_enrollments"]);
+  const { profile } = useAuth();
+  const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
 
   const handleUpload = async (file: File) => {
@@ -205,6 +208,16 @@ function CertUploadBtn({ enrollmentId, existingUrl }: { enrollmentId: string; ex
     if (error) { toast.error("Upload failed: " + error.message); setUploading(false); return; }
     const { data: urlData } = supabase.storage.from("documents").getPublicUrl(path);
     m.mutate({ op: "update", row: { id: enrollmentId, certificate_url: urlData.publicUrl } });
+    // Register in Enterprise Drive
+    await (supabase as any).from("documents").insert({
+      name: `[HR/Certificate] ${file.name}`,
+      file_path: path,
+      file_size: file.size,
+      mime_type: file.type || "application/pdf",
+      department: null,
+      uploaded_by: profile?.id ?? null,
+    });
+    qc.invalidateQueries({ queryKey: ["documents"] });
     setUploading(false);
     toast.success("Certificate uploaded ✓");
   };
