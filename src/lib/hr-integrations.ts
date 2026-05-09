@@ -42,6 +42,18 @@ export async function handleCandidateHired(ctx: HireContext): Promise<void> {
   dueDate.setDate(dueDate.getDate() + 7); // 1 week from today
   const dueDateStr = dueDate.toISOString().split("T")[0];
 
+  // IDEMPOTENCY GUARD: skip if onboarding tasks already exist for this candidate
+  const { data: existing } = await (supabase as any)
+    .from("tasks")
+    .select("id")
+    .like("title", `[Onboarding] ${ctx.candidateName}:%`)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    // Tasks already created (e.g. candidate was re-hired) — do not duplicate
+    return;
+  }
+
   // Create all onboarding tasks in parallel
   const taskPromises = ONBOARDING_TASKS.map((t) =>
     (supabase as any).from("tasks").insert({
@@ -115,16 +127,52 @@ export async function markLearningOverdue(): Promise<number> {
     .update({ status: "overdue" })
     .in("id", ids);
 
-  // Notify each affected employee
-  const notifPromises = overdueEnrollments.map((e: any) =>
-    (supabase as any).from("notifications").insert({
+  // Notify each affected employee — in-app AND email
+  const employeeIds = overdueEnrollments.map((e: any) => e.employee_id);
+
+  // Fetch employee profiles to get emails
+  const { data: empProfiles } = await (supabase as any)
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("id", employeeIds);
+
+  const profileMap: Record<string, { full_name: string; email: string }> = {};
+  (empProfiles ?? []).forEach((p: any) => { profileMap[p.id] = p; });
+
+  const notifPromises = overdueEnrollments.flatMap((e: any) => {
+    const programTitle = e.hr_learning_programs?.title ?? "a learning program";
+    const emp = profileMap[e.employee_id];
+
+    const notif = (supabase as any).from("notifications").insert({
       user_id: e.employee_id,
       title: "Learning Program Overdue",
-      message: `Your enrollment in "${e.hr_learning_programs?.title}" is now overdue. Please complete it as soon as possible.`,
+      message: `Your enrollment in "${programTitle}" is now overdue. Please complete it as soon as possible.`,
       type: "warning",
       link: "/hr/learning",
-    })
-  );
+    });
+
+    const emailOps = [];
+    if (emp?.email) {
+      emailOps.push(
+        enqueueEmail({
+          to: emp.email,
+          subject: `Action required: "${programTitle}" is overdue`,
+          html: brandedEmailTemplate({
+            recipientName: emp.full_name ?? "Hi",
+            heading: "Learning program overdue",
+            body: `
+              <p>Your enrollment in <strong>${programTitle}</strong> has passed its due date and is now marked <strong>Overdue</strong>.</p>
+              <p>Please complete it as soon as possible to stay on track with your learning goals.</p>
+            `,
+            ctaText: "Go to My Learning",
+            ctaUrl: "https://ractools.vercel.app/hr/learning",
+          }),
+        })
+      );
+    }
+
+    return [notif, ...emailOps];
+  });
 
   await Promise.allSettled(notifPromises);
   return overdueEnrollments.length;
