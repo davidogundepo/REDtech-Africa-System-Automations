@@ -169,19 +169,26 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
     if (!bugText.trim()) return toast.error("Please describe what needs improvement.");
     setSubmittingBug(true);
     try {
-      const { error } = await supabase.functions.invoke("feedback-to-sheets", {
-        body: {
-          email: profile?.email || "",
-          full_name: profile?.full_name || "",
-          role: profile?.role || "",
-          department: profile?.department || "",
-          page: location.pathname,
-          type: bugType,
-          message: bugText.trim(),
-        },
+      // Save directly to DB — no external webhook needed
+      const categoryLabel: Record<string, string> = {
+        "ui-bug": "UI/Visual Bug",
+        "data-discrepancy": "Data Discrepancy",
+        "feature-suggestion": "Feature Suggestion",
+        "performance-issue": "Performance Issue",
+        "other": "Other",
+      };
+      const { error } = await (supabase as any).from("notifications").insert({
+        user_id: profile?.id ?? null,
+        title: `[FEEDBACK] ${categoryLabel[bugType] || bugType}`,
+        message: `From ${profile?.full_name || "Unknown"} (${profile?.department || "—"}) on ${location.pathname}:\n\n${bugText.trim()}`,
+        type: "info",
+        link: null,
+        is_read: false,
       });
       if (error) throw error;
-      toast.success("Feedback submitted successfully. Thank you!", { style: { background: 'hsl(var(--primary))', color: 'white', border: 'none' } });
+      toast.success("Feedback submitted. Thank you!", {
+        style: { background: "hsl(var(--primary))", color: "white", border: "none" },
+      });
       setBugOpen(false);
       setBugText("");
       setBugType("ui-bug");

@@ -4,7 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, ListTodo, Sparkles, Loader2 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { X, ListTodo, Sparkles, Loader2, CalendarIcon } from "lucide-react";
+import { format, parseISO } from "date-fns";
 
 interface ProfileLite { id: string; full_name: string; }
 
@@ -114,7 +117,38 @@ export const TaskFormModal = ({
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Due Date</Label>
-                  <Input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={`w-full justify-start text-left font-normal h-10 px-3 border-input hover:border-primary/50 transition-colors ${!formData.due_date ? "text-muted-foreground" : "text-foreground"}`}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4 text-primary/70 shrink-0" />
+                        {formData.due_date
+                          ? format(parseISO(formData.due_date), "dd MMM yyyy")
+                          : <span>Pick a date</span>
+                        }
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 shadow-xl border-border/50" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formData.due_date ? parseISO(formData.due_date) : undefined}
+                        onSelect={(date) => setFormData({ ...formData, due_date: date ? format(date, "yyyy-MM-dd") : "" })}
+                        initialFocus
+                      />
+                      {formData.due_date && (
+                        <div className="border-t px-3 py-2">
+                          <button
+                            className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                            onClick={() => setFormData({ ...formData, due_date: "" })}
+                          >
+                            Clear date
+                          </button>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
