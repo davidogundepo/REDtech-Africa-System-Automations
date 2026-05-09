@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   FileText, Handshake, Truck, Users, CheckSquare, CalendarDays, Clock,
   BarChart3, FolderOpen, TrendingUp, Megaphone, UsersRound, UserCog, Shield,
+  Briefcase,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -20,6 +21,7 @@ export const ALL_MODULES = [
   { key: 'ops',          label: 'Operations Dashboard',  path: '/ops-dashboard',     icon: TrendingUp },
   { key: 'social',       label: 'Social Media Hub',      path: '/social',            icon: Megaphone },
   { key: 'team',         label: 'Team Directory',        path: '/team',              icon: UsersRound },
+  { key: 'hr',           label: 'HR',                    path: '/hr',                icon: Briefcase },
   { key: 'utilisation',  label: 'Staff Utilisation',     path: '/utilisation',       icon: UserCog },
   { key: 'users',        label: 'User Management',       path: '/users',             icon: Shield },
 ] as const;

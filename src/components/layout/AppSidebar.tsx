@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { 
   FileText, Truck, Users, CheckSquare, CalendarDays, 
   LayoutDashboard, LogOut, BarChart3, FolderOpen, TrendingUp, Megaphone,
-  Moon, Sun, Shield, Clock, UserCog, UsersRound, HardDrive, PanelLeftClose, PanelLeft, Handshake, Search, Sparkles, PlayCircle, History, Building2,
+  Moon, Sun, Shield, Clock, UserCog, UsersRound, HardDrive, PanelLeftClose, PanelLeft, Handshake, Search, Sparkles, PlayCircle, History, Building2, Briefcase,
   ChevronsDown, ChevronsUp
 } from "lucide-react";
 import { startFeatureTour } from "@/components/shared/FeatureTour";
@@ -52,6 +52,7 @@ const businessModules = [
   { title: "Operations Dashboard", icon: TrendingUp, path: "/ops-dashboard" },
   { title: "Social Media Hub", icon: Megaphone, path: "/social" },
   { title: "Team Directory", icon: UsersRound, path: "/team" },
+  { title: "HR", icon: Briefcase, path: "/hr" },
 ];
 
 const adminModules = [
