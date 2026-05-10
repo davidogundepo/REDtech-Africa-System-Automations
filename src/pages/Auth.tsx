@@ -65,31 +65,35 @@ const Auth = () => {
 
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (loading) return;
     if (!loginEmail || !loginPassword) {
       toast.error("Please fill in all fields");
       return;
     }
     setLoading(true);
-    const { error } = await signIn(loginEmail, loginPassword);
-    if (error) {
-      const msg = error.toLowerCase();
-      if (msg.includes("invalid login") || msg.includes("invalid credentials")) {
-        toast.error("Wrong email or password. Try again or reset your password.");
-      } else if (msg.includes("email not confirmed") || msg.includes("not confirmed")) {
-        toast.error("Please confirm your email — check your inbox for the verification link.");
-      } else if (msg.includes("rate") || msg.includes("too many")) {
-        toast.error("Too many attempts. Wait a minute and try again.");
+    try {
+      const { error } = await signIn(loginEmail, loginPassword);
+      if (error) {
+        const msg = error.toLowerCase();
+        if (msg.includes("invalid login") || msg.includes("invalid credentials")) {
+          toast.error("Wrong email or password. Try again or reset your password.");
+        } else if (msg.includes("email not confirmed") || msg.includes("not confirmed")) {
+          toast.error("Please confirm your email — check your inbox for the verification link.");
+        } else if (msg.includes("rate") || msg.includes("too many")) {
+          toast.error("Too many attempts. Wait a minute and try again.");
+        } else {
+          toast.error(error);
+        }
       } else {
-        toast.error(error);
+        // Navigate immediately — no extra DB call needed here.
+        // The auth context already fetches profile in the background.
+        // The dashboard greeting ("Good morning, David") handles personalization.
+        toast.success("Welcome back! 👋");
+        navigate("/", { replace: true });
       }
-    } else {
-      // Navigate immediately — no extra DB call needed here.
-      // The auth context already fetches profile in the background.
-      // The dashboard greeting ("Good morning, David") handles personalization.
-      toast.success("Welcome back! 👋");
-      navigate("/", { replace: true });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
 
