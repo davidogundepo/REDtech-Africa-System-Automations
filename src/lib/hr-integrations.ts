@@ -151,7 +151,7 @@ export async function markLearningOverdue(): Promise<number> {
       link: "/hr/learning",
     });
 
-    const emailOps = [];
+    const emailOps: Promise<string | null>[] = [];
     if (emp?.email) {
       emailOps.push(
         enqueueEmail({
