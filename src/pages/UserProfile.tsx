@@ -417,11 +417,11 @@ const UserProfile = () => {
                   </div>
                   <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-gradient-to-br from-primary/5 to-transparent border border-primary/20">
                      <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Start Date</span>
-                     <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><CalendarDays className="w-3.5 h-3.5 text-primary shrink-0"/> {format(new Date(profile.created_at), "MMM d, yyyy")}</span>
+                     <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><CalendarDays className="w-3.5 h-3.5 text-primary shrink-0"/> {format(new Date(profile.hire_date || profile.created_at), "MMM d, yyyy")}</span>
                   </div>
                   <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-gradient-to-br from-accent-gold/10 to-transparent border border-accent-gold/25">
                      <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Tenure</span>
-                     <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><Clock className="w-3.5 h-3.5 text-accent-gold shrink-0"/> {Math.max(1, Math.round(differenceInDays(new Date(), new Date(profile.created_at))/30))} Months</span>
+                     <span className="flex items-center gap-1.5 text-sm font-bold text-foreground"><Clock className="w-3.5 h-3.5 text-accent-gold shrink-0"/> {Math.max(1, Math.round(differenceInDays(new Date(), new Date(profile.hire_date || profile.created_at))/30))} Months</span>
                   </div>
                 </div>
               </div>

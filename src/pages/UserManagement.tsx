@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Calendar } from "@/components/ui/calendar";
 import { useDepartments, useDepartmentNames } from "@/lib/departments";
 import { PremiumToggle } from "@/components/ui/premium-toggle";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus, Clock, MapPin, Key, Trash2, Plus, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
+import { Shield, Users, UserPlus, Search, Mail, Building2, Edit, Bell, MoreHorizontal, UserMinus, Clock, MapPin, Key, Trash2, Plus, AlertTriangle, CheckCircle2, Sparkles, CalendarDays } from "lucide-react";
 import { resetUserTour } from "@/components/shared/FeatureTour";
 import { toast } from "sonner";
 import { SwapCardWrapper } from "@/components/shared/SwapCardWrapper";
@@ -25,7 +26,7 @@ import { MotionPage } from "@/components/shared/MotionPage";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend } from "recharts";
 import { sendNotificationEmail } from "@/lib/email";
 import { brandedEmailTemplate } from "@/lib/email-template";
-import { format, subDays } from "date-fns";
+import { format, subDays, parseISO } from "date-fns";
 import { DemoModeToggle } from "@/components/shared/DemoModeToggle";
 import { UserModuleOverridesPanel } from "@/components/users/UserModuleOverridesPanel";
 import { ShieldCheck } from "lucide-react";
@@ -250,7 +251,7 @@ const UserManagement = () => {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: async ({ id, role, department, is_active, work_days, work_mode, clock_in_required }: { id: string; role: UserRole; department: string; is_active: boolean; work_days?: Record<string, boolean>; work_mode?: string, clock_in_required?: boolean }) => {
+    mutationFn: async ({ id, role, department, is_active, work_days, work_mode, clock_in_required, hire_date }: { id: string; role: UserRole; department: string; is_active: boolean; work_days?: Record<string, boolean>; work_mode?: string; clock_in_required?: boolean; hire_date?: string }) => {
       const VALID_ROLES: UserRole[] = ["super_admin", "admin", "team_member", "viewer"];
       if (!id) throw new Error("Missing user id");
       if (!VALID_ROLES.includes(role)) throw new Error("Invalid role selected");
@@ -259,6 +260,7 @@ const UserManagement = () => {
       if (work_days !== undefined) updates.work_days = work_days;
       if (work_mode !== undefined) updates.work_mode = work_mode;
       if (clock_in_required !== undefined) updates.clock_in_required = clock_in_required;
+      if (hire_date !== undefined) updates.hire_date = hire_date || null;
       const { error } = await supabase
         .from("profiles")
         .update(updates)
@@ -278,6 +280,8 @@ const UserManagement = () => {
   const [editWorkMode, setEditWorkMode] = useState("office");
 
   const [editClockInRequired, setEditClockInRequired] = useState(true);
+  const [editHireDate, setEditHireDate] = useState<string>("");
+  const [hireDateOpen, setHireDateOpen] = useState(false);
 
   const handleEdit = (user: any) => {
     setEditingUser(user);
@@ -286,6 +290,7 @@ const UserManagement = () => {
     setEditWorkDays(user.work_days || DEFAULT_WORK_DAYS);
     setEditWorkMode(user.work_mode || "office");
     setEditClockInRequired(user.clock_in_required !== false);
+    setEditHireDate(user.hire_date || "");
     setEditDialogOpen(true);
   };
 
@@ -313,6 +318,7 @@ const UserManagement = () => {
       work_days: editWorkDays,
       work_mode: editWorkMode,
       clock_in_required: editClockInRequired,
+      hire_date: editHireDate,
     });
   };
 
@@ -944,7 +950,7 @@ const UserManagement = () => {
                 </div>
                 <div className="mt-10 space-y-3">
                   <p className="mb-4 text-[10px] font-black uppercase tracking-widest text-primary-foreground/25">Editing permissions</p>
-                  {['Role & access level', 'Department assignment', 'Work schedule & location', 'Clock-in requirement'].map(item => (
+                  {['Role & access level', 'Department assignment', 'Hire date', 'Work schedule & location', 'Clock-in requirement'].map(item => (
                     <div key={item} className="flex items-center gap-3">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                       <span className="text-[11px] font-medium text-primary-foreground/50">{item}</span>
@@ -985,6 +991,42 @@ const UserManagement = () => {
                       <SelectContent>{departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
+                </div>
+                {/* Hire Date */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5" /> Hire Date (Employment Start)</Label>
+                  <Popover open={hireDateOpen} onOpenChange={setHireDateOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 h-12 w-full rounded-lg border border-input bg-background px-4 text-sm font-medium hover:bg-accent transition-colors"
+                      >
+                        <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className={editHireDate ? "text-foreground" : "text-muted-foreground"}>
+                          {editHireDate ? format(parseISO(editHireDate), "dd MMM yyyy") : "Select hire date…"}
+                        </span>
+                        {editHireDate && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setEditHireDate(""); }}
+                            className="ml-auto text-xs text-muted-foreground hover:text-destructive"
+                          >Clear</button>
+                        )}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={editHireDate ? parseISO(editHireDate) : undefined}
+                        onSelect={(date) => {
+                          setEditHireDate(date ? format(date, "yyyy-MM-dd") : "");
+                          setHireDateOpen(false);
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-[11px] text-muted-foreground">Sets the official start date shown on the user's profile and used for tenure calculation.</p>
                 </div>
                 <div className="space-y-3">
                   <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Work Days</Label>

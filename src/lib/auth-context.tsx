@@ -13,6 +13,7 @@ export interface Profile {
   avatar_url: string | null;
   is_active: boolean;
   created_at: string;
+  hire_date?: string | null;
 }
 
 // Email domain allow-list. Empty array means any email is accepted (useful
