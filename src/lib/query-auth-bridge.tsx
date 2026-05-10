@@ -33,7 +33,9 @@ export function QueryAuthBridge() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const uid = session?.user?.id ?? null;
 
-      if (event === "SIGNED_OUT" || (!uid && lastUserId.current)) {
+      // Do not treat INITIAL_SESSION + null uid as sign-out — getSession/onAuth ordering
+      // can briefly disagree; wiping the cache mid-hydration caused empty dashboards.
+      if (event === "SIGNED_OUT" || (!uid && lastUserId.current && event !== "INITIAL_SESSION")) {
         // Clear everything on sign-out — no stale cross-user data ever surfaces.
         queryClient.clear();
         lastUserId.current = null;

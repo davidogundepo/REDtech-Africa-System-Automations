@@ -79,13 +79,15 @@ const queryClient = new QueryClient({
 });
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, session, loading } = useAuth();
+  const { user, session, loading, authBootstrapped } = useAuth();
 
   // Wait for both auth context loading AND session to be fully established.
   // This prevents children from mounting before the JWT is attached to the
   // supabase client, which would cause RLS-protected queries to silently
   // return empty arrays (the root cause of "data sometimes doesn't show").
-  if (loading || (user && !session)) {
+  // Also wait for authBootstrapped so a slow/hung getSession() never pairs with a
+  // premature loading=false → false "logged out" redirect (refresh → /auth bug).
+  if (!authBootstrapped || loading || (user && !session)) {
     return <FullScreenLoader label="Authenticating session…" />;
   }
 

@@ -32,6 +32,8 @@ interface AuthContextType {
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
+  /** True after the first explicit getSession() attempt finishes — prevents redirects to /auth while the stored session is still restoring. */
+  authBootstrapped: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
@@ -50,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authBootstrapped, setAuthBootstrapped] = useState(false);
 
   const withTimeout = async <T,>(promise: Promise<T>, ms = 15000): Promise<T> => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -138,19 +141,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event !== "INITIAL_SESSION") commitSession(null);
     });
 
-    withTimeout(supabase.auth.getSession(), 8000)
+    withTimeout(supabase.auth.getSession(), 15000)
       .then(({ data: { session: s } }) => commitSession(s))
-      .catch(() => commitSession(null));
+      .catch(() => commitSession(null))
+      .finally(() => {
+        if (mounted) setAuthBootstrapped(true);
+      });
 
-    // Safety: if ANYTHING hangs (rare Supabase edge case), force-release
-    // the loading gate after 5s so the splash never shows forever.
-    const safetyTimer = setTimeout(() => {
-      if (mounted) setLoading(false);
-    }, 5000);
+    // If getSession never settles (extremely rare), unblock the UI so we do not spin forever.
+    const failsafeTimer = setTimeout(() => {
+      if (mounted) setAuthBootstrapped(true);
+    }, 30000);
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimer);
+      clearTimeout(failsafeTimer);
       subscription.unsubscribe();
     };
   }, []);
@@ -219,6 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         session,
         loading,
+        authBootstrapped,
         signIn,
         signUp,
         resetPassword,
