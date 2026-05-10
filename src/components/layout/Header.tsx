@@ -150,10 +150,24 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
     if (!notification.is_read) {
       markAsReadMutation.mutate(notification.id);
     }
-    setIsOpen(false);
+
     if (notification.link) {
+      setIsOpen(false);
       navigate(notification.link);
+      return;
     }
+
+    // Backward compatibility: older feedback notifications were stored without link.
+    if (typeof notification?.title === "string" && notification.title.startsWith("[FEEDBACK]")) {
+      setIsOpen(false);
+      navigate("/activity");
+      return;
+    }
+
+    // Fallback behavior for notices without deep-links.
+    toast.info(notification.title || "Notification", {
+      description: notification.message || "No additional details available.",
+    });
   };
 
   const getIcon = (type: string) => {
@@ -169,7 +183,6 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
     if (!bugText.trim()) return toast.error("Please describe what needs improvement.");
     setSubmittingBug(true);
     try {
-      // Save directly to DB — no external webhook needed
       const categoryLabel: Record<string, string> = {
         "ui-bug": "UI/Visual Bug",
         "data-discrepancy": "Data Discrepancy",
@@ -177,15 +190,22 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
         "performance-issue": "Performance Issue",
         "other": "Other",
       };
-      const { error } = await (supabase as any).from("notifications").insert({
-        user_id: profile?.id ?? null,
-        title: `[FEEDBACK] ${categoryLabel[bugType] || bugType}`,
-        message: `From ${profile?.full_name || "Unknown"} (${profile?.department || "—"}) on ${location.pathname}:\n\n${bugText.trim()}`,
-        type: "info",
-        link: null,
-        is_read: false,
+      const payload = {
+        email: profile?.email ?? "",
+        full_name: profile?.full_name ?? "",
+        role: profile?.role ?? "",
+        department: profile?.department ?? "",
+        page: location.pathname,
+        type: categoryLabel[bugType] || bugType,
+        message: bugText.trim(),
+      };
+
+      const { data, error } = await (supabase as any).functions.invoke("feedback-to-sheets", {
+        body: payload,
       });
       if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "Feedback could not be delivered to the sheet.");
+
       toast.success("Feedback submitted. Thank you!", {
         style: { background: "hsl(var(--primary))", color: "white", border: "none" },
       });
