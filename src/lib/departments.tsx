@@ -104,7 +104,15 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
 
 export const useDepartments = () => useContext(DepartmentContext);
 
+const DEFAULT_DEPARTMENTS = [
+  'Leadership', 'Engineering', 'Finance', 'Human Resources',
+  'Sales', 'Operations', 'Marketing', 'Creative', 'Legal', 'Product',
+];
+
 export const useDepartmentNames = () => {
-  const { activeDepartments } = useDepartments();
+  const { activeDepartments, loading } = useDepartments();
+  // If DB hasn't loaded yet or table is empty, show sensible defaults
+  // so the dropdown is never blank on first run / unseeded environments.
+  if (!loading && activeDepartments.length === 0) return DEFAULT_DEPARTMENTS;
   return activeDepartments.map(d => d.name);
 };
