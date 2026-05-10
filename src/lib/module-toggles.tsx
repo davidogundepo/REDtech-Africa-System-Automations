@@ -191,8 +191,10 @@ export function ModuleToggleProvider({ children }: { children: ReactNode }) {
     })();
 
     const { data: { subscription } } = (supabase as any).auth.onAuthStateChange(
-      async (_event: string, session: any) => {
-        await loadUserOverrides(session?.user?.id ?? null);
+      (_event: string, session: any) => {
+        window.setTimeout(() => {
+          void loadUserOverrides(session?.user?.id ?? null);
+        }, 0);
       },
     );
 
