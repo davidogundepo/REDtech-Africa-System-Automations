@@ -3,6 +3,7 @@ import { SEO } from "./SEO";
 
 const ROUTES: Record<string, { title: string; description: string }> = {
   "/": { title: "Dashboard", description: "Live overview of tasks, finance, attendance and team activity across REDtech Africa." },
+  "/dashboard": { title: "Dashboard", description: "Live overview of tasks, finance, attendance and team activity across REDtech Africa." },
   "/invoice": { title: "Invoices", description: "Create, preview and send branded invoices to clients in seconds." },
   "/waybill": { title: "Waybills", description: "Generate professional waybills for dispatch and delivery records." },
   "/clients": { title: "Clients & CRM", description: "Track leads, deal value and pipeline status for every client." },

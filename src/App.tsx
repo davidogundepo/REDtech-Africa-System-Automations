@@ -110,7 +110,8 @@ const AppRoutes = () => (
           <RouteMemory />
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/invoice" element={<ModuleGuard path="/invoice"><Index /></ModuleGuard>} />
               <Route path="/waybill" element={<ModuleGuard path="/waybill"><Waybill /></ModuleGuard>} />
               <Route path="/clients" element={<ModuleGuard path="/clients"><Clients /></ModuleGuard>} />

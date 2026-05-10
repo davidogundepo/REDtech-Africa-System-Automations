@@ -47,7 +47,7 @@ export function CommandMenu() {
         <CommandEmpty>No results found.</CommandEmpty>
         
         <CommandGroup heading="Core Apps">
-          <CommandItem onSelect={() => runCommand(() => navigate("/"))}>
+          <CommandItem onSelect={() => runCommand(() => navigate("/dashboard"))}>
             <LayoutDashboard className="mr-2 h-4 w-4" />
             <span>Dashboard</span>
           </CommandItem>

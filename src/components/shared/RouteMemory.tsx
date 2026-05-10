@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 
 const KEY_PREFIX = "rta:last-route";
-const SKIP = ["/auth", "/", ""];
+const SKIP = ["/auth", "/", "/dashboard", ""];
+let hasAttemptedRestoreThisLoad = false;
 
 function getStorageKey(userId: string) {
   return `${KEY_PREFIX}:${userId}`;
@@ -31,6 +32,8 @@ export function RouteMemory() {
   // Restore once after auth resolves if this page load is an actual reload.
   useEffect(() => {
     if (loading || !user) return;
+    if (hasAttemptedRestoreThisLoad) return;
+    hasAttemptedRestoreThisLoad = true;
     if (!isReloadNavigation()) return;
 
     try {

@@ -17,7 +17,7 @@ interface CommandItem {
 }
 
 const ALL_COMMANDS: CommandItem[] = [
-  { id: "dashboard", label: "Dashboard", description: "Overview & quick stats", icon: <LayoutDashboard className="h-4 w-4"/>, path: "/", group: "Pages", keywords: ["home", "overview"] },
+  { id: "dashboard", label: "Dashboard", description: "Overview & quick stats", icon: <LayoutDashboard className="h-4 w-4"/>, path: "/dashboard", group: "Pages", keywords: ["home", "overview"] },
   { id: "tasks", label: "Task Tracker", description: "Manage tasks & deadlines", icon: <CheckSquare className="h-4 w-4"/>, path: "/tasks", group: "Pages", keywords: ["todo", "work", "assign"] },
   { id: "leave", label: "Leave Management", description: "Submit & track leave requests", icon: <CalendarDays className="h-4 w-4"/>, path: "/leave", group: "Pages", keywords: ["holiday", "vacation", "annual", "sick"] },
   { id: "clients", label: "CRM / Clients", description: "Deal book & client directory", icon: <Users className="h-4 w-4"/>, path: "/clients", group: "Pages", keywords: ["crm", "deals", "pipeline", "leads"] },

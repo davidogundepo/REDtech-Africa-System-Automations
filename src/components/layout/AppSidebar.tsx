@@ -36,7 +36,7 @@ import { ALL_MODULES, type ModuleKey } from "@/lib/module-toggles";
 import { PremiumToggle } from "@/components/ui/premium-toggle";
 
 const coreModules = [
-  { title: "Dashboard", icon: LayoutDashboard, path: "/" },
+  { title: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { title: "Invoice Generator", icon: FileText, path: "/invoice" },
   { title: "Partnership Generator", icon: Handshake, path: "/partnerships" },
   { title: "Waybill Generator", icon: Truck, path: "/waybill" },
@@ -466,7 +466,7 @@ export function AppSidebar() {
                   >
                     <NavLink
                       to={item.path}
-                      end={item.path === "/"}
+                      end={item.path === "/dashboard"}
                       className="flex w-full items-center gap-2.5"
                       data-tour={`nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}
                     >
