@@ -204,13 +204,9 @@ const Auth = () => {
     setLoading(false);
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // No loading gate here — the Auth page always renders the form.
+  // If a user session exists, the useEffect above handles the redirect.
+
 
   return (
     <div className="min-h-screen flex bg-background">
