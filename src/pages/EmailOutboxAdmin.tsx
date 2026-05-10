@@ -38,7 +38,7 @@ async function retryEmailOutboxRow(id: string) {
 }
 
 export default function EmailOutboxAdmin() {
-  const { isAdmin, isSuperAdmin, loading } = useAuth();
+  const { isAdmin, isSuperAdmin, loading, user, profile } = useAuth();
   const qc = useQueryClient();
   const [status, setStatus] = useState<Status>("all");
   const [q, setQ] = useState("");
@@ -95,8 +95,10 @@ export default function EmailOutboxAdmin() {
     }
   };
 
-  if (loading) return null;
+  const profilePending = !!user && !profile;
+  if (loading || profilePending) return null;
   if (!isAdmin && !isSuperAdmin) return <Navigate to="/" replace />;
+
 
   const filtered = rows.filter((r: any) => {
     if (!q) return true;

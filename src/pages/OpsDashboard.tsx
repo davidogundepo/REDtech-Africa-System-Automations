@@ -232,7 +232,12 @@ const OpsDashboard = () => {
   const tooltipBorder = "hsl(var(--border))";
   const textFill = "hsl(var(--muted-foreground))";
 
-  if (authLoading) return (
+  // Profile loads in the background — wait for it before making role-based decisions.
+  // Without this, isSuperAdmin/isAdmin are false while profile is null, causing an
+  // immediate redirect to "/" even for super admins.
+  const profilePending = !!user && !profile;
+
+  if (authLoading || profilePending) return (
     <div className="flex-1 flex items-center justify-center p-8">
       <div className="flex flex-col items-center gap-3">
         <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />

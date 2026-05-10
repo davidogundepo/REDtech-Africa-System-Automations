@@ -30,7 +30,7 @@ const CURRENCIES = [
 ];
 
 export default function PlatformSettingsPage() {
-  const { isSuperAdmin, loading: authLoading } = useAuth();
+  const { isSuperAdmin, loading: authLoading, user, profile } = useAuth();
   const { settings, loading, get, set } = usePlatformSettings();
   const navigate = useNavigate();
   const [quotaMb, setQuotaMb] = useState<string>("500");
@@ -51,8 +51,11 @@ export default function PlatformSettingsPage() {
     setAccent(String(get("company_accent", "#C9A66B")));
   }, [settings]);
 
-  if (authLoading) return null;
+  // Profile loads in background — wait for it before making role decisions.
+  const profilePending = !!user && !profile;
+  if (authLoading || profilePending) return null;
   if (!isSuperAdmin) return <Navigate to="/" replace />;
+
 
   const saveCompany = async () => {
     const cleanAccent = /^#[0-9a-fA-F]{6}$/.test(accent) ? accent : "#C9A66B";

@@ -44,7 +44,7 @@ class StaffUtilisationErrorBoundary extends Component<{ children: ReactNode }, {
 }
 
 const StaffUtilisation = () => {
-  const { isSuperAdmin, isAdmin, profile: currentProfile, loading } = useAuth();
+  const { isSuperAdmin, isAdmin, profile: currentProfile, loading, user } = useAuth();
   const [selectedDept, setSelectedDept] = useState("all");
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [engineRunning, setEngineRunning] = useState(false);
@@ -105,8 +105,9 @@ const StaffUtilisation = () => {
     staleTime: 5 * 60 * 1000, // 5 min cache
   });
 
-  // WAIT for auth to finish loading before checking roles
-  if (loading) {
+  // Profile loads in background — wait for it before making role decisions.
+  const profilePending = !!user && !currentProfile;
+  if (loading || profilePending) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="flex flex-col items-center gap-3">
