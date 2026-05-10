@@ -743,9 +743,17 @@ const Dashboard = () => {
         </div>
       </section>
 
-      <footer className="text-center text-[11px] text-muted-foreground mt-8 pt-6 border-t border-border">
-        Made with <span className="text-primary">❤</span> by David & Dolamu
-      </footer>
+      {/* Premium Footer */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-8 pt-8 pb-4 border-t border-border/50 opacity-80 hover:opacity-100 transition-opacity">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em]">Powered by</span>
+        <div className="flex items-center gap-3 text-xs font-bold text-foreground/90">
+          <span>Google</span>
+          <span className="h-1 w-1 rounded-full bg-border"></span>
+          <span>Vercel</span>
+          <span className="h-1 w-1 rounded-full bg-border"></span>
+          <span>Supabase</span>
+        </div>
+      </div>
     </MotionPage>
   );
 };

@@ -743,7 +743,17 @@ const OpsDashboard = () => {
         </TabsContent>
       </Tabs>
 
-      <p className="text-center text-[11px] text-muted-foreground mt-10">Made with ❤ by David & Dolamu</p>
+      {/* Premium Footer */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-10 pt-8 pb-4 opacity-80 hover:opacity-100 transition-opacity">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em]">Powered by</span>
+        <div className="flex items-center gap-3 text-xs font-bold text-foreground/90">
+          <span>Google</span>
+          <span className="h-1 w-1 rounded-full bg-border"></span>
+          <span>Vercel</span>
+          <span className="h-1 w-1 rounded-full bg-border"></span>
+          <span>Supabase</span>
+        </div>
+      </div>
     </MotionPage>
   );
 };
