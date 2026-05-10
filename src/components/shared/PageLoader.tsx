@@ -34,23 +34,16 @@ export function PageLoader({ label = "Loading…" }: { label?: string }) {
  */
 export function FullScreenLoader({ label = "Preparing your workspace" }: { label?: string }) {
   const [exiting, setExiting] = useState(false);
-  const [gone, setGone] = useState(false);
 
-  // After a minimum display time, start the exit animation
+  // After a minimum display time, start the exit animation.
+  // NOTE: do NOT add a "gone" state here — the parent (ProtectedRoute)
+  // controls when this component unmounts. If we self-destruct before
+  // loading=false, we return null while ProtectedRoute still shows us,
+  // producing a blank cream screen.
   useEffect(() => {
-    // Give auth at least 800ms of splash so the reveal always plays fully
     const minDisplay = setTimeout(() => setExiting(true), 800);
     return () => clearTimeout(minDisplay);
   }, []);
-
-  // Remove from DOM after exit animation finishes (400ms)
-  useEffect(() => {
-    if (!exiting) return;
-    const t = setTimeout(() => setGone(true), 450);
-    return () => clearTimeout(t);
-  }, [exiting]);
-
-  if (gone) return null;
 
   return (
     <>
