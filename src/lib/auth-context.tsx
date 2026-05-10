@@ -86,22 +86,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (mounted) setLoading(false);
     });
 
-    // Listen for auth changes
+    // Listen for auth changes (must stay synchronous — Supabase does NOT
+    // guarantee correct behaviour when the callback is async, which caused
+    // the app to show a permanent black screen after the splash animation).
+    // Page-reload twitching is already fixed by the getSession path above
+    // (it awaits the profile before releasing the loading gate).
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, s) => {
+      (_event, s) => {
         if (!mounted) return;
         setSession(s);
         setUser(s?.user ?? null);
 
         if (s?.user) {
-          // Wait for profile before releasing the loading gate — this prevents
-          // the dashboard "twitching" caused by rendering twice (once with
-          // profile=null, then again once the profile arrives).
-          const p = await fetchProfile(s.user.id);
-          if (mounted) setProfile(p);
+          // Fire-and-forget so we never block the render loop
+          fetchProfile(s.user.id).then(p => {
+            if (mounted) setProfile(p);
+          });
         } else {
           setProfile(null);
         }
+        // Only release loading if it is still held — getSession may have
+        // already released it, in which case we leave it alone.
         if (mounted) setLoading(false);
       }
     );
