@@ -182,15 +182,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.warn("Supabase sign out error:", err);
-    } finally {
-      setUser(null);
-      setProfile(null);
-      setSession(null);
-    }
+    // Optimistic logout — clear local state IMMEDIATELY so the UI
+    // transitions to /auth without waiting for a network round-trip.
+    // Supabase server-side session invalidation runs non-blocking.
+    setUser(null);
+    setProfile(null);
+    setSession(null);
+    setLoading(false);
+    supabase.auth.signOut().catch(err =>
+      console.warn('Background sign-out error (non-fatal):', err)
+    );
   };
 
   const isRole = (...roles: UserRole[]) => {

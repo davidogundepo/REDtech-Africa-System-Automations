@@ -438,10 +438,10 @@ export function AppSidebar() {
     return items.filter(item => isModuleEnabledByPath(item.path));
   };
 
-  const handleLogout = async () => {
-    await signOut();
-    toast.success(`See you later${profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}! 👋`);
-    navigate("/auth");
+  const handleLogout = () => {
+    const name = profile?.full_name?.split(" ")[0];
+    signOut(); // optimistic — clears state instantly, ProtectedRoute redirects
+    toast.success(`See you later${name ? `, ${name}` : ""}! 👋`);
   };
 
   const renderNavGroup = (items: typeof coreModules, label: string) => {
