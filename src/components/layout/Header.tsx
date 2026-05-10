@@ -214,7 +214,7 @@ export function Header({ aiOpen, setAiOpen }: HeaderProps) {
       setBugType("ui-bug");
     } catch (err) {
       console.error(err);
-      toast.error("Failed to submit feedback.");
+      toast.error(err instanceof Error ? err.message : "Failed to submit feedback.");
     } finally {
       setSubmittingBug(false);
     }

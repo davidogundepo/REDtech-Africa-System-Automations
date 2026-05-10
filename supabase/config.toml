@@ -5,7 +5,7 @@ project_id = "soehunvbcdzkcxtowxyi"
 verify_jwt = false
 
 [functions.feedback-to-sheets]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-document-email]
 verify_jwt = true
