@@ -136,22 +136,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // SIGNED_IN: use getSession() to get a fresh validated token,
-        // then await the profile before releasing the loading gate.
-        // This prevents the greeting from showing a skeleton on fresh login.
+        // SIGNED_IN: call getSession() to get a fresh validated token then
+        // await the profile. If getSession returns null it means a signOut
+        // raced in — bail out and let SIGNED_OUT handle cleanup.
         supabase.auth.getSession().then(async ({ data: { session: fresh } }) => {
           if (!mounted) return;
-          const s2 = fresh ?? s;
-          setSession(s2);
-          setUser(s2?.user ?? null);
-          if (s2?.user) {
-            const p = await fetchProfile(s2.user.id);
-            if (mounted) {
-              profileLoadedRef.current = !!p;
-              setProfile(p);
-            }
+          if (!fresh?.user) {
+            // No valid session — don't restore a stale one from the closure.
+            if (mounted) setLoading(false);
+            return;
           }
-          if (mounted) setLoading(false);
+          setSession(fresh);
+          setUser(fresh.user);
+          const p = await fetchProfile(fresh.user.id);
+          if (mounted) {
+            profileLoadedRef.current = !!p;
+            setProfile(p);
+            setLoading(false);
+          }
         });
       }
     );
