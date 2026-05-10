@@ -74,40 +74,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
-      if (!mounted) return;
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        const p = await fetchProfile(s.user.id);
-        if (mounted) setProfile(p);
+    // Helper to safely apply session & profile
+    const applySession = (s: Session | null) => {
+      if (!s?.user) {
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+        }
+        return;
       }
-      if (mounted) setLoading(false);
+      
+      // Fetch profile first, then set all states at once.
+      // This prevents the UI from rendering "Good morning there" 
+      // while it waits for the profile data.
+      fetchProfile(s.user.id).then(p => {
+        if (!mounted) return;
+        setSession(s);
+        setUser(s.user);
+        setProfile(p);
+        setLoading(false);
+      });
+    };
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      applySession(s);
     });
 
-    // Listen for auth changes (must stay synchronous — Supabase does NOT
-    // guarantee correct behaviour when the callback is async, which caused
-    // the app to show a permanent black screen after the splash animation).
-    // Page-reload twitching is already fixed by the getSession path above
-    // (it awaits the profile before releasing the loading gate).
+    // Listen for auth changes (callback remains synchronous)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, s) => {
         if (!mounted) return;
-        setSession(s);
-        setUser(s?.user ?? null);
-
-        if (s?.user) {
-          // Fire-and-forget so we never block the render loop
-          fetchProfile(s.user.id).then(p => {
-            if (mounted) setProfile(p);
-          });
-        } else {
+        // On sign out, clear immediately
+        if (_event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
           setProfile(null);
+          setLoading(false);
+        } else {
+          // On sign in/token refresh, load profile before exposing user
+          applySession(s);
         }
-        // Only release loading if it is still held — getSession may have
-        // already released it, in which case we leave it alone.
-        if (mounted) setLoading(false);
       }
     );
 
@@ -148,10 +157,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
-    setSession(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("Supabase sign out error:", err);
+    } finally {
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+    }
   };
 
   const isRole = (...roles: UserRole[]) => {
