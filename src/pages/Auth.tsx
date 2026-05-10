@@ -193,21 +193,55 @@ const Auth = () => {
 
   const handleUpdatePassword = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (loading) return;
     if (newPassword.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
     }
     setLoading(true);
-    const { error } = await import("@/integrations/supabase/client").then(m => m.supabase.auth.updateUser({ password: newPassword }));
-    
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      // Confirm we actually have a recovery session before calling updateUser.
+      // Without it Supabase will hang or 401 silently and the spinner never resolves.
+      const { data: sessionData } = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => resolve({ data: { session: null } }), 5000)
+        ),
+      ]);
+
+      if (!sessionData?.session) {
+        toast.error("Your reset link has expired. Please request a new one.");
+        setIsRecoveryFlow(false);
+        setView("reset");
+        // Clean the recovery params from the URL so the next render is sane.
+        window.history.replaceState({}, "", "/auth");
+        setLoading(false);
+        return;
+      }
+
+      const updatePromise = supabase.auth.updateUser({ password: newPassword });
+      const result = await Promise.race([
+        updatePromise,
+        new Promise<{ error: { message: string } }>((_, reject) =>
+          setTimeout(() => reject(new Error("Request timed out. Please try again.")), 12000)
+        ),
+      ]) as Awaited<typeof updatePromise>;
+
+      if (result.error) {
+        toast.error(result.error.message);
+        setLoading(false);
+        return;
+      }
+
       toast.success("Password updated successfully! Welcome back 🎉");
       setIsRecoveryFlow(false);
+      window.history.replaceState({}, "", "/");
       navigate("/", { replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update password. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // No loading gate here — the Auth page always renders the form.
