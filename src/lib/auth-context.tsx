@@ -51,6 +51,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const withTimeout = async <T,>(promise: Promise<T>, ms = 15000): Promise<T> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          timer = setTimeout(() => reject(new Error("Request timed out. Please check your connection and try again.")), ms);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  };
+
   // Fetch profile from profiles table (never blocks auth flow)
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
@@ -124,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event !== "INITIAL_SESSION") commitSession(null);
     });
 
-    supabase.auth.getSession()
+    withTimeout(supabase.auth.getSession(), 8000)
       .then(({ data: { session: s } }) => commitSession(s))
       .catch(() => commitSession(null));
 
@@ -142,9 +156,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
-    return { error: null };
+    try {
+      const { error } = await withTimeout(supabase.auth.signInWithPassword({ email, password }));
+      if (error) return { error: error.message };
+      return { error: null };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Login failed. Please try again." };
+    }
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -179,7 +197,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
     setSession(null);
     setLoading(false);
-    await supabase.auth.signOut({ scope: 'local' });
+    void supabase.auth.signOut({ scope: 'local' }).catch((error) => {
+      console.error("Local sign out cleanup failed:", error);
+    });
   };
 
   const isRole = (...roles: UserRole[]) => {
