@@ -169,7 +169,7 @@ const Auth = () => {
         setLoading(false);
       } else {
         toast.success(`Welcome to RAC Automations Dashboard, ${signupName}! 🚀`);
-        navigate("/");
+        navigate("/dashboard");
       }
     }
   };

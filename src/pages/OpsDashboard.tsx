@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { DatePicker } from "@/components/shared/DatePicker";
+import { PlatformAttribution } from "@/components/shared/PlatformAttribution";
 import { useAuth } from "@/lib/auth-context";
 import { Navigate } from "react-router-dom";
 
@@ -248,7 +249,7 @@ const OpsDashboard = () => {
 
   // Keep viewers out, but allow team members/admins to access this page since
   // the sidebar exposes Operations Dashboard to those roles.
-  if (isViewer) return <Navigate to="/" replace />;
+  if (isViewer) return <Navigate to="/dashboard" replace />;
 
   if (isLoading) return (
     <div className="flex-1 w-full min-h-screen flex items-center justify-center bg-background">
@@ -746,16 +747,7 @@ const OpsDashboard = () => {
       </Tabs>
 
       {/* Footer */}
-      <div className="flex items-center justify-center gap-1.5 mt-10 pt-6 pb-2">
-        <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-[0.25em]">Built on</span>
-        <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground/40 uppercase tracking-[0.15em]">
-          <span>Google</span>
-          <span>·</span>
-          <span>Vercel</span>
-          <span>·</span>
-          <span>Supabase</span>
-        </div>
-      </div>
+      <PlatformAttribution className="mt-10 pb-2" />
     </MotionPage>
   );
 };

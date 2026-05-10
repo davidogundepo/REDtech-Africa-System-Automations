@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MotionPage } from "@/components/shared/MotionPage";
+import { PlatformAttribution } from "@/components/shared/PlatformAttribution";
 import { format, formatDistanceToNow } from "date-fns";
 import { useCompany } from "@/lib/use-company";
 import { useModuleToggles } from "@/lib/module-toggles";
@@ -744,16 +745,7 @@ const Dashboard = () => {
       </section>
 
       {/* Footer */}
-      <div className="flex items-center justify-center gap-1.5 mt-8 pt-6 pb-2 border-t border-border/40">
-        <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-[0.25em]">Built on</span>
-        <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground/40 uppercase tracking-[0.15em]">
-          <span>Google</span>
-          <span>·</span>
-          <span>Vercel</span>
-          <span>·</span>
-          <span>Supabase</span>
-        </div>
-      </div>
+      <PlatformAttribution className="mt-8 pb-2" withTopBorder />
     </MotionPage>
   );
 };

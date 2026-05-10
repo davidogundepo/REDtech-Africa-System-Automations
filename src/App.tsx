@@ -97,7 +97,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function ModuleGuard({ path, children }: { path: string; children: React.ReactNode }) {
   const { isModuleEnabledByPath, loading } = useModuleToggles();
   if (loading) return null;
-  if (!isModuleEnabledByPath(path)) return <Navigate to="/" replace />;
+  if (!isModuleEnabledByPath(path)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 

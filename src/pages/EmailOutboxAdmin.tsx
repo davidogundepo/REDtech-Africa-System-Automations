@@ -97,7 +97,7 @@ export default function EmailOutboxAdmin() {
 
   const profilePending = !!user && !profile;
   if (loading || profilePending) return null;
-  if (!isAdmin && !isSuperAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin && !isSuperAdmin) return <Navigate to="/dashboard" replace />;
 
 
   const filtered = rows.filter((r: any) => {

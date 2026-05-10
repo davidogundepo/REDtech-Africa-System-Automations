@@ -54,7 +54,7 @@ export default function PlatformSettingsPage() {
   // Profile loads in background — wait for it before making role decisions.
   const profilePending = !!user && !profile;
   if (authLoading || profilePending) return null;
-  if (!isSuperAdmin) return <Navigate to="/" replace />;
+  if (!isSuperAdmin) return <Navigate to="/dashboard" replace />;
 
 
   const saveCompany = async () => {

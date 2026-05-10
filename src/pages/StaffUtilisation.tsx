@@ -37,7 +37,7 @@ class StaffUtilisationErrorBoundary extends Component<{ children: ReactNode }, {
   }
   render() {
     if (this.state.hasError) {
-      return <Navigate to="/" replace />;
+      return <Navigate to="/dashboard" replace />;
     }
     return this.props.children;
   }
@@ -120,7 +120,7 @@ const StaffUtilisation = () => {
 
   // If not admin, silently redirect to dashboard
   if (!isSuperAdmin && !isAdmin) {
-    return <Navigate to="/" replace />;  
+    return <Navigate to="/dashboard" replace />;  
   }
 
   const filteredProfiles = selectedDept === "all"

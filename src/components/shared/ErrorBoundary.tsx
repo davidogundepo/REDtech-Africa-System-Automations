@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RotateCcw, Home } from "lucide-react";
+import { PlatformAttribution } from "@/components/shared/PlatformAttribution";
 
 interface Props {
   children: ReactNode;
@@ -58,22 +59,12 @@ export class ErrorBoundary extends Component<Props, State> {
               <RotateCcw className="h-4 w-4 mr-2" />
               Reload page
             </Button>
-            <Button onClick={() => { this.reset(); window.location.assign("/"); }} variant="outline">
+            <Button onClick={() => { this.reset(); window.location.assign("/dashboard"); }} variant="outline">
               <Home className="h-4 w-4 mr-2" />
               Go home
             </Button>
           </div>
-          {/* Footer */}
-          <div className="flex items-center justify-center gap-1.5 mt-6 pt-5 border-t border-border/40">
-            <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-[0.25em]">Built on</span>
-            <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground/40 uppercase tracking-[0.15em]">
-              <span>Google</span>
-              <span>·</span>
-              <span>Vercel</span>
-              <span>·</span>
-              <span>Supabase</span>
-            </div>
-          </div>
+          <PlatformAttribution className="mt-6 pt-5" withTopBorder />
         </div>
       </div>
     );
