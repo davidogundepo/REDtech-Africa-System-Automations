@@ -83,13 +83,15 @@ const Auth = () => {
         toast.error(error);
       }
     } else {
-      const { data: prof } = await (supabase as any).from("profiles").select("full_name").eq("email", loginEmail).maybeSingle();
-      const firstName = (prof?.full_name || "").split(" ")[0] || "";
-      toast.success(`Welcome back${firstName ? `, ${firstName}` : ""}! 👋`);
+      // Navigate immediately — no extra DB call needed here.
+      // The auth context already fetches profile in the background.
+      // The dashboard greeting ("Good morning, David") handles personalization.
+      toast.success("Welcome back! 👋");
       navigate("/", { replace: true });
     }
     setLoading(false);
   };
+
 
   const handleSignup = async (e?: React.FormEvent) => {
     e?.preventDefault();
