@@ -74,54 +74,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Helper to safely apply session & profile
-    const applySession = (s: Session | null) => {
-      if (!s?.user) {
-        if (mounted) {
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setLoading(false);
-        }
-        return;
-      }
-      
-      // Fetch profile first, then set all states at once.
-      // This prevents the UI from rendering "Good morning there" 
-      // while it waits for the profile data.
-      fetchProfile(s.user.id).then(p => {
-        if (!mounted) return;
-        setSession(s);
-        setUser(s.user);
-        setProfile(p);
-        setLoading(false);
-      });
-    };
+    // ─── Safety net ───────────────────────────────────────────────────────────
+    // If nothing resolves in 6 seconds (profile fetch hangs, network offline,
+    // etc.) just release the loading gate so the UI never stays blank forever.
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 6000);
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      applySession(s);
-    });
-
-    // Listen for auth changes (callback remains synchronous)
+    // ─── Single source of truth ───────────────────────────────────────────────
+    // We use ONLY onAuthStateChange (Supabase v2 fires INITIAL_SESSION
+    // automatically on setup, so there is no need for a separate getSession()
+    // call to drive state). Mixing both caused a double-fetch race condition
+    // that intermittently left loading=true and showed a blank screen.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, s) => {
+      (event, s) => {
         if (!mounted) return;
-        // On sign out, clear immediately
-        if (_event === 'SIGNED_OUT') {
+
+        // Sign-out: clear state immediately, no profile fetch needed.
+        if (event === 'SIGNED_OUT' || !s?.user) {
+          clearTimeout(safetyTimer);
           setSession(null);
           setUser(null);
           setProfile(null);
           setLoading(false);
-        } else {
-          // On sign in/token refresh, load profile before exposing user
-          applySession(s);
+          return;
         }
+
+        // Token refresh for the SAME user: only update the session token,
+        // skip the expensive profile re-fetch.
+        if (event === 'TOKEN_REFRESHED') {
+          setSession(s);
+          return;
+        }
+
+        // INITIAL_SESSION / SIGNED_IN: fetch profile, then commit all state
+        // atomically so the UI never renders in a profile-less intermediate state.
+        fetchProfile(s.user.id)
+          .then(p => {
+            if (!mounted) return;
+            setSession(s);
+            setUser(s.user);
+            setProfile(p);
+          })
+          .catch(() => {
+            // Profile fetch failed — still let the user in, just without a profile.
+            if (!mounted) return;
+            setSession(s);
+            setUser(s.user);
+            setProfile(null);
+          })
+          .finally(() => {
+            clearTimeout(safetyTimer);
+            if (mounted) setLoading(false);
+          });
       }
     );
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);
