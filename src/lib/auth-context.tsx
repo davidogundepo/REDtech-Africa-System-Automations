@@ -96,28 +96,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // can run before the token has been refreshed, causing silent RLS
     // failures and a forever-missing profile on page refresh.)
     supabase.auth.getSession()
-      .then(async ({ data: { session: s } }) => {
+      .then(({ data: { session: s } }) => {
         if (!mounted) return;
         setSession(s);
         setUser(s?.user ?? null);
-        if (s?.user) {
-          // Await profile so the UI never renders without it on reload
-          const p = await fetchProfile(s.user.id);
-          if (mounted) {
-            profileLoadedRef.current = !!p;
-            setProfile(p);
-          }
-        }
-        if (mounted) setLoading(false);
+        // Fire profile fetch in BACKGROUND — don't block the loading gate.
+        // The splash releases immediately after session validation (<1s).
+        // Profile (name, role, modules) arrives a beat later.
+        if (s?.user) loadProfile(s.user.id);
+        setLoading(false);
       })
       .catch(() => {
-        // Network failure, Supabase down, etc. — always release the loading gate
-        // so the splash never stays up forever.
-        if (mounted) {
-          setUser(null);
-          setSession(null);
-          setLoading(false);
-        }
+        if (mounted) { setUser(null); setSession(null); setLoading(false); }
       });
 
     // ── Auth state change listener ───────────────────────────────────────
@@ -150,31 +140,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // await the profile. If getSession returns null it means a signOut
         // raced in — bail out and let SIGNED_OUT handle cleanup.
         supabase.auth.getSession()
-          .then(async ({ data: { session: fresh } }) => {
+          .then(({ data: { session: fresh } }) => {
             if (!mounted) return;
-            if (!fresh?.user) {
-              // No valid session — don't restore a stale one from the closure.
-              if (mounted) setLoading(false);
-              return;
-            }
+            if (!fresh?.user) { if (mounted) setLoading(false); return; }
             setSession(fresh);
             setUser(fresh.user);
-            const p = await fetchProfile(fresh.user.id);
-            if (mounted) {
-              profileLoadedRef.current = !!p;
-              setProfile(p);
-              setLoading(false);
-            }
+            // Profile in background — loading releases immediately
+            loadProfile(fresh.user.id);
+            setLoading(false);
           })
-          .catch(() => {
-            // On any network error during login, fall back to null state
-            if (mounted) setLoading(false);
-          });
+          .catch(() => { if (mounted) setLoading(false); });
       }
     );
 
+    // Safety: if ANYTHING hangs (rare Supabase edge case), force-release
+    // the loading gate after 5s so the splash never shows forever.
+    const safetyTimer = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 5000);
+
     return () => {
       mounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);
