@@ -433,7 +433,7 @@ const Dashboard = () => {
     return { greeting: "Good night", Icon: Moon, tone: "from-indigo-500 to-violet-600" };
   })();
   const { greeting, Icon: GreetingIcon, tone: greetingTone } = greetingMeta;
-  const firstName = authLoading ? "" : (profile?.full_name || "").split(" ")[0] || "there";
+  const firstName = profile ? ((profile.full_name || "").split(" ")[0] || "there") : null;
 
   /* KPI values */
   const totalRevenue = trendData.revenue.reduce((a, b) => a + b.y, 0);
@@ -461,7 +461,10 @@ const Dashboard = () => {
             <span className={`h-10 w-10 rounded-xl bg-gradient-to-br ${greetingTone} flex items-center justify-center shadow-md ring-1 ring-black/5`} aria-hidden>
               <GreetingIcon className="h-5 w-5 text-white" strokeWidth={2.4} />
             </span>
-            <span>{greeting}, {authLoading ? <span className="inline-block h-7 w-32 align-middle rounded skeleton-shimmer" /> : firstName} 👋</span>
+            <span>{greeting}, {firstName === null
+              ? <span className="inline-block h-7 w-32 align-middle rounded skeleton-shimmer" aria-label="Loading name…" />
+              : <>{firstName} 👋</>
+            }</span>
           </h1>
           <p className="text-[13px] text-muted-foreground mt-1">
             Here's what's moving across {companyName} today.

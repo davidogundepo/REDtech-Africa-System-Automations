@@ -75,22 +75,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     // ─── Safety net ───────────────────────────────────────────────────────────
-    // If nothing resolves in 6 seconds (profile fetch hangs, network offline,
-    // etc.) just release the loading gate so the UI never stays blank forever.
-    const safetyTimer = setTimeout(() => {
-      setLoading(false);
-    }, 6000);
+    // Guarantees the loading gate is released within 6 s no matter what,
+    // so a slow/failed profile fetch can never cause a permanent blank screen.
+    const safetyTimer = setTimeout(() => setLoading(false), 6000);
 
     // ─── Single source of truth ───────────────────────────────────────────────
-    // We use ONLY onAuthStateChange (Supabase v2 fires INITIAL_SESSION
-    // automatically on setup, so there is no need for a separate getSession()
-    // call to drive state). Mixing both caused a double-fetch race condition
-    // that intermittently left loading=true and showed a blank screen.
+    // Supabase v2 fires INITIAL_SESSION automatically on listener setup, so
+    // we don't need a separate getSession() call. Using both caused a race.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, s) => {
         if (!mounted) return;
 
-        // Sign-out: clear state immediately, no profile fetch needed.
+        // ── Signed out ─────────────────────────────────────────────────────
         if (event === 'SIGNED_OUT' || !s?.user) {
           clearTimeout(safetyTimer);
           setSession(null);
@@ -100,33 +96,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Token refresh for the SAME user: only update the session token,
-        // skip the expensive profile re-fetch.
+        // ── Token refresh ──────────────────────────────────────────────────
+        // Only update the token — skip the profile re-fetch to stay fast.
         if (event === 'TOKEN_REFRESHED') {
           setSession(s);
           return;
         }
 
-        // INITIAL_SESSION / SIGNED_IN: fetch profile, then commit all state
-        // atomically so the UI never renders in a profile-less intermediate state.
+        // ── Initial load / sign-in ─────────────────────────────────────────
+        // Set user + session IMMEDIATELY so the Auth page can navigate
+        // without waiting for the profile.  Profile arrives shortly after
+        // in the background — the UI shows a skeleton in the meantime.
+        setSession(s);
+        setUser(s.user);
+        clearTimeout(safetyTimer);
+        setLoading(false);
+
+        // Background profile fetch (fire-and-forget, never blocks the UI)
         fetchProfile(s.user.id)
-          .then(p => {
-            if (!mounted) return;
-            setSession(s);
-            setUser(s.user);
-            setProfile(p);
-          })
-          .catch(() => {
-            // Profile fetch failed — still let the user in, just without a profile.
-            if (!mounted) return;
-            setSession(s);
-            setUser(s.user);
-            setProfile(null);
-          })
-          .finally(() => {
-            clearTimeout(safetyTimer);
-            if (mounted) setLoading(false);
-          });
+          .then(p => { if (mounted) setProfile(p); })
+          .catch(() => { /* profile stays null — handled gracefully in UI */ });
       }
     );
 
