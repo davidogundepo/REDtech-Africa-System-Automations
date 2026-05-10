@@ -73,85 +73,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-
-    // ── Ref lets the onAuthStateChange closure see the latest profile
-    // without stale closure issues (can't read React state inside a listener).
     const profileLoadedRef = { current: false };
 
-    // ── Helper: fetch profile and commit to state ───────────────────────
-    const loadProfile = (userId: string) =>
-      fetchProfile(userId).then(p => {
-        if (!mounted) return;
-        profileLoadedRef.current = !!p;
-        setProfile(p);
-      }).catch(() => {
-        if (mounted) profileLoadedRef.current = false;
-      });
+    const loadProfile = (userId: string) => {
+      fetchProfile(userId)
+        .then((p) => {
+          if (!mounted) return;
+          profileLoadedRef.current = !!p;
+          setProfile(p);
+        })
+        .catch(() => {
+          if (mounted) profileLoadedRef.current = false;
+        });
+    };
 
-    // ── Initial session via getSession() ────────────────────────────────
-    // getSession() VALIDATES the stored token (and auto-refreshes if
-    // expired) BEFORE returning.  This guarantees that the profile fetch
-    // hits Supabase with a valid auth token, so RLS never rejects it.
-    // (Relying only on onAuthStateChange → INITIAL_SESSION means the fetch
-    // can run before the token has been refreshed, causing silent RLS
-    // failures and a forever-missing profile on page refresh.)
-    supabase.auth.getSession()
-      .then(({ data: { session: s } }) => {
-        if (!mounted) return;
-        setSession(s);
-        setUser(s?.user ?? null);
-        // Fire profile fetch in BACKGROUND — don't block the loading gate.
-        // The splash releases immediately after session validation (<1s).
-        // Profile (name, role, modules) arrives a beat later.
-        if (s?.user) loadProfile(s.user.id);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (mounted) { setUser(null); setSession(null); setLoading(false); }
-      });
-
-    // ── Auth state change listener ───────────────────────────────────────
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, s) => {
-        if (!mounted) return;
-
-        // INITIAL_SESSION is already handled by getSession() above — skip it
-        // here to prevent a duplicate profile fetch and race condition.
-        if (event === 'INITIAL_SESSION') return;
-
-        if (event === 'SIGNED_OUT' || !s?.user) {
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          profileLoadedRef.current = false;
-          setLoading(false);
-          return;
+    const commitSession = (s: Session | null, shouldLoadProfile = true) => {
+      if (!mounted) return;
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) {
+        if (shouldLoadProfile && !profileLoadedRef.current) {
+          window.setTimeout(() => loadProfile(s.user.id), 0);
         }
-
-        if (event === 'TOKEN_REFRESHED') {
-          // Update the session token.  If the initial profile fetch failed
-          // because the old token was expired, now retry it with the new token.
-          setSession(s);
-          if (!profileLoadedRef.current) loadProfile(s.user.id);
-          return;
-        }
-
-        // SIGNED_IN: call getSession() to get a fresh validated token then
-        // await the profile. If getSession returns null it means a signOut
-        // raced in — bail out and let SIGNED_OUT handle cleanup.
-        supabase.auth.getSession()
-          .then(({ data: { session: fresh } }) => {
-            if (!mounted) return;
-            if (!fresh?.user) { if (mounted) setLoading(false); return; }
-            setSession(fresh);
-            setUser(fresh.user);
-            // Profile in background — loading releases immediately
-            loadProfile(fresh.user.id);
-            setLoading(false);
-          })
-          .catch(() => { if (mounted) setLoading(false); });
+      } else {
+        setProfile(null);
+        profileLoadedRef.current = false;
       }
-    );
+      setLoading(false);
+    };
+
+    // Auth callbacks must stay synchronous. Calling Supabase auth methods
+    // inside this callback can deadlock signInWithPassword and leave the
+    // login button spinning forever.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (!mounted) return;
+
+      if (event === "SIGNED_OUT") {
+        commitSession(null);
+        return;
+      }
+
+      if (s?.user) {
+        commitSession(s, event !== "TOKEN_REFRESHED" || !profileLoadedRef.current);
+        return;
+      }
+
+      // Let the explicit getSession() check below be authoritative on first
+      // page load so a transient INITIAL_SESSION:null cannot kick users back
+      // to /auth while the stored session is still being restored.
+      if (event !== "INITIAL_SESSION") commitSession(null);
+    });
+
+    supabase.auth.getSession()
+      .then(({ data: { session: s } }) => commitSession(s))
+      .catch(() => commitSession(null));
 
     // Safety: if ANYTHING hangs (rare Supabase edge case), force-release
     // the loading gate after 5s so the splash never shows forever.
