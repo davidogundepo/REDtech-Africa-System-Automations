@@ -74,54 +74,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // ─── Safety net ───────────────────────────────────────────────────────────
-    // Guarantees the loading gate is released within 6 s no matter what,
-    // so a slow/failed profile fetch can never cause a permanent blank screen.
-    const safetyTimer = setTimeout(() => setLoading(false), 6000);
+    // ── Ref lets the onAuthStateChange closure see the latest profile
+    // without stale closure issues (can't read React state inside a listener).
+    const profileLoadedRef = { current: false };
 
-    // ─── Single source of truth ───────────────────────────────────────────────
-    // Supabase v2 fires INITIAL_SESSION automatically on listener setup, so
-    // we don't need a separate getSession() call. Using both caused a race.
+    // ── Helper: fetch profile and commit to state ───────────────────────
+    const loadProfile = (userId: string) =>
+      fetchProfile(userId).then(p => {
+        if (!mounted) return;
+        profileLoadedRef.current = !!p;
+        setProfile(p);
+      }).catch(() => {
+        if (mounted) profileLoadedRef.current = false;
+      });
+
+    // ── Initial session via getSession() ────────────────────────────────
+    // getSession() VALIDATES the stored token (and auto-refreshes if
+    // expired) BEFORE returning.  This guarantees that the profile fetch
+    // hits Supabase with a valid auth token, so RLS never rejects it.
+    // (Relying only on onAuthStateChange → INITIAL_SESSION means the fetch
+    // can run before the token has been refreshed, causing silent RLS
+    // failures and a forever-missing profile on page refresh.)
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      if (!mounted) return;
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) {
+        // Await profile so the UI never renders without it on reload
+        const p = await fetchProfile(s.user.id);
+        if (mounted) {
+          profileLoadedRef.current = !!p;
+          setProfile(p);
+        }
+      }
+      if (mounted) setLoading(false);
+    });
+
+    // ── Auth state change listener ───────────────────────────────────────
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, s) => {
         if (!mounted) return;
 
-        // ── Signed out ─────────────────────────────────────────────────────
+        // INITIAL_SESSION is already handled by getSession() above — skip it
+        // here to prevent a duplicate profile fetch and race condition.
+        if (event === 'INITIAL_SESSION') return;
+
         if (event === 'SIGNED_OUT' || !s?.user) {
-          clearTimeout(safetyTimer);
           setSession(null);
           setUser(null);
           setProfile(null);
+          profileLoadedRef.current = false;
           setLoading(false);
           return;
         }
 
-        // ── Token refresh ──────────────────────────────────────────────────
-        // Only update the token — skip the profile re-fetch to stay fast.
         if (event === 'TOKEN_REFRESHED') {
+          // Update the session token.  If the initial profile fetch failed
+          // because the old token was expired, now retry it with the new token.
           setSession(s);
+          if (!profileLoadedRef.current) loadProfile(s.user.id);
           return;
         }
 
-        // ── Initial load / sign-in ─────────────────────────────────────────
-        // Set user + session IMMEDIATELY so the Auth page can navigate
-        // without waiting for the profile.  Profile arrives shortly after
-        // in the background — the UI shows a skeleton in the meantime.
+        // SIGNED_IN (fresh login): expose user+session immediately so the
+        // Auth page can navigate without waiting for the profile DB call.
         setSession(s);
         setUser(s.user);
-        clearTimeout(safetyTimer);
         setLoading(false);
-
-        // Background profile fetch (fire-and-forget, never blocks the UI)
-        fetchProfile(s.user.id)
-          .then(p => { if (mounted) setProfile(p); })
-          .catch(() => { /* profile stays null — handled gracefully in UI */ });
+        loadProfile(s.user.id);
       }
     );
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);
