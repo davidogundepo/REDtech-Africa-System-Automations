@@ -31,7 +31,7 @@ import { Navigate } from "react-router-dom";
 
 const OpsDashboard = () => {
   const { theme } = useTheme();
-  const { isSuperAdmin, isAdmin, loading: authLoading } = useAuth();
+  const { user, profile, isSuperAdmin, isAdmin, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -743,14 +743,14 @@ const OpsDashboard = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Premium Footer */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-10 pt-8 pb-4 opacity-80 hover:opacity-100 transition-opacity">
-        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em]">Powered by</span>
-        <div className="flex items-center gap-3 text-xs font-bold text-foreground/90">
+      {/* Footer */}
+      <div className="flex items-center justify-center gap-1.5 mt-10 pt-6 pb-2">
+        <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-[0.25em]">Built on</span>
+        <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground/40 uppercase tracking-[0.15em]">
           <span>Google</span>
-          <span className="h-1 w-1 rounded-full bg-border"></span>
+          <span>·</span>
           <span>Vercel</span>
-          <span className="h-1 w-1 rounded-full bg-border"></span>
+          <span>·</span>
           <span>Supabase</span>
         </div>
       </div>
