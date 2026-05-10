@@ -95,20 +95,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // (Relying only on onAuthStateChange → INITIAL_SESSION means the fetch
     // can run before the token has been refreshed, causing silent RLS
     // failures and a forever-missing profile on page refresh.)
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
-      if (!mounted) return;
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        // Await profile so the UI never renders without it on reload
-        const p = await fetchProfile(s.user.id);
-        if (mounted) {
-          profileLoadedRef.current = !!p;
-          setProfile(p);
+    supabase.auth.getSession()
+      .then(async ({ data: { session: s } }) => {
+        if (!mounted) return;
+        setSession(s);
+        setUser(s?.user ?? null);
+        if (s?.user) {
+          // Await profile so the UI never renders without it on reload
+          const p = await fetchProfile(s.user.id);
+          if (mounted) {
+            profileLoadedRef.current = !!p;
+            setProfile(p);
+          }
         }
-      }
-      if (mounted) setLoading(false);
-    });
+        if (mounted) setLoading(false);
+      })
+      .catch(() => {
+        // Network failure, Supabase down, etc. — always release the loading gate
+        // so the splash never stays up forever.
+        if (mounted) {
+          setUser(null);
+          setSession(null);
+          setLoading(false);
+        }
+      });
 
     // ── Auth state change listener ───────────────────────────────────────
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -139,22 +149,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // SIGNED_IN: call getSession() to get a fresh validated token then
         // await the profile. If getSession returns null it means a signOut
         // raced in — bail out and let SIGNED_OUT handle cleanup.
-        supabase.auth.getSession().then(async ({ data: { session: fresh } }) => {
-          if (!mounted) return;
-          if (!fresh?.user) {
-            // No valid session — don't restore a stale one from the closure.
+        supabase.auth.getSession()
+          .then(async ({ data: { session: fresh } }) => {
+            if (!mounted) return;
+            if (!fresh?.user) {
+              // No valid session — don't restore a stale one from the closure.
+              if (mounted) setLoading(false);
+              return;
+            }
+            setSession(fresh);
+            setUser(fresh.user);
+            const p = await fetchProfile(fresh.user.id);
+            if (mounted) {
+              profileLoadedRef.current = !!p;
+              setProfile(p);
+              setLoading(false);
+            }
+          })
+          .catch(() => {
+            // On any network error during login, fall back to null state
             if (mounted) setLoading(false);
-            return;
-          }
-          setSession(fresh);
-          setUser(fresh.user);
-          const p = await fetchProfile(fresh.user.id);
-          if (mounted) {
-            profileLoadedRef.current = !!p;
-            setProfile(p);
-            setLoading(false);
-          }
-        });
+          });
       }
     );
 
