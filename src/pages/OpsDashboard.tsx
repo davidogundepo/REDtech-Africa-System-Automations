@@ -31,7 +31,7 @@ import { Navigate } from "react-router-dom";
 
 const OpsDashboard = () => {
   const { theme } = useTheme();
-  const { user, profile, isSuperAdmin, isAdmin, loading: authLoading } = useAuth();
+  const { user, profile, isViewer, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -246,7 +246,9 @@ const OpsDashboard = () => {
     </div>
   );
 
-  if (!isSuperAdmin && !isAdmin) return <Navigate to="/" replace />;
+  // Keep viewers out, but allow team members/admins to access this page since
+  // the sidebar exposes Operations Dashboard to those roles.
+  if (isViewer) return <Navigate to="/" replace />;
 
   if (isLoading) return (
     <div className="flex-1 w-full min-h-screen flex items-center justify-center bg-background">
