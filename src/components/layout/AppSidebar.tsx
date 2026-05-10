@@ -464,7 +464,12 @@ export function AppSidebar() {
                         : "h-9 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-all duration-200 hover:translate-x-0.5"
                     }
                   >
-                    <NavLink to={item.path} className="flex items-center gap-2.5" data-tour={`nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}>
+                    <NavLink
+                      to={item.path}
+                      end={item.path === "/"}
+                      className="flex w-full items-center gap-2.5"
+                      data-tour={`nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}
+                    >
                       <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
                       <span className="truncate">{item.title}</span>
                     </NavLink>

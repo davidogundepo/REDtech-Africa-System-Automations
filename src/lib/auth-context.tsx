@@ -87,20 +87,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, s) => {
+      async (_event, s) => {
         if (!mounted) return;
         setSession(s);
         setUser(s?.user ?? null);
-        
+
         if (s?.user) {
-          // Fire-and-forget: don't block loading on profile fetch
-          fetchProfile(s.user.id).then(p => {
-            if (mounted) setProfile(p);
-          });
+          // Wait for profile before releasing the loading gate — this prevents
+          // the dashboard "twitching" caused by rendering twice (once with
+          // profile=null, then again once the profile arrives).
+          const p = await fetchProfile(s.user.id);
+          if (mounted) setProfile(p);
         } else {
           setProfile(null);
         }
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     );
 

@@ -158,22 +158,48 @@ export function ModuleToggleProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // Hydrate per-user overrides for the signed-in user
+  // Hydrate per-user overrides for the signed-in user and reset cleanly when
+  // accounts change in the same browser session.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const loadUserOverrides = async (userId: string | null) => {
+      if (!userId) {
+        if (!cancelled) setUserDisabled([]);
+        return;
+      }
+
       try {
-        const { data: { user } } = await (supabase as any).auth.getUser();
-        if (!user || cancelled) return;
         const { data } = await (supabase as any)
           .from("user_module_overrides")
           .select("module_key, is_enabled")
-          .eq("user_id", user.id);
-        if (cancelled || !Array.isArray(data)) return;
+          .eq("user_id", userId);
+        if (cancelled) return;
+        if (!Array.isArray(data)) {
+          setUserDisabled([]);
+          return;
+        }
         setUserDisabled(data.filter((r: any) => r.is_enabled === false).map((r: any) => r.module_key as ModuleKey));
-      } catch { /* ignore */ }
+      } catch {
+        if (!cancelled) setUserDisabled([]);
+      }
+    };
+
+    (async () => {
+      const { data: { user } } = await (supabase as any).auth.getUser();
+      if (cancelled) return;
+      await loadUserOverrides(user?.id ?? null);
     })();
-    return () => { cancelled = true; };
+
+    const { data: { subscription } } = (supabase as any).auth.onAuthStateChange(
+      async (_event: string, session: any) => {
+        await loadUserOverrides(session?.user?.id ?? null);
+      },
+    );
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const isModuleEnabled = (key: ModuleKey) =>
