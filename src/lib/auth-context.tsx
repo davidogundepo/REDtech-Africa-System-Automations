@@ -136,12 +136,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // SIGNED_IN (fresh login): expose user+session immediately so the
-        // Auth page can navigate without waiting for the profile DB call.
-        setSession(s);
-        setUser(s.user);
-        setLoading(false);
-        loadProfile(s.user.id);
+        // SIGNED_IN: use getSession() to get a fresh validated token,
+        // then await the profile before releasing the loading gate.
+        // This prevents the greeting from showing a skeleton on fresh login.
+        supabase.auth.getSession().then(async ({ data: { session: fresh } }) => {
+          if (!mounted) return;
+          const s2 = fresh ?? s;
+          setSession(s2);
+          setUser(s2?.user ?? null);
+          if (s2?.user) {
+            const p = await fetchProfile(s2.user.id);
+            if (mounted) {
+              profileLoadedRef.current = !!p;
+              setProfile(p);
+            }
+          }
+          if (mounted) setLoading(false);
+        });
       }
     );
 
@@ -182,16 +193,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    // Optimistic logout — clear local state IMMEDIATELY so the UI
-    // transitions to /auth without waiting for a network round-trip.
-    // Supabase server-side session invalidation runs non-blocking.
+    // scope:'local' clears only the browser session — instant, no server
+    // round-trip, and critically NO background SIGNED_OUT event that could
+    // race with and wipe a subsequent re-login's profile.
     setUser(null);
     setProfile(null);
     setSession(null);
     setLoading(false);
-    supabase.auth.signOut().catch(err =>
-      console.warn('Background sign-out error (non-fatal):', err)
-    );
+    await supabase.auth.signOut({ scope: 'local' });
   };
 
   const isRole = (...roles: UserRole[]) => {
